@@ -19,6 +19,7 @@ import QRChecklist from "@/pages/qr/QRChecklist";
 import QRFuel from "@/pages/qr/QRFuel";
 import QRMaintenanceRequest from "@/pages/qr/QRMaintenanceRequest";
 import QREquipamento from "@/pages/qr/QREquipamento";
+import QRPrintPage from "@/pages/QRPrintPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +37,7 @@ const App = () => (
             <Route path="/qr/checklist" element={<QRChecklist />} />
             <Route path="/qr/abastecimento" element={<QRFuel />} />
             <Route path="/qr/pedido-manutencao" element={<QRMaintenanceRequest />} />
+            <Route path="/qr/imprimir" element={<QRPrintPage />} />
 
             {/* Protected app routes */}
             <Route path="/*" element={

@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { DBEquipment } from "@/lib/supabase-types";
 import { QRCodeSVG } from "qrcode.react";
-import { QrCode, Download, ExternalLink, ClipboardCheck, Fuel, Wrench } from "lucide-react";
+import { QrCode, Download, ExternalLink, ClipboardCheck, Fuel, Wrench, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function QRCodePage() {
   const [equipments, setEquipments] = useState<DBEquipment[]>([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
     supabase.from('equipments').select('*').order('name').then(({ data }) => {
@@ -41,9 +43,14 @@ export default function QRCodePage() {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-3xl font-black text-gradient">QR Code</h1>
-        <p className="text-muted-foreground mt-1">1 QR Code por equipamento — abre menu com Checklist, Manutenção e Abastecimento</p>
+      <div className="mb-8 flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-3xl font-black text-gradient">QR Code</h1>
+          <p className="text-muted-foreground mt-1">1 QR Code por equipamento — abre menu com Checklist, Manutenção e Abastecimento</p>
+        </div>
+        <Button variant="outline" onClick={() => navigate('/qr/imprimir')} className="gap-2">
+          <Printer className="w-4 h-4" /> Imprimir todos (A4)
+        </Button>
       </div>
 
       {equipments.length === 0 ? (

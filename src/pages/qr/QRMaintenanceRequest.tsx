@@ -29,13 +29,21 @@ export default function QRMaintenanceRequest() {
 
   const handleSave = async () => {
     setSaving(true);
-    await supabase.from('maintenance_requests').insert({
+    const { data: inserted } = await supabase.from('maintenance_requests').insert({
       equipment_id: equipmentId,
       description,
       priority,
       status: 'open',
       operator_name: operatorName,
-    });
+    }).select().single();
+
+    // Trigger email notification for urgent/high priority
+    if (inserted && ['urgent', 'high'].includes(priority)) {
+      supabase.functions.invoke('notify-maintenance', {
+        body: { requestId: inserted.id },
+      }).catch(console.error);
+    }
+
     setSaving(false);
     setSaved(true);
   };

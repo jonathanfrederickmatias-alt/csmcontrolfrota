@@ -1,45 +1,54 @@
-import { useState } from "react";
-import { store, generateId } from "@/lib/store";
-import { FuelRecord } from "@/lib/types";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { DBEquipment, DBFuelRecord } from "@/lib/supabase-types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Fuel, CheckCircle, Droplets } from "lucide-react";
+import { Fuel, CheckCircle, Droplets, Loader2, Plus } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export default function FuelPage() {
-  const equipments = store.getEquipments();
-  const combos = equipments.filter(e => e.type === 'combo');
-  const targets = equipments.filter(e => e.type !== 'combo');
-  const [records, setRecords] = useState(store.getFuelRecords());
-
+  const navigate = useNavigate();
+  const [equipments, setEquipments] = useState<DBEquipment[]>([]);
+  const [records, setRecords] = useState<DBFuelRecord[]>([]);
   const [comboId, setComboId] = useState('');
   const [targetId, setTargetId] = useState('');
   const [liters, setLiters] = useState('');
   const [operatorName, setOperatorName] = useState('');
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
 
+  const fetchData = async () => {
+    const [eqRes, frRes] = await Promise.all([
+      supabase.from('equipments').select('*').order('name'),
+      supabase.from('fuel_records').select('*').order('created_at', { ascending: false }).limit(50),
+    ]);
+    setEquipments((eqRes.data || []) as DBEquipment[]);
+    setRecords((frRes.data || []) as DBFuelRecord[]);
+  };
+
+  useEffect(() => { fetchData(); }, []);
+
+  const combos = equipments.filter(e => e.type === 'combo');
+  const targets = equipments.filter(e => e.type !== 'combo');
   const selectedCombo = equipments.find(e => e.id === comboId);
 
-  const handleSave = () => {
-    const fr: FuelRecord = {
-      id: generateId(),
-      comboEquipmentId: comboId,
-      targetEquipmentId: targetId,
+  const handleSave = async () => {
+    setSaving(true);
+    await supabase.from('fuel_records').insert({
+      combo_equipment_id: comboId,
+      target_equipment_id: targetId,
       liters: Number(liters),
       date: new Date().toISOString().split('T')[0],
-      operatorName,
-      createdAt: new Date().toISOString(),
-    };
-    store.saveFuelRecord(fr);
-    setRecords(store.getFuelRecords());
+      operator_name: operatorName,
+    });
+    setSaving(false);
     setSaved(true);
+    fetchData();
     setTimeout(() => {
       setSaved(false);
-      setComboId('');
-      setTargetId('');
-      setLiters('');
-      setOperatorName('');
+      setComboId(''); setTargetId(''); setLiters(''); setOperatorName('');
     }, 2000);
   };
 
@@ -47,16 +56,21 @@ export default function FuelPage() {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-3xl font-black text-gradient">Abastecimento</h1>
-        <p className="text-muted-foreground mt-1">Controle de combustível comboio → máquina</p>
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-3xl font-black text-gradient">Abastecimento</h1>
+          <p className="text-muted-foreground mt-1">Controle de combustível comboio → máquina</p>
+        </div>
+        <Button variant="outline" className="gap-2" onClick={() => navigate('/reabastecimento')}>
+          <Plus className="w-4 h-4" /> Reabastecer Comboio
+        </Button>
       </div>
 
-      {/* Combo fuel levels */}
+      {/* Saldo dos comboios */}
       {combos.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
           {combos.map(c => {
-            const pct = c.fuelCapacity ? ((c.currentFuel || 0) / c.fuelCapacity) * 100 : 0;
+            const pct = c.fuel_capacity ? ((c.current_fuel || 0) / c.fuel_capacity) * 100 : 0;
             return (
               <div key={c.id} className="glass-card rounded-xl p-5">
                 <div className="flex items-center gap-3 mb-3">
@@ -67,14 +81,11 @@ export default function FuelPage() {
                   </div>
                 </div>
                 <div className="flex items-end justify-between mb-2">
-                  <span className="text-2xl font-mono font-bold text-accent">{c.currentFuel || 0}L</span>
-                  <span className="text-sm text-muted-foreground">/ {c.fuelCapacity}L</span>
+                  <span className="text-2xl font-mono font-bold text-accent">{c.current_fuel || 0}L</span>
+                  <span className="text-sm text-muted-foreground">/ {c.fuel_capacity}L</span>
                 </div>
                 <div className="w-full bg-secondary rounded-full h-3">
-                  <div
-                    className={`h-3 rounded-full transition-all ${pct > 30 ? 'bg-primary' : pct > 10 ? 'bg-warning' : 'bg-destructive'}`}
-                    style={{ width: `${pct}%` }}
-                  />
+                  <div className={`h-3 rounded-full transition-all ${pct > 30 ? 'bg-primary' : pct > 10 ? 'bg-warning' : 'bg-destructive'}`} style={{ width: `${Math.min(pct, 100)}%` }} />
                 </div>
               </div>
             );
@@ -83,7 +94,7 @@ export default function FuelPage() {
       )}
 
       {saved ? (
-        <div className="glass-card rounded-xl p-12 text-center">
+        <div className="glass-card rounded-xl p-12 text-center mb-8">
           <CheckCircle className="w-16 h-16 text-success mx-auto mb-4" />
           <h2 className="text-xl font-bold text-success">Abastecimento Registrado!</h2>
         </div>
@@ -96,50 +107,44 @@ export default function FuelPage() {
             <div><Label>Comboio *</Label>
               <Select value={comboId} onValueChange={setComboId}>
                 <SelectTrigger><SelectValue placeholder="Selecionar comboio..." /></SelectTrigger>
-                <SelectContent>
-                  {combos.map(c => <SelectItem key={c.id} value={c.id}>{c.name} ({c.currentFuel || 0}L)</SelectItem>)}
-                </SelectContent>
+                <SelectContent>{combos.map(c => <SelectItem key={c.id} value={c.id}>{c.name} ({c.current_fuel || 0}L)</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div><Label>Equipamento Destino *</Label>
               <Select value={targetId} onValueChange={setTargetId}>
                 <SelectTrigger><SelectValue placeholder="Selecionar máquina..." /></SelectTrigger>
-                <SelectContent>
-                  {targets.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
-                </SelectContent>
+                <SelectContent>{targets.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div><Label>Litros *</Label>
+            <div>
+              <Label>Litros *</Label>
               <Input type="number" value={liters} onChange={e => setLiters(e.target.value)} placeholder="Ex: 1000" />
-              {selectedCombo && Number(liters) > (selectedCombo.currentFuel || 0) && (
-                <p className="text-xs text-destructive mt-1">Quantidade maior que o disponível no comboio!</p>
+              {selectedCombo && Number(liters) > (selectedCombo.current_fuel || 0) && (
+                <p className="text-xs text-destructive mt-1">Quantidade maior que o disponível!</p>
               )}
             </div>
-            <div><Label>Operador *</Label>
-              <Input value={operatorName} onChange={e => setOperatorName(e.target.value)} placeholder="Nome" />
-            </div>
+            <div><Label>Operador *</Label><Input value={operatorName} onChange={e => setOperatorName(e.target.value)} placeholder="Nome" /></div>
           </div>
-          <Button onClick={handleSave} disabled={!canSave} className="w-full mt-4 h-12 text-base font-bold">
-            Registrar Abastecimento
+          <Button onClick={handleSave} disabled={!canSave || saving} className="w-full mt-4 h-12 text-base font-bold">
+            {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Registrar Abastecimento
           </Button>
         </div>
       )}
 
-      {/* History */}
       <div className="glass-card rounded-xl p-6">
         <h2 className="text-lg font-bold mb-4">Histórico de Abastecimentos</h2>
         {records.length === 0 ? (
           <p className="text-muted-foreground text-sm">Nenhum abastecimento registrado.</p>
         ) : (
           <div className="space-y-2">
-            {records.slice().reverse().map(r => {
-              const combo = equipments.find(e => e.id === r.comboEquipmentId);
-              const target = equipments.find(e => e.id === r.targetEquipmentId);
+            {records.map(r => {
+              const combo = equipments.find(e => e.id === r.combo_equipment_id);
+              const target = equipments.find(e => e.id === r.target_equipment_id);
               return (
                 <div key={r.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
                   <div>
                     <p className="text-sm font-medium">{combo?.name} → {target?.name}</p>
-                    <p className="text-xs text-muted-foreground">{r.operatorName} — {r.date}</p>
+                    <p className="text-xs text-muted-foreground">{r.operator_name} — {r.date}</p>
                   </div>
                   <span className="text-lg font-mono font-bold text-accent">{r.liters}L</span>
                 </div>

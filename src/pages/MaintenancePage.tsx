@@ -1,146 +1,213 @@
-import { useState } from "react";
-import { store, generateId } from "@/lib/store";
-import { MaintenancePlan } from "@/lib/types";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { DBEquipment, DBMaintenancePlan, DBMaintenanceRequest } from "@/lib/supabase-types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Wrench, AlertTriangle, CheckCircle, Trash2 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Plus, Wrench, AlertTriangle, CheckCircle, Trash2, Edit2, Loader2, ChevronDown } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
+
+const statusConfig = {
+  ok: { color: 'text-success', bg: 'bg-success/10', border: 'border-l-success', label: 'OK' },
+  approaching: { color: 'text-warning', bg: 'bg-warning/10', border: 'border-l-warning', label: 'Próxima' },
+  overdue: { color: 'text-destructive', bg: 'bg-destructive/10', border: 'border-l-destructive', label: 'Atrasada' },
+};
+
+const requestStatusConfig = {
+  open: { label: 'Aberto', bg: 'bg-secondary text-muted-foreground' },
+  in_progress: { label: 'Em andamento', bg: 'bg-primary/15 text-primary' },
+  done: { label: 'Concluído', bg: 'bg-success/15 text-success' },
+};
+
+const priorityConfig = {
+  low: { label: 'Baixa', bg: 'bg-secondary text-muted-foreground' },
+  medium: { label: 'Média', bg: 'bg-primary/15 text-primary' },
+  high: { label: 'Alta', bg: 'bg-warning/20 text-warning' },
+  urgent: { label: 'Urgente', bg: 'bg-destructive/20 text-destructive' },
+};
 
 export default function MaintenancePage() {
-  const [plans, setPlans] = useState(store.getMaintenancePlans());
-  const equipments = store.getEquipments();
+  const [plans, setPlans] = useState<DBMaintenancePlan[]>([]);
+  const [requests, setRequests] = useState<DBMaintenanceRequest[]>([]);
+  const [equipments, setEquipments] = useState<DBEquipment[]>([]);
+  const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
+  const [editPlan, setEditPlan] = useState<DBMaintenancePlan | null>(null);
+  const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ equipmentId: '', description: '', intervalHours: '', lastDoneAt: '' });
-  const requests = store.getMaintenanceRequests();
 
-  const refresh = () => setPlans(store.getMaintenancePlans());
+  const fetchAll = async () => {
+    const [eqRes, plRes, reqRes] = await Promise.all([
+      supabase.from('equipments').select('*').order('name'),
+      supabase.from('maintenance_plans').select('*').order('status'),
+      supabase.from('maintenance_requests').select('*').order('created_at', { ascending: false }),
+    ]);
+    setEquipments((eqRes.data || []) as DBEquipment[]);
+    setPlans((plRes.data || []) as DBMaintenancePlan[]);
+    setRequests((reqRes.data || []) as DBMaintenanceRequest[]);
+    setLoading(false);
+  };
 
-  const handleSave = () => {
+  useEffect(() => { fetchAll(); }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
     const lastDone = Number(form.lastDoneAt);
     const interval = Number(form.intervalHours);
     const eq = equipments.find(e => e.id === form.equipmentId);
-    const currentHM = eq?.currentHourMeter || 0;
+    const currentHM = eq?.current_hour_meter || 0;
     const nextDue = lastDone + interval;
     const remaining = nextDue - currentHM;
+    const status = remaining <= 0 ? 'overdue' : remaining <= interval * 0.1 ? 'approaching' : 'ok';
 
-    let status: MaintenancePlan['status'] = 'ok';
-    if (remaining <= 0) status = 'overdue';
-    else if (remaining <= interval * 0.1) status = 'approaching';
+    if (editPlan) {
+      await supabase.from('maintenance_plans').update({
+        equipment_id: form.equipmentId,
+        description: form.description,
+        interval_hours: interval,
+        last_done_at: lastDone,
+        next_due_at: nextDue,
+        status,
+      }).eq('id', editPlan.id);
+      toast({ title: 'Plano atualizado com sucesso!' });
+    } else {
+      await supabase.from('maintenance_plans').insert({
+        equipment_id: form.equipmentId,
+        description: form.description,
+        interval_hours: interval,
+        last_done_at: lastDone,
+        next_due_at: nextDue,
+        status,
+      });
+      toast({ title: 'Plano criado com sucesso!' });
+    }
 
-    const mp: MaintenancePlan = {
-      id: generateId(),
-      equipmentId: form.equipmentId,
-      description: form.description,
-      intervalHours: interval,
-      lastDoneAt: lastDone,
-      nextDueAt: nextDue,
-      status,
-      createdAt: new Date().toISOString(),
-    };
-    store.saveMaintenancePlan(mp);
-    refresh();
+    setSaving(false);
     setOpen(false);
+    setEditPlan(null);
     setForm({ equipmentId: '', description: '', intervalHours: '', lastDoneAt: '' });
+    fetchAll();
   };
 
-  const handleDelete = (id: string) => {
-    store.deleteMaintenancePlan(id);
-    refresh();
+  const handleDelete = async (id: string) => {
+    await supabase.from('maintenance_plans').delete().eq('id', id);
+    fetchAll();
   };
 
-  const handleComplete = (plan: MaintenancePlan) => {
-    const eq = equipments.find(e => e.id === plan.equipmentId);
-    const currentHM = eq?.currentHourMeter || 0;
-    const updated: MaintenancePlan = {
-      ...plan,
-      lastDoneAt: currentHM,
-      nextDueAt: currentHM + plan.intervalHours,
+  const handleComplete = async (plan: DBMaintenancePlan) => {
+    const eq = equipments.find(e => e.id === plan.equipment_id);
+    const currentHM = eq?.current_hour_meter || 0;
+    await supabase.from('maintenance_plans').update({
+      last_done_at: currentHM,
+      next_due_at: currentHM + plan.interval_hours,
       status: 'ok',
-    };
-    store.saveMaintenancePlan(updated);
-    refresh();
+      last_executed_at: new Date().toISOString(),
+    }).eq('id', plan.id);
+    toast({ title: 'Manutenção marcada como concluída!', description: `Próxima em ${currentHM + plan.interval_hours}h` });
+    fetchAll();
   };
 
-  const statusConfig = {
-    ok: { icon: CheckCircle, color: 'text-success', bg: 'bg-success/10', label: 'OK' },
-    approaching: { icon: AlertTriangle, color: 'text-warning', bg: 'bg-warning/10', label: 'Próxima' },
-    overdue: { icon: AlertTriangle, color: 'text-destructive', bg: 'bg-destructive/10', label: 'Atrasada' },
+  const handleEditPlan = (plan: DBMaintenancePlan) => {
+    setEditPlan(plan);
+    setForm({
+      equipmentId: plan.equipment_id,
+      description: plan.description,
+      intervalHours: String(plan.interval_hours),
+      lastDoneAt: String(plan.last_done_at),
+    });
+    setOpen(true);
   };
+
+  const handleRequestStatus = async (id: string, status: DBMaintenanceRequest['status']) => {
+    const update: Partial<DBMaintenanceRequest> = { status };
+    if (status === 'done') update.resolved_at = new Date().toISOString();
+    await supabase.from('maintenance_requests').update(update).eq('id', id);
+    toast({ title: 'Status do pedido atualizado!' });
+    fetchAll();
+  };
+
+  const sortedPlans = [...plans].sort((a, b) => {
+    const order = { overdue: 0, approaching: 1, ok: 2 };
+    return order[a.status] - order[b.status];
+  });
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-8">
+    <div className="space-y-8">
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-black text-gradient">Manutenção</h1>
           <p className="text-muted-foreground mt-1">Planos preventivos e pedidos</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditPlan(null); setForm({ equipmentId: '', description: '', intervalHours: '', lastDoneAt: '' }); } }}>
           <DialogTrigger asChild>
             <Button className="gap-2"><Plus className="w-4 h-4" /> Novo Plano</Button>
           </DialogTrigger>
           <DialogContent className="bg-card border-border">
-            <DialogHeader><DialogTitle>Novo Plano de Manutenção</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{editPlan ? 'Editar Plano' : 'Novo Plano de Manutenção'}</DialogTitle></DialogHeader>
             <div className="space-y-4">
               <div><Label>Equipamento *</Label>
                 <Select value={form.equipmentId} onValueChange={v => setForm({...form, equipmentId: v})}>
                   <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
-                  <SelectContent>
-                    {equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eq.name}</SelectItem>)}
-                  </SelectContent>
+                  <SelectContent>{equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eq.name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div><Label>Descrição *</Label><Input value={form.description} onChange={e => setForm({...form, description: e.target.value})} placeholder="Ex: Troca de óleo" /></div>
               <div><Label>Intervalo (horas) *</Label><Input type="number" value={form.intervalHours} onChange={e => setForm({...form, intervalHours: e.target.value})} placeholder="Ex: 500" /></div>
               <div><Label>Última feita em (horímetro) *</Label><Input type="number" value={form.lastDoneAt} onChange={e => setForm({...form, lastDoneAt: e.target.value})} placeholder="Ex: 1000" /></div>
-              <Button onClick={handleSave} disabled={!form.equipmentId || !form.description || !form.intervalHours || !form.lastDoneAt} className="w-full">Salvar</Button>
+              <Button onClick={handleSave} disabled={!form.equipmentId || !form.description || !form.intervalHours || !form.lastDoneAt || saving} className="w-full">
+                {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}{editPlan ? 'Salvar alterações' : 'Salvar'}
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
       </div>
 
-      {plans.length === 0 ? (
+      {loading ? (
+        <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
+      ) : sortedPlans.length === 0 ? (
         <div className="glass-card rounded-xl p-12 text-center">
           <Wrench className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
           <p className="text-muted-foreground">Nenhum plano de manutenção cadastrado.</p>
         </div>
       ) : (
         <div className="space-y-3">
-          {plans.sort((a, b) => {
-            const order = { overdue: 0, approaching: 1, ok: 2 };
-            return order[a.status] - order[b.status];
-          }).map(plan => {
-            const eq = equipments.find(e => e.id === plan.equipmentId);
+          {sortedPlans.map(plan => {
+            const eq = equipments.find(e => e.id === plan.equipment_id);
             const sc = statusConfig[plan.status];
-            const remaining = plan.nextDueAt - (eq?.currentHourMeter || 0);
+            const remaining = plan.next_due_at - (eq?.current_hour_meter || 0);
             return (
-              <div key={plan.id} className={`glass-card rounded-xl p-5 border-l-4 ${
-                plan.status === 'overdue' ? 'border-l-destructive' :
-                plan.status === 'approaching' ? 'border-l-warning' : 'border-l-success'
-              }`}>
+              <div key={plan.id} className={`glass-card rounded-xl p-5 border-l-4 ${sc.border}`}>
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <h3 className="font-bold">{plan.description}</h3>
                       <span className={`text-xs px-2 py-0.5 rounded-full ${sc.bg} ${sc.color} font-medium`}>{sc.label}</span>
                     </div>
                     <p className="text-sm text-muted-foreground">{eq?.name || 'Equipamento'}</p>
-                    <div className="flex gap-4 mt-2 text-xs text-muted-foreground font-mono">
-                      <span>Intervalo: {plan.intervalHours}h</span>
-                      <span>Próxima: {plan.nextDueAt}h</span>
-                      <span className={remaining <= 0 ? 'text-destructive' : remaining <= plan.intervalHours * 0.1 ? 'text-warning' : 'text-success'}>
+                    <div className="flex gap-4 mt-2 text-xs text-muted-foreground font-mono flex-wrap">
+                      <span>Intervalo: {plan.interval_hours}h</span>
+                      <span>Próxima: {plan.next_due_at}h</span>
+                      <span className={remaining <= 0 ? 'text-destructive font-bold' : remaining <= plan.interval_hours * 0.1 ? 'text-warning font-bold' : 'text-success'}>
                         {remaining <= 0 ? `Atrasada ${Math.abs(remaining)}h` : `Faltam ${remaining}h`}
                       </span>
+                      {plan.last_executed_at && (
+                        <span>Executada: {new Date(plan.last_executed_at).toLocaleDateString('pt-BR')}</span>
+                      )}
                     </div>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 shrink-0">
+                    <button onClick={() => handleEditPlan(plan)} className="text-muted-foreground hover:text-primary p-2 transition-colors">
+                      <Edit2 className="w-4 h-4" />
+                    </button>
                     {plan.status !== 'ok' && (
                       <Button size="sm" variant="outline" onClick={() => handleComplete(plan)} className="text-success border-success/30 hover:bg-success/10">
-                        Concluir
+                        <CheckCircle className="w-3 h-3 mr-1" />Concluir
                       </Button>
                     )}
-                    <button onClick={() => handleDelete(plan.id)} className="text-muted-foreground hover:text-destructive p-2">
+                    <button onClick={() => handleDelete(plan.id)} className="text-muted-foreground hover:text-destructive p-2 transition-colors">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
@@ -151,30 +218,61 @@ export default function MaintenancePage() {
         </div>
       )}
 
-      {/* Maintenance Requests */}
-      {requests.length > 0 && (
-        <div className="mt-8">
-          <h2 className="text-xl font-bold mb-4">Pedidos de Manutenção</h2>
-          <div className="space-y-2">
+      {/* Pedidos de Manutenção */}
+      <div>
+        <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+          <AlertTriangle className="w-5 h-5 text-warning" />
+          Pedidos de Manutenção
+        </h2>
+        {requests.length === 0 ? (
+          <div className="glass-card rounded-xl p-8 text-center">
+            <p className="text-muted-foreground">Nenhum pedido registrado.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
             {requests.map(r => {
-              const eq = equipments.find(e => e.id === r.equipmentId);
+              const eq = equipments.find(e => e.id === r.equipment_id);
+              const pc = priorityConfig[r.priority];
+              const sc = requestStatusConfig[r.status];
               return (
-                <div key={r.id} className="glass-card rounded-xl p-4 flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">{r.description}</p>
-                    <p className="text-xs text-muted-foreground">{eq?.name} — {r.operatorName} — {new Date(r.createdAt).toLocaleDateString('pt-BR')}</p>
+                <div key={r.id} className="glass-card rounded-xl p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <p className="font-semibold">{r.description}</p>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${pc.bg}`}>{pc.label}</span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${sc.bg}`}>{sc.label}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">{eq?.name} — {r.operator_name} — {new Date(r.created_at).toLocaleDateString('pt-BR')}</p>
+                      {r.notes && <p className="text-xs text-muted-foreground mt-1 italic">Obs: {r.notes}</p>}
+                    </div>
+                    {/* Status control */}
+                    {r.status !== 'done' && (
+                      <div className="shrink-0">
+                        <Select value={r.status} onValueChange={v => handleRequestStatus(r.id, v as DBMaintenanceRequest['status'])}>
+                          <SelectTrigger className="h-8 text-xs w-36">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="open">Aberto</SelectItem>
+                            <SelectItem value="in_progress">Em andamento</SelectItem>
+                            <SelectItem value="done">Concluído</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                    {r.status === 'done' && r.resolved_at && (
+                      <span className="text-xs text-muted-foreground shrink-0">
+                        Concluído em {new Date(r.resolved_at).toLocaleDateString('pt-BR')}
+                      </span>
+                    )}
                   </div>
-                  <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                    r.priority === 'urgent' ? 'bg-destructive/20 text-destructive' :
-                    r.priority === 'high' ? 'bg-warning/20 text-warning' :
-                    'bg-secondary text-secondary-foreground'
-                  }`}>{r.priority}</span>
                 </div>
               );
             })}
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

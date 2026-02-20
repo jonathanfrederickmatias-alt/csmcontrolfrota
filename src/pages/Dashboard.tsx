@@ -1,8 +1,11 @@
 import { store } from "@/lib/store";
 import { Truck, ClipboardCheck, Wrench, AlertTriangle, Fuel, Activity } from "lucide-react";
 import { useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 
 export default function Dashboard() {
+  const navigate = useNavigate();
+
   const data = useMemo(() => {
     const equipments = store.getEquipments();
     const checklists = store.getChecklists();
@@ -22,12 +25,12 @@ export default function Dashboard() {
   }, []);
 
   const stats = [
-    { label: "Equipamentos", value: data.equipments.length, icon: Truck, color: "text-primary" },
-    { label: "Checklists Hoje", value: data.todayChecklists.length, icon: ClipboardCheck, color: "text-success" },
-    { label: "Manutenções Próximas", value: data.approaching.length, icon: Wrench, color: "text-warning" },
-    { label: "Manutenções Atrasadas", value: data.overdue.length, icon: AlertTriangle, color: "text-destructive" },
-    { label: "Pedidos Abertos", value: data.openRequests.length, icon: Activity, color: "text-accent" },
-    { label: "Litros Hoje", value: `${data.totalFuelToday}L`, icon: Fuel, color: "text-primary" },
+    { label: "Equipamentos", value: data.equipments.length, icon: Truck, color: "text-primary", to: "/equipamentos", hint: "Ver todos" },
+    { label: "Checklists Hoje", value: data.todayChecklists.length, icon: ClipboardCheck, color: "text-success", to: "/checklist", hint: "Fazer checklist" },
+    { label: "Manutenções Próximas", value: data.approaching.length, icon: Wrench, color: "text-warning", to: "/manutencao", hint: data.approaching.length > 0 ? "Atenção necessária!" : "Ver planos" },
+    { label: "Manutenções Atrasadas", value: data.overdue.length, icon: AlertTriangle, color: "text-destructive", to: "/manutencao", hint: data.overdue.length > 0 ? "Ação urgente!" : "Ver planos" },
+    { label: "Pedidos Abertos", value: data.openRequests.length, icon: Activity, color: "text-primary", to: "/manutencao", hint: data.openRequests.length > 0 ? "Ver pedidos" : "Sem pedidos" },
+    { label: "Litros Hoje", value: `${data.totalFuelToday}L`, icon: Fuel, color: "text-warning", to: "/abastecimento", hint: "Ver abastecimentos" },
   ];
 
   return (
@@ -39,13 +42,20 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
         {stats.map(stat => (
-          <div key={stat.label} className="glass-card rounded-xl p-5 hover:border-primary/30 transition-colors">
+          <button
+            key={stat.label}
+            onClick={() => navigate(stat.to)}
+            className="glass-card rounded-xl p-5 hover:border-primary/40 hover:scale-[1.02] transition-all text-left group cursor-pointer w-full"
+          >
             <div className="flex items-center justify-between mb-3">
               <stat.icon className={`w-6 h-6 ${stat.color}`} />
               <span className={`text-3xl font-black font-mono ${stat.color}`}>{stat.value}</span>
             </div>
             <p className="text-sm text-muted-foreground font-medium">{stat.label}</p>
-          </div>
+            <p className={`text-xs mt-1 opacity-0 group-hover:opacity-100 transition-opacity ${stat.color}`}>
+              {stat.hint} →
+            </p>
+          </button>
         ))}
       </div>
 
@@ -60,27 +70,35 @@ export default function Dashboard() {
             {data.overdue.map(p => {
               const eq = data.equipments.find(e => e.id === p.equipmentId);
               return (
-                <div key={p.id} className="flex items-center gap-3 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                <button
+                  key={p.id}
+                  onClick={() => navigate('/manutencao')}
+                  className="flex items-center gap-3 p-3 rounded-lg bg-destructive/10 border border-destructive/20 w-full text-left hover:bg-destructive/20 transition-colors"
+                >
                   <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-destructive">{p.description}</p>
                     <p className="text-xs text-muted-foreground">{eq?.name || 'Equipamento'} — Atrasada!</p>
                   </div>
                   <span className="text-xs font-mono text-destructive">{p.nextDueAt}h</span>
-                </div>
+                </button>
               );
             })}
             {data.approaching.map(p => {
               const eq = data.equipments.find(e => e.id === p.equipmentId);
               return (
-                <div key={p.id} className="flex items-center gap-3 p-3 rounded-lg bg-warning/10 border border-warning/20">
+                <button
+                  key={p.id}
+                  onClick={() => navigate('/manutencao')}
+                  className="flex items-center gap-3 p-3 rounded-lg bg-warning/10 border border-warning/20 w-full text-left hover:bg-warning/20 transition-colors"
+                >
                   <Wrench className="w-4 h-4 text-warning shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-warning">{p.description}</p>
                     <p className="text-xs text-muted-foreground">{eq?.name || 'Equipamento'} — Próxima</p>
                   </div>
                   <span className="text-xs font-mono text-warning">{p.nextDueAt}h</span>
-                </div>
+                </button>
               );
             })}
           </div>

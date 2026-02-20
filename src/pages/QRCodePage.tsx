@@ -3,33 +3,57 @@ import { store } from "@/lib/store";
 import { QRCodeSVG } from "qrcode.react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { QrCode, ClipboardCheck, Fuel, Wrench } from "lucide-react";
+import { QrCode, ClipboardCheck, Fuel, Wrench, Download } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function QRCodePage() {
   const equipments = store.getEquipments();
   const [selectedId, setSelectedId] = useState('');
   const selectedEquipment = equipments.find(e => e.id === selectedId);
 
-  // Base URL - in production this would be the real domain
   const baseUrl = window.location.origin;
 
   const qrItems = selectedId ? [
-    { label: "Checklist", icon: ClipboardCheck, url: `${baseUrl}/checklist?equipment=${selectedId}`, color: "text-success" },
-    { label: "Abastecimento", icon: Fuel, url: `${baseUrl}/abastecimento?equipment=${selectedId}`, color: "text-primary" },
-    { label: "Pedido de Manutenção", icon: Wrench, url: `${baseUrl}/pedido-manutencao?equipment=${selectedId}`, color: "text-warning" },
+    {
+      label: "Checklist",
+      icon: ClipboardCheck,
+      url: `${baseUrl}/qr/checklist?equipment=${selectedId}`,
+      color: "text-success",
+      bg: "bg-success/10",
+      border: "border-success/20",
+      description: "Operador preenche sem login"
+    },
+    {
+      label: "Abastecimento",
+      icon: Fuel,
+      url: `${baseUrl}/qr/abastecimento?equipment=${selectedId}`,
+      color: "text-primary",
+      bg: "bg-primary/10",
+      border: "border-primary/20",
+      description: "Acesso com PIN — só responsável"
+    },
+    {
+      label: "Pedido de Manutenção",
+      icon: Wrench,
+      url: `${baseUrl}/qr/pedido-manutencao?equipment=${selectedId}`,
+      color: "text-warning",
+      bg: "bg-warning/10",
+      border: "border-warning/20",
+      description: "Operador preenche sem login"
+    },
   ] : [];
 
   return (
     <div>
       <div className="mb-8">
         <h1 className="text-3xl font-black text-gradient">QR Code</h1>
-        <p className="text-muted-foreground mt-1">Gere QR Codes para acesso rápido por equipamento</p>
+        <p className="text-muted-foreground mt-1">Um QR Code por função — escaneie para acesso rápido</p>
       </div>
 
       <div className="glass-card rounded-xl p-6 mb-8">
         <Label>Selecionar Equipamento</Label>
         <Select value={selectedId} onValueChange={setSelectedId}>
-          <SelectTrigger className="max-w-md"><SelectValue placeholder="Selecionar equipamento..." /></SelectTrigger>
+          <SelectTrigger className="max-w-md mt-1"><SelectValue placeholder="Selecionar equipamento..." /></SelectTrigger>
           <SelectContent>
             {equipments.map(eq => (
               <SelectItem key={eq.id} value={eq.id}>{eq.name}</SelectItem>
@@ -43,18 +67,29 @@ export default function QRCodePage() {
           <h2 className="text-xl font-bold mb-4">{selectedEquipment.name}</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {qrItems.map(item => (
-              <div key={item.label} className="glass-card rounded-xl p-6 text-center">
-                <item.icon className={`w-8 h-8 ${item.color} mx-auto mb-3`} />
-                <h3 className="font-bold mb-4">{item.label}</h3>
-                <div className="bg-foreground p-4 rounded-xl inline-block">
+              <div key={item.label} className={`glass-card rounded-xl p-6 text-center border ${item.border}`}>
+                <div className={`inline-flex items-center justify-center w-12 h-12 rounded-xl ${item.bg} mb-3`}>
+                  <item.icon className={`w-6 h-6 ${item.color}`} />
+                </div>
+                <h3 className="font-bold mb-1">{item.label}</h3>
+                <p className={`text-xs mb-4 ${item.color}`}>{item.description}</p>
+                <div className="bg-white p-4 rounded-xl inline-block shadow-lg">
                   <QRCodeSVG
                     value={item.url}
-                    size={180}
-                    bgColor="hsl(40, 10%, 92%)"
-                    fgColor="hsl(220, 20%, 10%)"
+                    size={160}
+                    bgColor="#ffffff"
+                    fgColor="#1a1a2e"
                   />
                 </div>
                 <p className="text-xs text-muted-foreground mt-3 break-all">{item.url}</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-3 w-full gap-2"
+                  onClick={() => window.open(item.url, '_blank')}
+                >
+                  <Download className="w-3 h-3" /> Testar Link
+                </Button>
               </div>
             ))}
           </div>

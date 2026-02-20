@@ -21,7 +21,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <aside className="hidden lg:flex flex-col w-64 bg-sidebar border-r border-sidebar-border fixed h-full z-30">
         <div className="p-6 border-b border-sidebar-border">
           <h1 className="text-xl font-black tracking-tight">
-            <span className="text-gradient">PAVI</span>
+            <span className="text-gradient">CSM</span>
             <span className="text-sidebar-foreground">CONTROL</span>
           </h1>
           <p className="text-xs text-muted-foreground mt-1">Gestão de Frota & Manutenção</p>
@@ -50,7 +50,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Mobile header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-sidebar border-b border-sidebar-border px-4 py-3 flex items-center justify-between">
         <h1 className="text-lg font-black">
-          <span className="text-gradient">PAVI</span>
+          <span className="text-gradient">CSM</span>
           <span className="text-sidebar-foreground">CONTROL</span>
         </h1>
         <button onClick={() => setMobileOpen(!mobileOpen)} className="text-sidebar-foreground p-2">

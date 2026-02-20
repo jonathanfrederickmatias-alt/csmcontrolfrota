@@ -1,12 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { DBEquipment, DBFuelRecord, DBChecklist, DBMaintenancePlan } from '@/lib/supabase-types';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  LineChart, Line, PieChart, Pie, Cell, Legend
+  PieChart, Pie, Cell, Legend
 } from 'recharts';
-import { BarChart2, Droplets, Clock, Wrench, Calendar } from 'lucide-react';
+import { BarChart2, Droplets, Clock, Wrench, Calendar, Download, FileSpreadsheet, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import * as XLSX from 'xlsx';
 
 const COLORS = ['hsl(0,80%,50%)', 'hsl(38,92%,50%)', 'hsl(142,71%,45%)', 'hsl(210,80%,56%)', 'hsl(280,70%,60%)', 'hsl(16,80%,55%)'];
 
@@ -19,6 +20,7 @@ export default function ReportsPage() {
   const [checklists, setChecklists] = useState<DBChecklist[]>([]);
   const [plans, setPlans] = useState<DBMaintenancePlan[]>([]);
   const [loading, setLoading] = useState(true);
+  const reportRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -110,6 +112,73 @@ export default function ReportsPage() {
 
   const periodLabels: Record<Period, string> = { '7d': '7 dias', '30d': '30 dias', '90d': '90 dias', 'all': 'Todo período' };
 
+  const exportExcel = () => {
+    const wb = XLSX.utils.book_new();
+
+    // Sheet 1: Combustível por equipamento
+    const fuelSheet = XLSX.utils.json_to_sheet(
+      equipments.filter(e => e.type !== 'combo').map(eq => ({
+        Equipamento: eq.name,
+        'Litros consumidos': fuelRecords.filter(r => r.target_equipment_id === eq.id).reduce((s, r) => s + Number(r.liters), 0),
+        'Horímetro atual': eq.current_hour_meter,
+      }))
+    );
+    XLSX.utils.book_append_sheet(wb, fuelSheet, 'Combustível');
+
+    // Sheet 2: Checklists
+    const clSheet = XLSX.utils.json_to_sheet(
+      checklists.map(c => {
+        const eq = equipments.find(e => e.id === c.equipment_id);
+        return {
+          Data: c.date,
+          Equipamento: eq?.name || '—',
+          Operador: c.operator_name,
+          Horímetro: c.hour_meter,
+          Status: c.status === 'ok' ? 'OK' : c.status === 'attention' ? 'Atenção' : 'Crítico',
+        };
+      })
+    );
+    XLSX.utils.book_append_sheet(wb, clSheet, 'Checklists');
+
+    // Sheet 3: Planos de manutenção
+    const mpSheet = XLSX.utils.json_to_sheet(
+      plans.map(p => {
+        const eq = equipments.find(e => e.id === p.equipment_id);
+        return {
+          Equipamento: eq?.name || '—',
+          Descrição: p.description,
+          'Intervalo (h)': p.interval_hours,
+          'Próxima (h)': p.next_due_at,
+          Status: p.status === 'ok' ? 'OK' : p.status === 'approaching' ? 'Próxima' : 'Atrasada',
+          'Última execução': p.last_executed_at ? new Date(p.last_executed_at).toLocaleDateString('pt-BR') : '—',
+        };
+      })
+    );
+    XLSX.utils.book_append_sheet(wb, mpSheet, 'Manutenções');
+
+    // Sheet 4: Abastecimentos por dia
+    const fdSheet = XLSX.utils.json_to_sheet(
+      fuelRecords.map(r => {
+        const target = equipments.find(e => e.id === r.target_equipment_id);
+        const combo = equipments.find(e => e.id === r.combo_equipment_id);
+        return {
+          Data: r.date,
+          Equipamento: target?.name || '—',
+          Comboio: combo?.name || '—',
+          'Litros': r.liters,
+          Responsável: r.operator_name,
+        };
+      })
+    );
+    XLSX.utils.book_append_sheet(wb, fdSheet, 'Abastecimentos');
+
+    XLSX.writeFile(wb, `CSMCONTROL_Relatorio_${period}.xlsx`);
+  };
+
+  const exportPDF = () => {
+    window.print();
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
@@ -117,17 +186,27 @@ export default function ReportsPage() {
           <h1 className="text-3xl font-black text-gradient">Relatórios</h1>
           <p className="text-muted-foreground mt-1">Análise de frota, combustível e manutenções</p>
         </div>
-        <div className="flex gap-2">
-          {(['7d', '30d', '90d', 'all'] as Period[]).map(p => (
-            <Button
-              key={p}
-              size="sm"
-              variant={period === p ? 'default' : 'outline'}
-              onClick={() => setPeriod(p)}
-            >
-              {periodLabels[p]}
+        <div className="flex flex-wrap gap-2">
+          <div className="flex gap-1">
+            {(['7d', '30d', '90d', 'all'] as Period[]).map(p => (
+              <Button
+                key={p}
+                size="sm"
+                variant={period === p ? 'default' : 'outline'}
+                onClick={() => setPeriod(p)}
+              >
+                {periodLabels[p]}
+              </Button>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={exportExcel} className="gap-1.5">
+              <FileSpreadsheet className="w-4 h-4 text-success" /> Excel
             </Button>
-          ))}
+            <Button size="sm" variant="outline" onClick={exportPDF} className="gap-1.5">
+              <FileText className="w-4 h-4 text-primary" /> PDF
+            </Button>
+          </div>
         </div>
       </div>
 

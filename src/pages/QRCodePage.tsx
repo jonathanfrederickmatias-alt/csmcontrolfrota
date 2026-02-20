@@ -2,14 +2,11 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { DBEquipment } from "@/lib/supabase-types";
 import { QRCodeSVG } from "qrcode.react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import { QrCode, ClipboardCheck, Fuel, Wrench } from "lucide-react";
+import { QrCode, Download, ExternalLink, ClipboardCheck, Fuel, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function QRCodePage() {
   const [equipments, setEquipments] = useState<DBEquipment[]>([]);
-  const [selectedId, setSelectedId] = useState('');
 
   useEffect(() => {
     supabase.from('equipments').select('*').order('name').then(({ data }) => {
@@ -17,57 +14,94 @@ export default function QRCodePage() {
     });
   }, []);
 
-  const selectedEquipment = equipments.find(e => e.id === selectedId);
   const baseUrl = window.location.origin;
 
-  const qrItems = selectedId ? [
-    { label: "Checklist", icon: ClipboardCheck, url: `${baseUrl}/qr/checklist?equipment=${selectedId}`, color: "text-success", bg: "bg-success/10", border: "border-success/20", description: "Operador preenche sem login" },
-    { label: "Abastecimento", icon: Fuel, url: `${baseUrl}/qr/abastecimento?equipment=${selectedId}`, color: "text-primary", bg: "bg-primary/10", border: "border-primary/20", description: "Acesso com PIN — só responsável" },
-    { label: "Pedido de Manutenção", icon: Wrench, url: `${baseUrl}/qr/pedido-manutencao?equipment=${selectedId}`, color: "text-warning", bg: "bg-warning/10", border: "border-warning/20", description: "Operador preenche sem login" },
-  ] : [];
+  const downloadQR = (equipmentId: string, equipmentName: string) => {
+    const canvas = document.querySelector(`#qr-${equipmentId} canvas`) as HTMLCanvasElement;
+    if (!canvas) {
+      // fallback: find SVG and convert
+      const svg = document.querySelector(`#qr-${equipmentId} svg`) as SVGSVGElement;
+      if (!svg) return;
+      const svgData = new XMLSerializer().serializeToString(svg);
+      const blob = new Blob([svgData], { type: 'image/svg+xml' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `QRCode-${equipmentName.replace(/\s/g, '_')}.svg`;
+      a.click();
+      URL.revokeObjectURL(url);
+      return;
+    }
+    const url = canvas.toDataURL('image/png');
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `QRCode-${equipmentName.replace(/\s/g, '_')}.png`;
+    a.click();
+  };
 
   return (
     <div>
       <div className="mb-8">
         <h1 className="text-3xl font-black text-gradient">QR Code</h1>
-        <p className="text-muted-foreground mt-1">Um QR Code por função — escaneie para acesso rápido</p>
+        <p className="text-muted-foreground mt-1">1 QR Code por equipamento — abre menu com Checklist, Manutenção e Abastecimento</p>
       </div>
-      <div className="glass-card rounded-xl p-6 mb-8">
-        <Label>Selecionar Equipamento</Label>
-        <Select value={selectedId} onValueChange={setSelectedId}>
-          <SelectTrigger className="max-w-md mt-1"><SelectValue placeholder="Selecionar equipamento..." /></SelectTrigger>
-          <SelectContent>{equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eq.name}</SelectItem>)}</SelectContent>
-        </Select>
-      </div>
-      {selectedEquipment && (
-        <div>
-          <h2 className="text-xl font-bold mb-4">{selectedEquipment.name}</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {qrItems.map(item => (
-              <div key={item.label} className={`glass-card rounded-xl p-6 text-center border ${item.border}`}>
-                <div className={`inline-flex items-center justify-center w-12 h-12 rounded-xl ${item.bg} mb-3`}>
-                  <item.icon className={`w-6 h-6 ${item.color}`} />
-                </div>
-                <h3 className="font-bold mb-1">{item.label}</h3>
-                <p className={`text-xs mb-4 ${item.color}`}>{item.description}</p>
-                <div className="bg-white p-4 rounded-xl inline-block shadow-lg">
-                  <QRCodeSVG value={item.url} size={160} bgColor="#ffffff" fgColor="#1a1a2e" />
-                </div>
-                <p className="text-xs text-muted-foreground mt-3 break-all">{item.url}</p>
-                <Button variant="outline" size="sm" className="mt-3 w-full gap-2" onClick={() => window.open(item.url, '_blank')}>
-                  Testar Link
-                </Button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-      {equipments.length === 0 && (
+
+      {equipments.length === 0 ? (
         <div className="glass-card rounded-xl p-12 text-center">
           <QrCode className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
           <p className="text-muted-foreground">Cadastre equipamentos primeiro para gerar QR Codes.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {equipments.map(eq => {
+            const url = `${baseUrl}/qr/equipamento/${eq.id}`;
+            return (
+              <div key={eq.id} className="glass-card rounded-xl p-6 text-center flex flex-col items-center gap-4">
+                {/* Header */}
+                <div className="w-full">
+                  <h3 className="font-bold text-lg">{eq.name}</h3>
+                  {eq.model && <p className="text-xs text-muted-foreground">{eq.model}</p>}
+                  {eq.plate && (
+                    <span className="inline-block mt-1 px-2 py-0.5 rounded bg-secondary text-xs font-mono">{eq.plate}</span>
+                  )}
+                </div>
+
+                {/* QR Code */}
+                <div id={`qr-${eq.id}`} className="bg-white p-4 rounded-2xl shadow-lg">
+                  <QRCodeSVG value={url} size={180} bgColor="#ffffff" fgColor="#1a1a2e" level="M" />
+                </div>
+
+                {/* Itens dentro do QR */}
+                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1 text-success"><ClipboardCheck className="w-3.5 h-3.5" /> Checklist</span>
+                  <span className="flex items-center gap-1 text-warning"><Wrench className="w-3.5 h-3.5" /> Manutenção</span>
+                  <span className="flex items-center gap-1 text-primary"><Fuel className="w-3.5 h-3.5" /> Combustível</span>
+                </div>
+
+                {/* Actions */}
+                <div className="w-full flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 gap-1.5"
+                    onClick={() => window.open(url, '_blank')}
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" /> Testar
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="flex-1 gap-1.5"
+                    onClick={() => downloadQR(eq.id, eq.name)}
+                  >
+                    <Download className="w-3.5 h-3.5" /> Baixar
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
   );
 }
+

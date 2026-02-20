@@ -14,7 +14,272 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      checklists: {
+        Row: {
+          created_at: string
+          date: string
+          equipment_id: string
+          hour_meter: number
+          id: string
+          items: Json
+          operator_name: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          date?: string
+          equipment_id: string
+          hour_meter: number
+          id?: string
+          items?: Json
+          operator_name: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          equipment_id?: string
+          hour_meter?: number
+          id?: string
+          items?: Json
+          operator_name?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklists_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      equipments: {
+        Row: {
+          created_at: string
+          current_fuel: number | null
+          current_hour_meter: number
+          fuel_capacity: number | null
+          id: string
+          model: string | null
+          name: string
+          plate: string | null
+          status: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          current_fuel?: number | null
+          current_hour_meter?: number
+          fuel_capacity?: number | null
+          id?: string
+          model?: string | null
+          name: string
+          plate?: string | null
+          status?: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          current_fuel?: number | null
+          current_hour_meter?: number
+          fuel_capacity?: number | null
+          id?: string
+          model?: string | null
+          name?: string
+          plate?: string | null
+          status?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      fuel_records: {
+        Row: {
+          combo_equipment_id: string
+          created_at: string
+          date: string
+          id: string
+          liters: number
+          operator_name: string
+          target_equipment_id: string
+        }
+        Insert: {
+          combo_equipment_id: string
+          created_at?: string
+          date?: string
+          id?: string
+          liters: number
+          operator_name: string
+          target_equipment_id: string
+        }
+        Update: {
+          combo_equipment_id?: string
+          created_at?: string
+          date?: string
+          id?: string
+          liters?: number
+          operator_name?: string
+          target_equipment_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fuel_records_combo_equipment_id_fkey"
+            columns: ["combo_equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fuel_records_target_equipment_id_fkey"
+            columns: ["target_equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fuel_supply_records: {
+        Row: {
+          combo_equipment_id: string
+          created_at: string
+          date: string
+          id: string
+          invoice_number: string | null
+          liters: number
+          notes: string | null
+          responsible_name: string
+          supplier: string | null
+        }
+        Insert: {
+          combo_equipment_id: string
+          created_at?: string
+          date?: string
+          id?: string
+          invoice_number?: string | null
+          liters: number
+          notes?: string | null
+          responsible_name: string
+          supplier?: string | null
+        }
+        Update: {
+          combo_equipment_id?: string
+          created_at?: string
+          date?: string
+          id?: string
+          invoice_number?: string | null
+          liters?: number
+          notes?: string | null
+          responsible_name?: string
+          supplier?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fuel_supply_records_combo_equipment_id_fkey"
+            columns: ["combo_equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      maintenance_plans: {
+        Row: {
+          created_at: string
+          description: string
+          equipment_id: string
+          id: string
+          interval_hours: number
+          last_done_at: number
+          last_executed_at: string | null
+          next_due_at: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          equipment_id: string
+          id?: string
+          interval_hours: number
+          last_done_at?: number
+          last_executed_at?: string | null
+          next_due_at: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          equipment_id?: string
+          id?: string
+          interval_hours?: number
+          last_done_at?: number
+          last_executed_at?: string | null
+          next_due_at?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "maintenance_plans_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      maintenance_requests: {
+        Row: {
+          created_at: string
+          description: string
+          equipment_id: string
+          id: string
+          notes: string | null
+          operator_name: string
+          priority: string
+          resolved_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          equipment_id: string
+          id?: string
+          notes?: string | null
+          operator_name: string
+          priority?: string
+          resolved_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          equipment_id?: string
+          id?: string
+          notes?: string | null
+          operator_name?: string
+          priority?: string
+          resolved_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "maintenance_requests_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

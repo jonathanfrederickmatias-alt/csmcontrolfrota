@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Truck, ClipboardCheck, Wrench, Fuel, QrCode, Menu, X } from "lucide-react";
+import { LayoutDashboard, Truck, ClipboardCheck, Wrench, Fuel, QrCode, Menu, X, BarChart2, Droplets } from "lucide-react";
 import { useState } from "react";
 
 const navItems = [
@@ -8,6 +8,8 @@ const navItems = [
   { to: "/checklist", label: "Checklist", icon: ClipboardCheck },
   { to: "/manutencao", label: "Manutenção", icon: Wrench },
   { to: "/abastecimento", label: "Abastecimento", icon: Fuel },
+  { to: "/reabastecimento", label: "Reabastecimento", icon: Droplets },
+  { to: "/relatorios", label: "Relatórios", icon: BarChart2 },
   { to: "/qrcode", label: "QR Code", icon: QrCode },
 ];
 
@@ -26,7 +28,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </h1>
           <p className="text-xs text-muted-foreground mt-1">Gestão de Frota & Manutenção</p>
         </div>
-        <nav className="flex-1 p-4 space-y-1">
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           {navItems.map(item => {
             const active = location.pathname === item.to;
             return (
@@ -61,7 +63,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Mobile nav overlay */}
       {mobileOpen && (
         <div className="lg:hidden fixed inset-0 z-30 bg-background/80 backdrop-blur-sm" onClick={() => setMobileOpen(false)}>
-          <div className="bg-sidebar w-64 h-full p-4 pt-20 space-y-1" onClick={e => e.stopPropagation()}>
+          <div className="bg-sidebar w-64 h-full p-4 pt-20 space-y-1 overflow-y-auto" onClick={e => e.stopPropagation()}>
             {navItems.map(item => {
               const active = location.pathname === item.to;
               return (

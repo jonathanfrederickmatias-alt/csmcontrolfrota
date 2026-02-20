@@ -1,37 +1,42 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { store, generateId } from "@/lib/store";
-import { MaintenanceRequest } from "@/lib/types";
+import { supabase } from "@/integrations/supabase/client";
+import { DBEquipment } from "@/lib/supabase-types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CheckCircle, Wrench } from "lucide-react";
+import { CheckCircle, Wrench, Loader2 } from "lucide-react";
 import PublicLayout from "@/components/PublicLayout";
 
 export default function QRMaintenanceRequest() {
   const [searchParams] = useSearchParams();
   const preselected = searchParams.get('equipment') || '';
-  const equipments = store.getEquipments();
-
+  const [equipments, setEquipments] = useState<DBEquipment[]>([]);
   const [equipmentId, setEquipmentId] = useState(preselected);
   const [description, setDescription] = useState('');
-  const [priority, setPriority] = useState<MaintenanceRequest['priority']>('medium');
+  const [priority, setPriority] = useState<'low'|'medium'|'high'|'urgent'>('medium');
   const [operatorName, setOperatorName] = useState('');
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const handleSave = () => {
-    const mr: MaintenanceRequest = {
-      id: generateId(),
-      equipmentId,
+  useEffect(() => {
+    supabase.from('equipments').select('*').order('name').then(({ data }) => {
+      setEquipments((data || []) as DBEquipment[]);
+    });
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    await supabase.from('maintenance_requests').insert({
+      equipment_id: equipmentId,
       description,
       priority,
       status: 'open',
-      operatorName,
-      createdAt: new Date().toISOString(),
-    };
-    store.saveMaintenanceRequest(mr);
+      operator_name: operatorName,
+    });
+    setSaving(false);
     setSaved(true);
   };
 
@@ -58,30 +63,21 @@ export default function QRMaintenanceRequest() {
         </div>
         {selectedEq && <p className="text-muted-foreground text-sm">{selectedEq.name}</p>}
       </div>
-
       <div className="glass-card rounded-xl p-5 space-y-4">
         {!preselected && (
           <div>
             <Label>Equipamento *</Label>
             <Select value={equipmentId} onValueChange={setEquipmentId}>
               <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
-              <SelectContent>
-                {equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eq.name}</SelectItem>)}
-              </SelectContent>
+              <SelectContent>{equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eq.name}</SelectItem>)}</SelectContent>
             </Select>
           </div>
         )}
-        <div>
-          <Label>Seu Nome *</Label>
-          <Input value={operatorName} onChange={e => setOperatorName(e.target.value)} placeholder="Nome do operador" />
-        </div>
-        <div>
-          <Label>Descrição do Problema *</Label>
-          <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Descreva o problema detalhadamente..." rows={4} />
-        </div>
+        <div><Label>Seu Nome *</Label><Input value={operatorName} onChange={e => setOperatorName(e.target.value)} placeholder="Nome do operador" /></div>
+        <div><Label>Descrição do Problema *</Label><Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Descreva o problema detalhadamente..." rows={4} /></div>
         <div>
           <Label>Prioridade</Label>
-          <Select value={priority} onValueChange={v => setPriority(v as MaintenanceRequest['priority'])}>
+          <Select value={priority} onValueChange={v => setPriority(v as 'low'|'medium'|'high'|'urgent')}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="low">🟢 Baixa</SelectItem>
@@ -91,7 +87,8 @@ export default function QRMaintenanceRequest() {
             </SelectContent>
           </Select>
         </div>
-        <Button onClick={handleSave} disabled={!equipmentId || !description || !operatorName} className="w-full h-12 text-base font-bold">
+        <Button onClick={handleSave} disabled={!equipmentId || !description || !operatorName || saving} className="w-full h-12 text-base font-bold">
+          {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
           <Wrench className="w-5 h-5 mr-2" /> Enviar Pedido
         </Button>
       </div>

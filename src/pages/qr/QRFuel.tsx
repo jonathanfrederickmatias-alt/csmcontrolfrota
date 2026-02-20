@@ -22,6 +22,7 @@ export default function QRFuel() {
   const [targetId, setTargetId] = useState(preselected);
   const [liters, setLiters] = useState('');
   const [operatorName, setOperatorName] = useState('');
+  const [hourMeter, setHourMeter] = useState('');
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -50,6 +51,13 @@ export default function QRFuel() {
       date: new Date().toISOString().split('T')[0],
       operator_name: operatorName,
     });
+    // Update hour meter if provided
+    if (hourMeter && Number(hourMeter) > 0 && targetId) {
+      await supabase.from('equipments').update({
+        current_hour_meter: Number(hourMeter),
+        updated_at: new Date().toISOString(),
+      }).eq('id', targetId).lt('current_hour_meter', Number(hourMeter));
+    }
     setSaving(false);
     setSaved(true);
   };
@@ -135,6 +143,13 @@ export default function QRFuel() {
           <Input type="number" value={liters} onChange={e => setLiters(e.target.value)} placeholder="Ex: 200" />
           {selectedCombo && Number(liters) > (selectedCombo.current_fuel || 0) && (
             <p className="text-xs text-destructive mt-1">Quantidade maior que o disponível!</p>
+          )}
+        </div>
+        <div>
+          <Label>Horímetro Atual (opcional)</Label>
+          <Input type="number" value={hourMeter} onChange={e => setHourMeter(e.target.value)} placeholder="Ex: 4520" />
+          {selectedTarget && hourMeter && Number(hourMeter) < (selectedTarget.current_hour_meter || 0) && (
+            <p className="text-xs text-warning mt-1">Valor menor que o horímetro atual ({selectedTarget.current_hour_meter}h)</p>
           )}
         </div>
         <div><Label>Responsável *</Label><Input value={operatorName} onChange={e => setOperatorName(e.target.value)} placeholder="Nome do responsável" /></div>

@@ -64,6 +64,7 @@ export type Database = {
           id: string
           model: string | null
           name: string
+          obra_id: string | null
           plate: string | null
           status: string
           type: string
@@ -77,6 +78,7 @@ export type Database = {
           id?: string
           model?: string | null
           name: string
+          obra_id?: string | null
           plate?: string | null
           status?: string
           type: string
@@ -90,12 +92,21 @@ export type Database = {
           id?: string
           model?: string | null
           name?: string
+          obra_id?: string | null
           plate?: string | null
           status?: string
           type?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "equipments_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       fuel_records: {
         Row: {
@@ -182,6 +193,57 @@ export type Database = {
             columns: ["combo_equipment_id"]
             isOneToOne: false
             referencedRelation: "equipments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      maintenance_history: {
+        Row: {
+          created_at: string
+          description: string
+          equipment_id: string
+          executed_at: string
+          hour_meter: number
+          id: string
+          notes: string | null
+          operator_name: string | null
+          plan_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          equipment_id: string
+          executed_at?: string
+          hour_meter?: number
+          id?: string
+          notes?: string | null
+          operator_name?: string | null
+          plan_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          equipment_id?: string
+          executed_at?: string
+          hour_meter?: number
+          id?: string
+          notes?: string | null
+          operator_name?: string | null
+          plan_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "maintenance_history_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_history_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "maintenance_plans"
             referencedColumns: ["id"]
           },
         ]
@@ -279,6 +341,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      obras: {
+        Row: {
+          created_at: string
+          id: string
+          location: string | null
+          name: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          location?: string | null
+          name: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          location?: string | null
+          name?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
     }
     Views: {

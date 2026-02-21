@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Truck, ClipboardCheck, Wrench, Fuel, QrCode, Menu, X, BarChart2, Droplets } from "lucide-react";
+import { LayoutDashboard, Truck, ClipboardCheck, Wrench, Fuel, QrCode, Menu, X, BarChart2, Droplets, Building2 } from "lucide-react";
 import { useState } from "react";
 
 const navItems = [
@@ -10,6 +10,7 @@ const navItems = [
   { to: "/abastecimento", label: "Abastecimento", icon: Fuel },
   { to: "/reabastecimento", label: "Reabastecimento", icon: Droplets },
   { to: "/relatorios", label: "Relatórios", icon: BarChart2 },
+  { to: "/obras", label: "Obras", icon: Building2 },
   { to: "/qrcode", label: "QR Code", icon: QrCode },
 ];
 

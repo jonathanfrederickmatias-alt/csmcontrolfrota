@@ -9,8 +9,30 @@ export interface DBEquipment {
   fuel_capacity?: number;
   current_fuel?: number;
   status: 'active' | 'maintenance' | 'inactive';
+  obra_id?: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface DBObra {
+  id: string;
+  name: string;
+  location?: string;
+  status: 'active' | 'inactive';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DBMaintenanceHistory {
+  id: string;
+  equipment_id: string;
+  plan_id?: string;
+  description: string;
+  hour_meter: number;
+  executed_at: string;
+  notes?: string;
+  operator_name?: string;
+  created_at: string;
 }
 
 export interface DBMaintenancePlan {

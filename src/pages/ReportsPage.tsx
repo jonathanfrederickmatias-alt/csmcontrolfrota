@@ -1,12 +1,14 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { DBEquipment, DBFuelRecord, DBChecklist, DBMaintenancePlan } from '@/lib/supabase-types';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
 } from 'recharts';
-import { BarChart2, Droplets, Clock, Wrench, Calendar, Download, FileSpreadsheet, FileText } from 'lucide-react';
+import { BarChart2, Droplets, Clock, Wrench, Calendar, FileSpreadsheet, FileText, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import * as XLSX from 'xlsx';
 
 const COLORS = ['hsl(0,80%,50%)', 'hsl(38,92%,50%)', 'hsl(142,71%,45%)', 'hsl(210,80%,56%)', 'hsl(280,70%,60%)', 'hsl(16,80%,55%)'];
@@ -15,12 +17,12 @@ type Period = '7d' | '30d' | '90d' | 'all';
 
 export default function ReportsPage() {
   const [period, setPeriod] = useState<Period>('30d');
+  const [selectedEquipment, setSelectedEquipment] = useState<string>('all');
   const [equipments, setEquipments] = useState<DBEquipment[]>([]);
   const [fuelRecords, setFuelRecords] = useState<DBFuelRecord[]>([]);
   const [checklists, setChecklists] = useState<DBChecklist[]>([]);
   const [plans, setPlans] = useState<DBMaintenancePlan[]>([]);
   const [loading, setLoading] = useState(true);
-  const reportRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -47,22 +49,28 @@ export default function ReportsPage() {
     fetchAll();
   }, [period]);
 
+  // Filter data by selected equipment
+  const filteredFuel = selectedEquipment === 'all' ? fuelRecords : fuelRecords.filter(r => r.target_equipment_id === selectedEquipment || r.combo_equipment_id === selectedEquipment);
+  const filteredChecklists = selectedEquipment === 'all' ? checklists : checklists.filter(c => c.equipment_id === selectedEquipment);
+  const filteredPlans = selectedEquipment === 'all' ? plans : plans.filter(p => p.equipment_id === selectedEquipment);
+  const filteredEquipments = selectedEquipment === 'all' ? equipments : equipments.filter(e => e.id === selectedEquipment);
+
   // Fuel by equipment
-  const fuelByEquipment = equipments
+  const fuelByEquipment = filteredEquipments
     .filter(e => e.type !== 'combo')
     .map(eq => ({
       name: eq.name.length > 12 ? eq.name.slice(0, 12) + '…' : eq.name,
-      litros: fuelRecords
+      litros: filteredFuel
         .filter(r => r.target_equipment_id === eq.id)
         .reduce((s, r) => s + Number(r.liters), 0),
     }))
     .filter(d => d.litros > 0)
     .sort((a, b) => b.litros - a.litros);
 
-  // Fuel by day (last records grouped)
+  // Fuel by day
   const fuelByDay = (() => {
     const map: Record<string, number> = {};
-    fuelRecords.forEach(r => {
+    filteredFuel.forEach(r => {
       map[r.date] = (map[r.date] || 0) + Number(r.liters);
     });
     return Object.entries(map)
@@ -74,11 +82,11 @@ export default function ReportsPage() {
       }));
   })();
 
-  // Hours worked by equipment (from checklists)
-  const hoursByEquipment = equipments
+  // Hours worked
+  const hoursByEquipment = filteredEquipments
     .filter(e => e.type !== 'combo')
     .map(eq => {
-      const eqChecklists = checklists
+      const eqChecklists = filteredChecklists
         .filter(c => c.equipment_id === eq.id)
         .sort((a, b) => a.date.localeCompare(b.date));
       const horasRegistradas = eqChecklists.length >= 2
@@ -94,61 +102,56 @@ export default function ReportsPage() {
 
   // Checklist status pie
   const checklistStatus = [
-    { name: 'OK', value: checklists.filter(c => c.status === 'ok').length },
-    { name: 'Atenção', value: checklists.filter(c => c.status === 'attention').length },
-    { name: 'Crítico', value: checklists.filter(c => c.status === 'critical').length },
+    { name: 'OK', value: filteredChecklists.filter(c => c.status === 'ok').length },
+    { name: 'Atenção', value: filteredChecklists.filter(c => c.status === 'attention').length },
+    { name: 'Crítico', value: filteredChecklists.filter(c => c.status === 'critical').length },
   ].filter(d => d.value > 0);
 
   // Maintenance status
   const maintenanceStatus = [
-    { name: 'OK', value: plans.filter(p => p.status === 'ok').length, color: 'hsl(142,71%,45%)' },
-    { name: 'Próxima', value: plans.filter(p => p.status === 'approaching').length, color: 'hsl(38,92%,50%)' },
-    { name: 'Atrasada', value: plans.filter(p => p.status === 'overdue').length, color: 'hsl(0,72%,51%)' },
+    { name: 'OK', value: filteredPlans.filter(p => p.status === 'ok').length, color: 'hsl(142,71%,45%)' },
+    { name: 'Próxima', value: filteredPlans.filter(p => p.status === 'approaching').length, color: 'hsl(38,92%,50%)' },
+    { name: 'Atrasada', value: filteredPlans.filter(p => p.status === 'overdue').length, color: 'hsl(0,72%,51%)' },
   ];
 
-  const totalFuel = fuelRecords.reduce((s, r) => s + Number(r.liters), 0);
-  const totalChecklists = checklists.length;
-  const activeEquipments = equipments.filter(e => e.status === 'active').length;
+  const totalFuel = filteredFuel.reduce((s, r) => s + Number(r.liters), 0);
+  const totalChecklists = filteredChecklists.length;
+  const activeEquipments = filteredEquipments.filter(e => e.status === 'active').length;
 
   const periodLabels: Record<Period, string> = { '7d': '7 dias', '30d': '30 dias', '90d': '90 dias', 'all': 'Todo período' };
 
+  const selectedEqName = selectedEquipment === 'all' ? 'Todos' : equipments.find(e => e.id === selectedEquipment)?.name || '';
+
   const exportExcel = () => {
     const wb = XLSX.utils.book_new();
+    const suffix = selectedEquipment === 'all' ? '' : `_${selectedEqName}`;
 
-    // Sheet 1: Combustível por equipamento
     const fuelSheet = XLSX.utils.json_to_sheet(
-      equipments.filter(e => e.type !== 'combo').map(eq => ({
+      filteredEquipments.filter(e => e.type !== 'combo').map(eq => ({
         Equipamento: eq.name,
-        'Litros consumidos': fuelRecords.filter(r => r.target_equipment_id === eq.id).reduce((s, r) => s + Number(r.liters), 0),
+        'Litros consumidos': filteredFuel.filter(r => r.target_equipment_id === eq.id).reduce((s, r) => s + Number(r.liters), 0),
         'Horímetro atual': eq.current_hour_meter,
       }))
     );
     XLSX.utils.book_append_sheet(wb, fuelSheet, 'Combustível');
 
-    // Sheet 2: Checklists
     const clSheet = XLSX.utils.json_to_sheet(
-      checklists.map(c => {
+      filteredChecklists.map(c => {
         const eq = equipments.find(e => e.id === c.equipment_id);
         return {
-          Data: c.date,
-          Equipamento: eq?.name || '—',
-          Operador: c.operator_name,
-          Horímetro: c.hour_meter,
-          Status: c.status === 'ok' ? 'OK' : c.status === 'attention' ? 'Atenção' : 'Crítico',
+          Data: c.date, Equipamento: eq?.name || '—', Operador: c.operator_name,
+          Horímetro: c.hour_meter, Status: c.status === 'ok' ? 'OK' : c.status === 'attention' ? 'Atenção' : 'Crítico',
         };
       })
     );
     XLSX.utils.book_append_sheet(wb, clSheet, 'Checklists');
 
-    // Sheet 3: Planos de manutenção
     const mpSheet = XLSX.utils.json_to_sheet(
-      plans.map(p => {
+      filteredPlans.map(p => {
         const eq = equipments.find(e => e.id === p.equipment_id);
         return {
-          Equipamento: eq?.name || '—',
-          Descrição: p.description,
-          'Intervalo (h)': p.interval_hours,
-          'Próxima (h)': p.next_due_at,
+          Equipamento: eq?.name || '—', Descrição: p.description,
+          'Intervalo (h)': p.interval_hours, 'Próxima (h)': p.next_due_at,
           Status: p.status === 'ok' ? 'OK' : p.status === 'approaching' ? 'Próxima' : 'Atrasada',
           'Última execução': p.last_executed_at ? new Date(p.last_executed_at).toLocaleDateString('pt-BR') : '—',
         };
@@ -156,28 +159,19 @@ export default function ReportsPage() {
     );
     XLSX.utils.book_append_sheet(wb, mpSheet, 'Manutenções');
 
-    // Sheet 4: Abastecimentos por dia
     const fdSheet = XLSX.utils.json_to_sheet(
-      fuelRecords.map(r => {
+      filteredFuel.map(r => {
         const target = equipments.find(e => e.id === r.target_equipment_id);
         const combo = equipments.find(e => e.id === r.combo_equipment_id);
-        return {
-          Data: r.date,
-          Equipamento: target?.name || '—',
-          Comboio: combo?.name || '—',
-          'Litros': r.liters,
-          Responsável: r.operator_name,
-        };
+        return { Data: r.date, Equipamento: target?.name || '—', Comboio: combo?.name || '—', Litros: r.liters, Responsável: r.operator_name };
       })
     );
     XLSX.utils.book_append_sheet(wb, fdSheet, 'Abastecimentos');
 
-    XLSX.writeFile(wb, `CSMCONTROL_Relatorio_${period}.xlsx`);
+    XLSX.writeFile(wb, `CSMCONTROL_Relatorio_${period}${suffix}.xlsx`);
   };
 
-  const exportPDF = () => {
-    window.print();
-  };
+  const exportPDF = () => { window.print(); };
 
   return (
     <div className="space-y-6">
@@ -189,12 +183,7 @@ export default function ReportsPage() {
         <div className="flex flex-wrap gap-2">
           <div className="flex gap-1">
             {(['7d', '30d', '90d', 'all'] as Period[]).map(p => (
-              <Button
-                key={p}
-                size="sm"
-                variant={period === p ? 'default' : 'outline'}
-                onClick={() => setPeriod(p)}
-              >
+              <Button key={p} size="sm" variant={period === p ? 'default' : 'outline'} onClick={() => setPeriod(p)}>
                 {periodLabels[p]}
               </Button>
             ))}
@@ -208,6 +197,28 @@ export default function ReportsPage() {
             </Button>
           </div>
         </div>
+      </div>
+
+      {/* Equipment filter */}
+      <div className="glass-card rounded-xl p-4 flex items-center gap-4 flex-wrap">
+        <Filter className="w-5 h-5 text-primary shrink-0" />
+        <div className="flex-1 min-w-[200px] max-w-xs">
+          <Label className="text-xs text-muted-foreground mb-1 block">Filtrar por Máquina</Label>
+          <Select value={selectedEquipment} onValueChange={setSelectedEquipment}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent position="popper">
+              <SelectItem value="all">Todos os Equipamentos</SelectItem>
+              {equipments.filter(e => e.type !== 'combo').map(eq => (
+                <SelectItem key={eq.id} value={eq.id}>{eq.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {selectedEquipment !== 'all' && (
+          <Button variant="ghost" size="sm" onClick={() => setSelectedEquipment('all')} className="text-muted-foreground">
+            Limpar filtro
+          </Button>
+        )}
       </div>
 
       {/* KPI Cards */}
@@ -224,7 +235,7 @@ export default function ReportsPage() {
         </div>
         <div className="glass-card rounded-xl p-4">
           <Wrench className="w-5 h-5 text-warning mb-2" />
-          <p className="text-2xl font-black font-mono text-warning">{plans.filter(p => p.status === 'overdue').length}</p>
+          <p className="text-2xl font-black font-mono text-warning">{filteredPlans.filter(p => p.status === 'overdue').length}</p>
           <p className="text-xs text-muted-foreground mt-1">Manutenções atrasadas</p>
         </div>
         <div className="glass-card rounded-xl p-4">
@@ -240,7 +251,6 @@ export default function ReportsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
           {/* Combustível por dia */}
           <div className="glass-card rounded-xl p-5 lg:col-span-2">
             <h2 className="font-bold mb-4 flex items-center gap-2">
@@ -255,12 +265,7 @@ export default function ReportsPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 14% 22%)" />
                   <XAxis dataKey="date" tick={{ fill: 'hsl(220 10% 55%)', fontSize: 11 }} />
                   <YAxis tick={{ fill: 'hsl(220 10% 55%)', fontSize: 11 }} />
-                  <Tooltip
-                    contentStyle={{ background: 'hsl(220 18% 14%)', border: '1px solid hsl(220 14% 22%)', borderRadius: 8 }}
-                    labelStyle={{ color: 'hsl(40 10% 92%)' }}
-                    itemStyle={{ color: 'hsl(0 80% 50%)' }}
-                    formatter={(v: number) => [`${v}L`, 'Litros']}
-                  />
+                  <Tooltip contentStyle={{ background: 'hsl(220 18% 14%)', border: '1px solid hsl(220 14% 22%)', borderRadius: 8 }} labelStyle={{ color: 'hsl(40 10% 92%)' }} itemStyle={{ color: 'hsl(0 80% 50%)' }} formatter={(v: number) => [`${v}L`, 'Litros']} />
                   <Bar dataKey="litros" fill="hsl(0 80% 50%)" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -281,21 +286,16 @@ export default function ReportsPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 14% 22%)" />
                   <XAxis type="number" tick={{ fill: 'hsl(220 10% 55%)', fontSize: 11 }} />
                   <YAxis dataKey="name" type="category" width={80} tick={{ fill: 'hsl(220 10% 55%)', fontSize: 11 }} />
-                  <Tooltip
-                    contentStyle={{ background: 'hsl(220 18% 14%)', border: '1px solid hsl(220 14% 22%)', borderRadius: 8 }}
-                    formatter={(v: number) => [`${v}L`, 'Litros']}
-                  />
+                  <Tooltip contentStyle={{ background: 'hsl(220 18% 14%)', border: '1px solid hsl(220 14% 22%)', borderRadius: 8 }} formatter={(v: number) => [`${v}L`, 'Litros']} />
                   <Bar dataKey="litros" fill="hsl(0 80% 50%)" radius={[0, 4, 4, 0]}>
-                    {fuelByEquipment.map((_, i) => (
-                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                    ))}
+                    {fuelByEquipment.map((_, i) => (<Cell key={i} fill={COLORS[i % COLORS.length]} />))}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
             )}
           </div>
 
-          {/* Horímetro por equipamento */}
+          {/* Horímetro */}
           <div className="glass-card rounded-xl p-5">
             <h2 className="font-bold mb-4 flex items-center gap-2">
               <Clock className="w-5 h-5 text-warning" />
@@ -309,14 +309,9 @@ export default function ReportsPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 14% 22%)" />
                   <XAxis dataKey="name" tick={{ fill: 'hsl(220 10% 55%)', fontSize: 11 }} />
                   <YAxis tick={{ fill: 'hsl(220 10% 55%)', fontSize: 11 }} />
-                  <Tooltip
-                    contentStyle={{ background: 'hsl(220 18% 14%)', border: '1px solid hsl(220 14% 22%)', borderRadius: 8 }}
-                    formatter={(v: number) => [`${v}h`, 'Horímetro']}
-                  />
+                  <Tooltip contentStyle={{ background: 'hsl(220 18% 14%)', border: '1px solid hsl(220 14% 22%)', borderRadius: 8 }} formatter={(v: number) => [`${v}h`, 'Horímetro']} />
                   <Bar dataKey="horímetro" fill="hsl(38 92% 50%)" radius={[4, 4, 0, 0]}>
-                    {hoursByEquipment.map((_, i) => (
-                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                    ))}
+                    {hoursByEquipment.map((_, i) => (<Cell key={i} fill={COLORS[i % COLORS.length]} />))}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
@@ -334,24 +329,10 @@ export default function ReportsPage() {
             ) : (
               <ResponsiveContainer width="100%" height={220}>
                 <PieChart>
-                  <Pie
-                    data={checklistStatus}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={55}
-                    outerRadius={85}
-                    paddingAngle={4}
-                    dataKey="value"
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    labelLine={false}
-                  >
-                    {checklistStatus.map((_, i) => (
-                      <Cell key={i} fill={['hsl(142,71%,45%)', 'hsl(38,92%,50%)', 'hsl(0,72%,51%)'][i]} />
-                    ))}
+                  <Pie data={checklistStatus} cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={4} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                    {checklistStatus.map((_, i) => (<Cell key={i} fill={['hsl(142,71%,45%)', 'hsl(38,92%,50%)', 'hsl(0,72%,51%)'][i]} />))}
                   </Pie>
-                  <Tooltip
-                    contentStyle={{ background: 'hsl(220 18% 14%)', border: '1px solid hsl(220 14% 22%)', borderRadius: 8 }}
-                  />
+                  <Tooltip contentStyle={{ background: 'hsl(220 18% 14%)', border: '1px solid hsl(220 14% 22%)', borderRadius: 8 }} />
                 </PieChart>
               </ResponsiveContainer>
             )}
@@ -373,30 +354,22 @@ export default function ReportsPage() {
                       <span className="font-mono text-muted-foreground">{s.value}</span>
                     </div>
                     <div className="w-full bg-secondary rounded-full h-2">
-                      <div
-                        className="h-2 rounded-full transition-all"
-                        style={{
-                          width: plans.length ? `${(s.value / plans.length) * 100}%` : '0%',
-                          background: s.color,
-                        }}
-                      />
+                      <div className="h-2 rounded-full transition-all" style={{ width: filteredPlans.length ? `${(s.value / filteredPlans.length) * 100}%` : '0%', background: s.color }} />
                     </div>
                   </div>
                 </div>
               ))}
-              {plans.length === 0 && (
-                <p className="text-muted-foreground text-sm">Nenhum plano cadastrado.</p>
-              )}
+              {filteredPlans.length === 0 && <p className="text-muted-foreground text-sm">Nenhum plano cadastrado.</p>}
             </div>
           </div>
 
-          {/* Histórico de manutenções */}
+          {/* Histórico de planos */}
           <div className="glass-card rounded-xl p-5 lg:col-span-2">
             <h2 className="font-bold mb-4 flex items-center gap-2">
               <Wrench className="w-5 h-5 text-primary" />
               Histórico de Planos de Manutenção
             </h2>
-            {plans.length === 0 ? (
+            {filteredPlans.length === 0 ? (
               <p className="text-muted-foreground text-sm">Nenhum plano cadastrado.</p>
             ) : (
               <div className="overflow-x-auto">
@@ -412,7 +385,7 @@ export default function ReportsPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {plans.map(p => {
+                    {filteredPlans.map(p => {
                       const eq = equipments.find(e => e.id === p.equipment_id);
                       return (
                         <tr key={p.id} className="hover:bg-secondary/30 transition-colors">
@@ -421,16 +394,10 @@ export default function ReportsPage() {
                           <td className="py-2 pr-4 font-mono">{p.interval_hours}h</td>
                           <td className="py-2 pr-4 font-mono">{p.next_due_at}h</td>
                           <td className="py-2 pr-4 text-muted-foreground">
-                            {p.last_executed_at
-                              ? new Date(p.last_executed_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-                              : '—'}
+                            {p.last_executed_at ? new Date(p.last_executed_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
                           </td>
                           <td className="py-2">
-                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                              p.status === 'ok' ? 'bg-success/15 text-success' :
-                              p.status === 'approaching' ? 'bg-warning/15 text-warning' :
-                              'bg-destructive/15 text-destructive'
-                            }`}>
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${p.status === 'ok' ? 'bg-success/15 text-success' : p.status === 'approaching' ? 'bg-warning/15 text-warning' : 'bg-destructive/15 text-destructive'}`}>
                               {p.status === 'ok' ? 'OK' : p.status === 'approaching' ? 'Próxima' : 'Atrasada'}
                             </span>
                           </td>

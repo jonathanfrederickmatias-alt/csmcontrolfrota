@@ -21,13 +21,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen flex">
       {/* Sidebar desktop */}
       <aside className="hidden lg:flex flex-col w-64 bg-sidebar border-r border-sidebar-border fixed h-full z-30">
-        <div className="p-6 border-b border-sidebar-border">
+        <Link to="/" className="block p-6 border-b border-sidebar-border hover:bg-sidebar-accent/50 transition-colors">
           <h1 className="text-xl font-black tracking-tight">
             <span className="text-gradient">CSM</span>
             <span className="text-sidebar-foreground">CONTROL</span>
           </h1>
           <p className="text-xs text-muted-foreground mt-1">Gestão de Frota & Manutenção</p>
-        </div>
+        </Link>
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           {navItems.map(item => {
             const active = location.pathname === item.to;
@@ -51,10 +51,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       {/* Mobile header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-sidebar border-b border-sidebar-border px-4 py-3 flex items-center justify-between">
-        <h1 className="text-lg font-black">
+        <Link to="/" className="text-lg font-black">
           <span className="text-gradient">CSM</span>
           <span className="text-sidebar-foreground">CONTROL</span>
-        </h1>
+        </Link>
         <button onClick={() => setMobileOpen(!mobileOpen)} className="text-sidebar-foreground p-2">
           {mobileOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
         </button>

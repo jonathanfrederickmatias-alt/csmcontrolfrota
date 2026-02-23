@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Fuel, CheckCircle, Lock, Loader2 } from "lucide-react";
 import PublicLayout from "@/components/PublicLayout";
+import PhotoUpload from "@/components/PhotoUpload";
 
 const FUEL_PIN = "1234";
 
@@ -25,6 +26,7 @@ export default function QRFuel() {
   const [hourMeter, setHourMeter] = useState('');
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [photoUrl, setPhotoUrl] = useState('');
 
   useEffect(() => {
     supabase.from('equipments').select('*').order('name').then(({ data }) => {
@@ -50,7 +52,8 @@ export default function QRFuel() {
       liters: Number(liters),
       date: new Date().toISOString().split('T')[0],
       operator_name: operatorName,
-    });
+      photo_url: photoUrl || null,
+    } as any);
     // Update hour meter if provided
     if (hourMeter && Number(hourMeter) > 0 && targetId) {
       await supabase.from('equipments').update({
@@ -62,7 +65,7 @@ export default function QRFuel() {
     setSaved(true);
   };
 
-  const canSave = comboId && targetId && liters && operatorName && Number(liters) > 0;
+  const canSave = comboId && targetId && liters && operatorName && Number(liters) > 0 && photoUrl;
 
   if (saved) {
     return (
@@ -153,6 +156,7 @@ export default function QRFuel() {
           )}
         </div>
         <div><Label>Responsável *</Label><Input value={operatorName} onChange={e => setOperatorName(e.target.value)} placeholder="Nome do responsável" /></div>
+        <PhotoUpload label="Foto do Abastecimento" required onUploaded={setPhotoUrl} />
         <Button onClick={handleSave} disabled={!canSave || saving} className="w-full h-12 text-base font-bold">
           {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Registrar Abastecimento
         </Button>

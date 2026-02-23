@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Fuel, CheckCircle, Droplets, Loader2, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import PhotoUpload from "@/components/PhotoUpload";
 
 export default function FuelPage() {
   const navigate = useNavigate();
@@ -18,6 +19,7 @@ export default function FuelPage() {
   const [operatorName, setOperatorName] = useState('');
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [photoUrl, setPhotoUrl] = useState('');
 
   const fetchData = async () => {
     const [eqRes, frRes] = await Promise.all([
@@ -42,17 +44,18 @@ export default function FuelPage() {
       liters: Number(liters),
       date: new Date().toISOString().split('T')[0],
       operator_name: operatorName,
-    });
+      photo_url: photoUrl || null,
+    } as any);
     setSaving(false);
     setSaved(true);
     fetchData();
     setTimeout(() => {
       setSaved(false);
-      setComboId(''); setTargetId(''); setLiters(''); setOperatorName('');
+      setComboId(''); setTargetId(''); setLiters(''); setOperatorName(''); setPhotoUrl('');
     }, 2000);
   };
 
-  const canSave = comboId && targetId && liters && operatorName && Number(liters) > 0;
+  const canSave = comboId && targetId && liters && operatorName && Number(liters) > 0 && photoUrl;
 
   return (
     <div>
@@ -124,6 +127,9 @@ export default function FuelPage() {
               )}
             </div>
             <div><Label>Operador *</Label><Input value={operatorName} onChange={e => setOperatorName(e.target.value)} placeholder="Nome" /></div>
+          </div>
+          <div className="mt-4">
+            <PhotoUpload label="Foto do Abastecimento" required onUploaded={setPhotoUrl} />
           </div>
           <Button onClick={handleSave} disabled={!canSave || saving} className="w-full mt-4 h-12 text-base font-bold">
             {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Registrar Abastecimento

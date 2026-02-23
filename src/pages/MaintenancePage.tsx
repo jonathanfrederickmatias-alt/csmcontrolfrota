@@ -7,8 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Wrench, AlertTriangle, CheckCircle, Trash2, Edit2, Loader2, ChevronDown } from "lucide-react";
+import { Plus, Wrench, AlertTriangle, CheckCircle, Trash2, Edit2, Loader2, Camera, ImageIcon } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import PhotoUpload from "@/components/PhotoUpload";
 
 const statusConfig = {
   ok: { color: 'text-success', bg: 'bg-success/10', border: 'border-l-success', label: 'OK' },
@@ -38,6 +39,11 @@ export default function MaintenancePage() {
   const [editPlan, setEditPlan] = useState<DBMaintenancePlan | null>(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ equipmentId: '', description: '', intervalHours: '', lastDoneAt: '' });
+
+  // Photo dialog state
+  const [photoDialog, setPhotoDialog] = useState<{ requestId: string; targetStatus: 'in_progress' | 'done'; label: string } | null>(null);
+  const [photoUrl, setPhotoUrl] = useState('');
+  const [photoSaving, setPhotoSaving] = useState(false);
 
   const fetchAll = async () => {
     const [eqRes, plRes, reqRes] = await Promise.all([
@@ -121,12 +127,36 @@ export default function MaintenancePage() {
     setOpen(true);
   };
 
-  const handleRequestStatus = async (id: string, status: DBMaintenanceRequest['status']) => {
-    const update: Partial<DBMaintenanceRequest> = { status };
+  const handleRequestStatusChange = (id: string, newStatus: string) => {
+    if (newStatus === 'in_progress') {
+      setPhotoDialog({ requestId: id, targetStatus: 'in_progress', label: 'Foto de Início do Serviço' });
+      setPhotoUrl('');
+    } else if (newStatus === 'done') {
+      setPhotoDialog({ requestId: id, targetStatus: 'done', label: 'Foto de Término do Serviço' });
+      setPhotoUrl('');
+    } else {
+      // Going back to open doesn't require photo
+      updateRequestStatus(id, newStatus as any);
+    }
+  };
+
+  const updateRequestStatus = async (id: string, status: DBMaintenanceRequest['status'], photoField?: string, photoValue?: string) => {
+    const update: any = { status };
     if (status === 'done') update.resolved_at = new Date().toISOString();
+    if (photoField && photoValue) update[photoField] = photoValue;
     await supabase.from('maintenance_requests').update(update).eq('id', id);
     toast({ title: 'Status do pedido atualizado!' });
     fetchAll();
+  };
+
+  const handlePhotoConfirm = async () => {
+    if (!photoDialog || !photoUrl) return;
+    setPhotoSaving(true);
+    const photoField = photoDialog.targetStatus === 'in_progress' ? 'photo_start_url' : 'photo_end_url';
+    await updateRequestStatus(photoDialog.requestId, photoDialog.targetStatus, photoField, photoUrl);
+    setPhotoSaving(false);
+    setPhotoDialog(null);
+    setPhotoUrl('');
   };
 
   const sortedPlans = [...plans].sort((a, b) => {
@@ -234,6 +264,7 @@ export default function MaintenancePage() {
               const eq = equipments.find(e => e.id === r.equipment_id);
               const pc = priorityConfig[r.priority];
               const sc = requestStatusConfig[r.status];
+              const rAny = r as any;
               return (
                 <div key={r.id} className="glass-card rounded-xl p-4">
                   <div className="flex items-start justify-between gap-3">
@@ -245,11 +276,32 @@ export default function MaintenancePage() {
                       </div>
                       <p className="text-xs text-muted-foreground">{eq?.name} — {r.operator_name} — {new Date(r.created_at).toLocaleDateString('pt-BR')}</p>
                       {r.notes && <p className="text-xs text-muted-foreground mt-1 italic">Obs: {r.notes}</p>}
+                      {/* Photo thumbnails */}
+                      {(rAny.photo_start_url || rAny.photo_end_url) && (
+                        <div className="flex gap-2 mt-2">
+                          {rAny.photo_start_url && (
+                            <a href={rAny.photo_start_url} target="_blank" rel="noopener noreferrer" className="block">
+                              <div className="relative w-16 h-16 rounded-lg overflow-hidden border border-border">
+                                <img src={rAny.photo_start_url} alt="Início" className="w-full h-full object-cover" />
+                                <span className="absolute bottom-0 left-0 right-0 bg-primary/80 text-primary-foreground text-[8px] text-center py-0.5">Início</span>
+                              </div>
+                            </a>
+                          )}
+                          {rAny.photo_end_url && (
+                            <a href={rAny.photo_end_url} target="_blank" rel="noopener noreferrer" className="block">
+                              <div className="relative w-16 h-16 rounded-lg overflow-hidden border border-border">
+                                <img src={rAny.photo_end_url} alt="Término" className="w-full h-full object-cover" />
+                                <span className="absolute bottom-0 left-0 right-0 bg-success/80 text-success-foreground text-[8px] text-center py-0.5">Término</span>
+                              </div>
+                            </a>
+                          )}
+                        </div>
+                      )}
                     </div>
                     {/* Status control */}
                     {r.status !== 'done' && (
                       <div className="shrink-0">
-                        <Select value={r.status} onValueChange={v => handleRequestStatus(r.id, v as DBMaintenanceRequest['status'])}>
+                        <Select value={r.status} onValueChange={v => handleRequestStatusChange(r.id, v)}>
                           <SelectTrigger className="h-8 text-xs w-36">
                             <SelectValue />
                           </SelectTrigger>
@@ -273,6 +325,38 @@ export default function MaintenancePage() {
           </div>
         )}
       </div>
+
+      {/* Photo dialog for status change */}
+      <Dialog open={!!photoDialog} onOpenChange={(v) => { if (!v) { setPhotoDialog(null); setPhotoUrl(''); } }}>
+        <DialogContent className="bg-card border-border">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Camera className="w-5 h-5" />
+              {photoDialog?.label}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              {photoDialog?.targetStatus === 'in_progress'
+                ? 'Tire uma foto antes de iniciar o serviço de manutenção.'
+                : 'Tire uma foto após concluir o serviço de manutenção.'}
+            </p>
+            <PhotoUpload
+              label={photoDialog?.label || 'Foto'}
+              required
+              onUploaded={setPhotoUrl}
+            />
+            <Button
+              onClick={handlePhotoConfirm}
+              disabled={!photoUrl || photoSaving}
+              className="w-full font-bold"
+            >
+              {photoSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Confirmar e Atualizar Status
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

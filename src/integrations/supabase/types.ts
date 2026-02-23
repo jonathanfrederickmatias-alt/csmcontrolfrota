@@ -116,6 +116,7 @@ export type Database = {
           id: string
           liters: number
           operator_name: string
+          photo_url: string | null
           target_equipment_id: string
         }
         Insert: {
@@ -125,6 +126,7 @@ export type Database = {
           id?: string
           liters: number
           operator_name: string
+          photo_url?: string | null
           target_equipment_id: string
         }
         Update: {
@@ -134,6 +136,7 @@ export type Database = {
           id?: string
           liters?: number
           operator_name?: string
+          photo_url?: string | null
           target_equipment_id?: string
         }
         Relationships: [
@@ -303,6 +306,8 @@ export type Database = {
           id: string
           notes: string | null
           operator_name: string
+          photo_end_url: string | null
+          photo_start_url: string | null
           priority: string
           resolved_at: string | null
           status: string
@@ -315,6 +320,8 @@ export type Database = {
           id?: string
           notes?: string | null
           operator_name: string
+          photo_end_url?: string | null
+          photo_start_url?: string | null
           priority?: string
           resolved_at?: string | null
           status?: string
@@ -327,6 +334,8 @@ export type Database = {
           id?: string
           notes?: string | null
           operator_name?: string
+          photo_end_url?: string | null
+          photo_start_url?: string | null
           priority?: string
           resolved_at?: string | null
           status?: string

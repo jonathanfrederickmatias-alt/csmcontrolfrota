@@ -1,0 +1,1 @@
+ALTER TABLE public.fuel_supply_records ADD COLUMN photo_url text;

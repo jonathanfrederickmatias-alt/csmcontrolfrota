@@ -30,7 +30,7 @@ export default function ChecklistPage() {
   const [operatorName, setOperatorName] = useState('');
   const [hourMeter, setHourMeter] = useState('');
   const [items, setItems] = useState<ChecklistItemDB[]>(
-    defaultItems.map((label, i) => ({ id: String(i), label, checked: false, observation: '' }))
+    defaultItems.map((label, i) => ({ id: String(i), label, checked: null as unknown as boolean, observation: '' }))
   );
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -45,23 +45,24 @@ export default function ChecklistPage() {
     });
   }, []);
 
-  const toggleItem = (id: string) => setItems(prev => prev.map(i => i.id === id ? { ...i, checked: !i.checked } : i));
+  const toggleItem = (id: string, value: boolean) => setItems(prev => prev.map(i => i.id === id ? { ...i, checked: value } : i));
   const setObservation = (id: string, obs: string) => setItems(prev => prev.map(i => i.id === id ? { ...i, observation: obs } : i));
 
   const resetForm = () => {
     setSelectedEquipment('');
     setOperatorName('');
     setHourMeter('');
-    setItems(defaultItems.map((label, i) => ({ id: String(i), label, checked: false, observation: '' })));
+    setItems(defaultItems.map((label, i) => ({ id: String(i), label, checked: null as unknown as boolean, observation: '' })));
     setShowMaintenanceForm(false);
     setMaintenanceDesc('');
     setMaintenancePriority('medium');
   };
 
-  const handleSaveChecklist = async (isConforme: boolean) => {
+  const handleSaveChecklist = async () => {
     setSaving(true);
-    const unchecked = items.filter(i => !i.checked).length;
-    const status = !isConforme ? 'critical' : unchecked > 3 ? 'critical' : unchecked > 0 ? 'attention' : 'ok';
+    const unchecked = items.filter(i => i.checked === false).length;
+    const isConforme = unchecked === 0;
+    const status = !isConforme ? (unchecked > 3 ? 'critical' : 'attention') : 'ok';
 
     await supabase.from('checklists').insert({
       equipment_id: selectedEquipment,
@@ -75,7 +76,7 @@ export default function ChecklistPage() {
     setSaving(false);
 
     if (!isConforme) {
-      const failedItems = items.filter(i => !i.checked).map(i => {
+      const failedItems = items.filter(i => i.checked === false).map(i => {
         const obs = i.observation ? ` (${i.observation})` : '';
         return `- ${i.label}${obs}`;
       }).join('\n');
@@ -107,7 +108,8 @@ export default function ChecklistPage() {
     }, 2000);
   };
 
-  const canSave = selectedEquipment && operatorName && hourMeter;
+  const allAnswered = items.every(i => i.checked === true || i.checked === false);
+  const canSave = selectedEquipment && operatorName && hourMeter && allAnswered;
 
   return (
     <div>
@@ -199,39 +201,51 @@ export default function ChecklistPage() {
             </h2>
             <div className="space-y-3">
               {items.map(item => (
-                <div key={item.id} className={`flex items-start gap-3 p-3 rounded-lg transition-colors ${item.checked ? 'bg-success/5' : 'bg-secondary/50'}`}>
-                  <Checkbox checked={item.checked} onCheckedChange={() => toggleItem(item.id)} className="mt-0.5" />
-                  <div className="flex-1 min-w-0">
-                    <span className={`text-sm font-medium ${item.checked ? 'text-success line-through' : 'text-foreground'}`}>{item.label}</span>
-                    {!item.checked && (
-                      <Input className="mt-2 h-8 text-xs" placeholder="Observação (opcional)" value={item.observation} onChange={e => setObservation(item.id, e.target.value)} />
-                    )}
+                <div key={item.id} className={`p-3 rounded-lg transition-colors ${item.checked === true ? 'bg-success/5' : item.checked === false ? 'bg-destructive/5' : 'bg-secondary/50'}`}>
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <span className={`text-sm font-medium ${item.checked === true ? 'text-success' : item.checked === false ? 'text-destructive' : 'text-foreground'}`}>{item.label}</span>
+                    <div className="flex gap-1 flex-shrink-0">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={item.checked === false ? "destructive" : "outline"}
+                        className="h-7 px-2 text-xs"
+                        onClick={() => toggleItem(item.id, false)}
+                      >
+                        <ShieldX className="w-3.5 h-3.5 mr-1" />NC
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={item.checked === true ? "default" : "outline"}
+                        className={`h-7 px-2 text-xs ${item.checked === true ? 'bg-success text-success-foreground hover:bg-success/90' : ''}`}
+                        onClick={() => toggleItem(item.id, true)}
+                      >
+                        <ShieldCheck className="w-3.5 h-3.5 mr-1" />C
+                      </Button>
+                    </div>
                   </div>
+                  {item.checked === false && (
+                    <Input className="mt-2 h-8 text-xs" placeholder="Observação (obrigatório p/ não conforme)" value={item.observation} onChange={e => setObservation(item.id, e.target.value)} />
+                  )}
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div>
             <Button
-              onClick={() => handleSaveChecklist(false)}
+              onClick={handleSaveChecklist}
               disabled={!canSave || saving}
-              variant="outline"
-              className="h-12 text-base font-bold border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+              className="w-full h-12 text-base font-bold bg-primary text-primary-foreground hover:bg-primary/90"
             >
               {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              <ShieldX className="w-5 h-5 mr-2" />
-              Não Conforme
+              <ClipboardCheck className="w-5 h-5 mr-2" />
+              Salvar Checklist
             </Button>
-            <Button
-              onClick={() => handleSaveChecklist(true)}
-              disabled={!canSave || saving}
-              className="h-12 text-base font-bold bg-success text-success-foreground hover:bg-success/90"
-            >
-              {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              <ShieldCheck className="w-5 h-5 mr-2" />
-              Conforme
-            </Button>
+            {!allAnswered && selectedEquipment && operatorName && hourMeter && (
+              <p className="text-xs text-muted-foreground text-center mt-2">Responda todos os itens para salvar</p>
+            )}
           </div>
         </div>
       )}

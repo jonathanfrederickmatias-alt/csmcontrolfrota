@@ -165,6 +165,7 @@ export type Database = {
           invoice_number: string | null
           liters: number
           notes: string | null
+          photo_url: string | null
           responsible_name: string
           supplier: string | null
         }
@@ -176,6 +177,7 @@ export type Database = {
           invoice_number?: string | null
           liters: number
           notes?: string | null
+          photo_url?: string | null
           responsible_name: string
           supplier?: string | null
         }
@@ -187,6 +189,7 @@ export type Database = {
           invoice_number?: string | null
           liters?: number
           notes?: string | null
+          photo_url?: string | null
           responsible_name?: string
           supplier?: string | null
         }

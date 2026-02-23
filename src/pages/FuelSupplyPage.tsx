@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Truck, CheckCircle, Plus, Droplets } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import PhotoUpload from '@/components/PhotoUpload';
 
 export default function FuelSupplyPage() {
   const [combos, setCombos] = useState<DBEquipment[]>([]);
@@ -16,6 +17,7 @@ export default function FuelSupplyPage() {
   const [open, setOpen] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  const [photoUrl, setPhotoUrl] = useState('');
   const [form, setForm] = useState({
     combo_equipment_id: '',
     liters: '',
@@ -49,6 +51,7 @@ export default function FuelSupplyPage() {
       date: form.date,
       notes: form.notes || null,
       responsible_name: form.responsible_name,
+      photo_url: photoUrl || null,
     });
 
     setLoading(false);
@@ -57,11 +60,12 @@ export default function FuelSupplyPage() {
       setOpen(false);
       fetchData();
       setForm({ combo_equipment_id: '', liters: '', invoice_number: '', supplier: '', date: new Date().toISOString().split('T')[0], notes: '', responsible_name: '' });
+      setPhotoUrl('');
       setTimeout(() => setSaved(false), 3000);
     }
   };
 
-  const canSave = form.combo_equipment_id && form.liters && form.responsible_name && Number(form.liters) > 0;
+  const canSave = form.combo_equipment_id && form.liters && form.responsible_name && Number(form.liters) > 0 && photoUrl;
 
   return (
     <div className="space-y-6">
@@ -114,6 +118,7 @@ export default function FuelSupplyPage() {
                 <Label>Observações</Label>
                 <Textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Observações opcionais..." rows={2} />
               </div>
+              <PhotoUpload label="Foto do Comprovante" required onUploaded={setPhotoUrl} />
               <Button onClick={handleSave} disabled={!canSave || loading} className="w-full font-bold">
                 {loading ? 'Salvando...' : 'Registrar Entrada'}
               </Button>

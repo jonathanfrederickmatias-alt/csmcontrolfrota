@@ -1,14 +1,11 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { DBEquipment } from "@/lib/supabase-types";
-import { ChecklistItemDB } from "@/lib/supabase-types";
+import { DBEquipment, ChecklistItemDB } from "@/lib/supabase-types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { ClipboardCheck, CheckCircle, Loader2, AlertTriangle, ShieldCheck, ShieldX, Camera } from "lucide-react";
+import { ClipboardCheck, CheckCircle, Loader2, AlertTriangle, ShieldCheck, ShieldX } from "lucide-react";
 import PublicLayout from "@/components/PublicLayout";
 import { useSearchParams } from "react-router-dom";
 import PhotoUpload from "@/components/PhotoUpload";
@@ -143,15 +140,16 @@ export default function QRChecklist() {
           </div>
           <div>
             <Label>Prioridade</Label>
-            <Select value={maintenancePriority} onValueChange={setMaintenancePriority}>
-              <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-              <SelectContent position="popper" sideOffset={4} className="z-[9999]">
-                <SelectItem value="low">Baixa</SelectItem>
-                <SelectItem value="medium">Média</SelectItem>
-                <SelectItem value="high">Alta</SelectItem>
-                <SelectItem value="urgent">Urgente</SelectItem>
-              </SelectContent>
-            </Select>
+            <select
+              value={maintenancePriority}
+              onChange={e => setMaintenancePriority(e.target.value)}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 mt-1"
+            >
+              <option value="low">Baixa</option>
+              <option value="medium">Média</option>
+              <option value="high">Alta</option>
+              <option value="urgent">Urgente</option>
+            </select>
           </div>
           <Button
             onClick={handleSaveMaintenance}
@@ -192,12 +190,14 @@ export default function QRChecklist() {
           {!preselected && (
             <div>
               <Label>Equipamento *</Label>
-              <Select value={selectedEquipment} onValueChange={setSelectedEquipment}>
-                <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
-                <SelectContent position="popper" className="z-[9999]">
-                  {equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eq.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <select
+                value={selectedEquipment}
+                onChange={e => setSelectedEquipment(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              >
+                <option value="">Selecionar...</option>
+                {equipments.map(eq => <option key={eq.id} value={eq.id}>{eq.name}</option>)}
+              </select>
             </div>
           )}
           <div><Label>Seu Nome *</Label><Input value={operatorName} onChange={e => setOperatorName(e.target.value)} placeholder="Nome do operador" /></div>

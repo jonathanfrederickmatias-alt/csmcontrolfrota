@@ -216,7 +216,7 @@ export default function QRChecklist() {
                       className="h-7 px-2 text-xs"
                       onClick={() => toggleItem(item.id, false)}
                     >
-                      <ShieldX className="w-3.5 h-3.5 mr-1" />NC
+                      <ShieldX className="w-3.5 h-3.5 mr-1" />Não Conforme
                     </Button>
                     <Button
                       type="button"
@@ -225,7 +225,7 @@ export default function QRChecklist() {
                       className={`h-7 px-2 text-xs ${item.checked === true ? 'bg-success text-success-foreground hover:bg-success/90' : ''}`}
                       onClick={() => toggleItem(item.id, true)}
                     >
-                      <ShieldCheck className="w-3.5 h-3.5 mr-1" />C
+                      <ShieldCheck className="w-3.5 h-3.5 mr-1" />Conforme
                     </Button>
                   </div>
                 </div>

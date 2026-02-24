@@ -5,7 +5,6 @@ import { DBEquipment } from "@/lib/supabase-types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Fuel, CheckCircle, Lock, Loader2 } from "lucide-react";
 import PublicLayout from "@/components/PublicLayout";
 import PhotoUpload from "@/components/PhotoUpload";
@@ -54,7 +53,6 @@ export default function QRFuel() {
       operator_name: operatorName,
       photo_url: photoUrl || null,
     } as any);
-    // Update hour meter if provided
     if (hourMeter && Number(hourMeter) > 0 && targetId) {
       await supabase.from('equipments').update({
         current_hour_meter: Number(hourMeter),
@@ -130,30 +128,38 @@ export default function QRFuel() {
       <div className="glass-card rounded-xl p-5 space-y-4">
         <div>
           <Label>Comboio *</Label>
-          <Select value={comboId} onValueChange={setComboId}>
-            <SelectTrigger><SelectValue placeholder="Selecionar comboio..." /></SelectTrigger>
-            <SelectContent position="popper" sideOffset={4} className="z-[9999] max-h-60">{combos.map(c => <SelectItem key={c.id} value={c.id}>{c.name} ({c.current_fuel || 0}L)</SelectItem>)}</SelectContent>
-          </Select>
+          <select
+            value={comboId}
+            onChange={e => setComboId(e.target.value)}
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 mt-1"
+          >
+            <option value="">Selecionar comboio...</option>
+            {combos.map(c => <option key={c.id} value={c.id}>{c.name} ({c.current_fuel || 0}L)</option>)}
+          </select>
         </div>
         {!preselected && (
           <div>
             <Label>Equipamento Destino *</Label>
-            <Select value={targetId} onValueChange={setTargetId}>
-              <SelectTrigger><SelectValue placeholder="Selecionar máquina..." /></SelectTrigger>
-              <SelectContent position="popper" sideOffset={4} className="z-[9999] max-h-60">{targets.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
-            </Select>
+            <select
+              value={targetId}
+              onChange={e => setTargetId(e.target.value)}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 mt-1"
+            >
+              <option value="">Selecionar máquina...</option>
+              {targets.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
           </div>
         )}
         <div>
           <Label>Litros *</Label>
-          <Input type="number" value={liters} onChange={e => setLiters(e.target.value)} placeholder="Ex: 200" />
+          <Input type="number" inputMode="decimal" value={liters} onChange={e => setLiters(e.target.value)} placeholder="Ex: 200" />
           {selectedCombo && Number(liters) > (selectedCombo.current_fuel || 0) && (
             <p className="text-xs text-destructive mt-1">Quantidade maior que o disponível!</p>
           )}
         </div>
         <div>
           <Label>Horímetro Atual (opcional)</Label>
-          <Input type="number" value={hourMeter} onChange={e => setHourMeter(e.target.value)} placeholder="Ex: 4520" />
+          <Input type="number" inputMode="decimal" value={hourMeter} onChange={e => setHourMeter(e.target.value)} placeholder="Ex: 4520" />
           {selectedTarget && hourMeter && Number(hourMeter) < (selectedTarget.current_hour_meter || 0) && (
             <p className="text-xs text-warning mt-1">Valor menor que o horímetro atual ({selectedTarget.current_hour_meter}h)</p>
           )}

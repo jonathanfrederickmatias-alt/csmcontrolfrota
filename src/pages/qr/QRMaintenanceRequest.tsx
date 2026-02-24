@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CheckCircle, Wrench, Loader2 } from "lucide-react";
 import PublicLayout from "@/components/PublicLayout";
 
@@ -37,7 +36,6 @@ export default function QRMaintenanceRequest() {
       operator_name: operatorName,
     }).select().single();
 
-    // Trigger email notification for urgent/high priority
     if (inserted && ['urgent', 'high'].includes(priority)) {
       supabase.functions.invoke('notify-maintenance', {
         body: { requestId: inserted.id },
@@ -75,25 +73,30 @@ export default function QRMaintenanceRequest() {
         {!preselected && (
           <div>
             <Label>Equipamento *</Label>
-            <Select value={equipmentId} onValueChange={setEquipmentId}>
-              <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
-              <SelectContent>{equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eq.name}</SelectItem>)}</SelectContent>
-            </Select>
+            <select
+              value={equipmentId}
+              onChange={e => setEquipmentId(e.target.value)}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            >
+              <option value="">Selecionar...</option>
+              {equipments.map(eq => <option key={eq.id} value={eq.id}>{eq.name}</option>)}
+            </select>
           </div>
         )}
         <div><Label>Seu Nome *</Label><Input value={operatorName} onChange={e => setOperatorName(e.target.value)} placeholder="Nome do operador" /></div>
         <div><Label>Descrição do Problema *</Label><Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Descreva o problema detalhadamente..." rows={4} /></div>
         <div>
           <Label>Prioridade</Label>
-          <Select value={priority} onValueChange={v => setPriority(v as 'low'|'medium'|'high'|'urgent')}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="low">🟢 Baixa</SelectItem>
-              <SelectItem value="medium">🟡 Média</SelectItem>
-              <SelectItem value="high">🟠 Alta</SelectItem>
-              <SelectItem value="urgent">🔴 Urgente</SelectItem>
-            </SelectContent>
-          </Select>
+          <select
+            value={priority}
+            onChange={e => setPriority(e.target.value as 'low'|'medium'|'high'|'urgent')}
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 mt-1"
+          >
+            <option value="low">🟢 Baixa</option>
+            <option value="medium">🟡 Média</option>
+            <option value="high">🟠 Alta</option>
+            <option value="urgent">🔴 Urgente</option>
+          </select>
         </div>
         <Button onClick={handleSave} disabled={!equipmentId || !description || !operatorName || saving} className="w-full h-12 text-base font-bold">
           {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}

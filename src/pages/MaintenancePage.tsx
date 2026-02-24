@@ -8,9 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Wrench, AlertTriangle, CheckCircle, Trash2, Edit2, Loader2, Camera, ClipboardList, History } from "lucide-react";
+import { Plus, Wrench, AlertTriangle, CheckCircle, Trash2, Edit2, Loader2, Camera, ClipboardList, History, FileSpreadsheet, FileText } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import PhotoUpload from "@/components/PhotoUpload";
+import * as XLSX from 'xlsx';
 
 const statusConfig = {
   ok: { color: 'text-success', bg: 'bg-success/10', border: 'border-l-success', label: 'OK' },
@@ -381,29 +382,56 @@ export default function MaintenancePage() {
                 {equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eq.name}</SelectItem>)}
               </SelectContent>
             </Select>
-            <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline" className="gap-2"><Plus className="w-4 h-4" /> Registrar Manual</Button>
-              </DialogTrigger>
-              <DialogContent className="bg-card border-border">
-                <DialogHeader><DialogTitle>Registrar Manutenção Manual</DialogTitle></DialogHeader>
-                <div className="space-y-4">
-                  <div><Label>Equipamento *</Label>
-                    <Select value={historyForm.equipmentId} onValueChange={v => setHistoryForm({...historyForm, equipmentId: v})}>
-                      <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
-                      <SelectContent>{equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eq.name}</SelectItem>)}</SelectContent>
-                    </Select>
+            <div className="flex gap-2 flex-wrap">
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => {
+                const wb = XLSX.utils.book_new();
+                const data = filteredHistory.map(h => {
+                  const eq = equipments.find(e => e.id === h.equipment_id);
+                  const plan = plans.find(p => p.id === h.plan_id);
+                  return {
+                    Data: new Date(h.executed_at).toLocaleDateString('pt-BR'),
+                    Equipamento: eq?.name || '—',
+                    Descrição: h.description,
+                    'Horímetro': h.hour_meter,
+                    Responsável: h.operator_name || '—',
+                    Observações: h.notes || '—',
+                    'Plano vinculado': plan?.description || '—',
+                  };
+                });
+                const ws = XLSX.utils.json_to_sheet(data);
+                XLSX.utils.book_append_sheet(wb, ws, 'Histórico Manutenção');
+                const filterName = historyFilter === 'all' ? '' : `_${equipments.find(e => e.id === historyFilter)?.name || ''}`;
+                XLSX.writeFile(wb, `Historico_Manutencao${filterName}.xlsx`);
+              }}>
+                <FileSpreadsheet className="w-4 h-4 text-success" /> Excel
+              </Button>
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => window.print()}>
+                <FileText className="w-4 h-4 text-primary" /> PDF
+              </Button>
+              <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" className="gap-2"><Plus className="w-4 h-4" /> Registrar Manual</Button>
+                </DialogTrigger>
+                <DialogContent className="bg-card border-border">
+                  <DialogHeader><DialogTitle>Registrar Manutenção Manual</DialogTitle></DialogHeader>
+                  <div className="space-y-4">
+                    <div><Label>Equipamento *</Label>
+                      <Select value={historyForm.equipmentId} onValueChange={v => setHistoryForm({...historyForm, equipmentId: v})}>
+                        <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
+                        <SelectContent>{equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eq.name}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                    <div><Label>Descrição do serviço *</Label><Input value={historyForm.description} onChange={e => setHistoryForm({...historyForm, description: e.target.value})} placeholder="Ex: Troca de óleo do motor" /></div>
+                    <div><Label>Horímetro *</Label><Input type="number" value={historyForm.hourMeter} onChange={e => setHistoryForm({...historyForm, hourMeter: e.target.value})} placeholder="Ex: 1500" /></div>
+                    <div><Label>Responsável</Label><Input value={historyForm.operatorName} onChange={e => setHistoryForm({...historyForm, operatorName: e.target.value})} placeholder="Nome do mecânico" /></div>
+                    <div><Label>Observações</Label><Textarea value={historyForm.notes} onChange={e => setHistoryForm({...historyForm, notes: e.target.value})} placeholder="Observações opcionais..." rows={2} /></div>
+                    <Button onClick={handleSaveHistory} disabled={!historyForm.equipmentId || !historyForm.description || !historyForm.hourMeter || historySaving} className="w-full">
+                      {historySaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Salvar Registro
+                    </Button>
                   </div>
-                  <div><Label>Descrição do serviço *</Label><Input value={historyForm.description} onChange={e => setHistoryForm({...historyForm, description: e.target.value})} placeholder="Ex: Troca de óleo do motor" /></div>
-                  <div><Label>Horímetro *</Label><Input type="number" value={historyForm.hourMeter} onChange={e => setHistoryForm({...historyForm, hourMeter: e.target.value})} placeholder="Ex: 1500" /></div>
-                  <div><Label>Responsável</Label><Input value={historyForm.operatorName} onChange={e => setHistoryForm({...historyForm, operatorName: e.target.value})} placeholder="Nome do mecânico" /></div>
-                  <div><Label>Observações</Label><Textarea value={historyForm.notes} onChange={e => setHistoryForm({...historyForm, notes: e.target.value})} placeholder="Observações opcionais..." rows={2} /></div>
-                  <Button onClick={handleSaveHistory} disabled={!historyForm.equipmentId || !historyForm.description || !historyForm.hourMeter || historySaving} className="w-full">
-                    {historySaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Salvar Registro
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+                </DialogContent>
+              </Dialog>
+            </div>
           </div>
 
           {filteredHistory.length === 0 ? (

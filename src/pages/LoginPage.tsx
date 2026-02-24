@@ -3,7 +3,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Shield } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
+import csmLogo from '@/assets/csm-logo.png';
 
 export default function LoginPage() {
   const { signIn, signUp } = useAuth();
@@ -41,9 +42,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-4">
-            <Shield className="w-8 h-8 text-primary" />
-          </div>
+          <img src={csmLogo} alt="CSM Construções" className="w-20 h-20 object-contain mx-auto mb-4 rounded-xl" />
           <h1 className="text-3xl font-black">
             <span className="text-gradient">CSM</span>
             <span className="text-foreground">CONTROL</span>

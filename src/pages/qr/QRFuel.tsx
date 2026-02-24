@@ -132,7 +132,7 @@ export default function QRFuel() {
           <Label>Comboio *</Label>
           <Select value={comboId} onValueChange={setComboId}>
             <SelectTrigger><SelectValue placeholder="Selecionar comboio..." /></SelectTrigger>
-            <SelectContent position="popper" className="z-[9999]">{combos.map(c => <SelectItem key={c.id} value={c.id}>{c.name} ({c.current_fuel || 0}L)</SelectItem>)}</SelectContent>
+            <SelectContent position="popper" sideOffset={4} className="z-[9999] max-h-60">{combos.map(c => <SelectItem key={c.id} value={c.id}>{c.name} ({c.current_fuel || 0}L)</SelectItem>)}</SelectContent>
           </Select>
         </div>
         {!preselected && (
@@ -140,7 +140,7 @@ export default function QRFuel() {
             <Label>Equipamento Destino *</Label>
             <Select value={targetId} onValueChange={setTargetId}>
               <SelectTrigger><SelectValue placeholder="Selecionar máquina..." /></SelectTrigger>
-              <SelectContent position="popper" className="z-[9999]">{targets.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
+              <SelectContent position="popper" sideOffset={4} className="z-[9999] max-h-60">{targets.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
             </Select>
           </div>
         )}

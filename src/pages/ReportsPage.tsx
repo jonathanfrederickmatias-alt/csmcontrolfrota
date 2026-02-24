@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import * as XLSX from 'xlsx';
+import { exportElementToPDF } from '@/lib/pdf-export';
 
 const COLORS = ['hsl(0,80%,50%)', 'hsl(38,92%,50%)', 'hsl(142,71%,45%)', 'hsl(210,80%,56%)', 'hsl(280,70%,60%)', 'hsl(16,80%,55%)'];
 
@@ -171,7 +172,7 @@ export default function ReportsPage() {
     XLSX.writeFile(wb, `CSMCONTROL_Relatorio_${period}${suffix}.xlsx`);
   };
 
-  const exportPDF = () => { window.print(); };
+  const exportPDF = () => { exportElementToPDF('reports-content', `CSMCONTROL_Relatorio_${period}.pdf`); };
 
   return (
     <div className="space-y-6">
@@ -245,6 +246,7 @@ export default function ReportsPage() {
         </div>
       </div>
 
+      <div id="reports-content">
       {loading ? (
         <div className="glass-card rounded-xl p-12 text-center">
           <p className="text-muted-foreground">Carregando dados...</p>
@@ -411,6 +413,7 @@ export default function ReportsPage() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

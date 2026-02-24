@@ -12,6 +12,7 @@ import { Plus, Wrench, AlertTriangle, CheckCircle, Trash2, Edit2, Loader2, Camer
 import { toast } from "@/hooks/use-toast";
 import PhotoUpload from "@/components/PhotoUpload";
 import * as XLSX from 'xlsx';
+import { exportElementToPDF } from '@/lib/pdf-export';
 
 const statusConfig = {
   ok: { color: 'text-success', bg: 'bg-success/10', border: 'border-l-success', label: 'OK' },
@@ -233,6 +234,29 @@ export default function MaintenancePage() {
                 {equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eq.name}</SelectItem>)}
               </SelectContent>
             </Select>
+            <div className="flex gap-2 flex-wrap">
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => {
+                const wb = XLSX.utils.book_new();
+                const data = filteredPlans.map(p => {
+                  const eq = equipments.find(e => e.id === p.equipment_id);
+                  return {
+                    Equipamento: eq?.name || '—', Descrição: p.description,
+                    'Intervalo (h)': p.interval_hours, 'Próxima (h)': p.next_due_at,
+                    'Última feita (h)': p.last_done_at,
+                    Status: p.status === 'ok' ? 'OK' : p.status === 'approaching' ? 'Próxima' : 'Atrasada',
+                    'Última execução': p.last_executed_at ? new Date(p.last_executed_at).toLocaleDateString('pt-BR') : '—',
+                  };
+                });
+                const ws = XLSX.utils.json_to_sheet(data);
+                XLSX.utils.book_append_sheet(wb, ws, 'Planos Manutenção');
+                const filterName = planFilter === 'all' ? '' : `_${equipments.find(e => e.id === planFilter)?.name || ''}`;
+                XLSX.writeFile(wb, `Planos_Manutencao${filterName}.xlsx`);
+              }}>
+                <FileSpreadsheet className="w-4 h-4 text-success" /> Excel
+              </Button>
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => exportElementToPDF('plans-content', 'Planos_Manutencao.pdf')}>
+                <FileText className="w-4 h-4 text-primary" /> PDF
+              </Button>
             <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditPlan(null); setForm({ equipmentId: '', description: '', intervalHours: '', lastDoneAt: '' }); } }}>
               <DialogTrigger asChild>
                 <Button className="gap-2"><Plus className="w-4 h-4" /> Novo Plano</Button>
@@ -255,8 +279,10 @@ export default function MaintenancePage() {
                 </div>
               </DialogContent>
             </Dialog>
+            </div>
           </div>
 
+          <div id="plans-content">
           {loading ? (
             <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
           ) : filteredPlans.length === 0 ? (
@@ -309,6 +335,7 @@ export default function MaintenancePage() {
               })}
             </div>
           )}
+          </div>
         </TabsContent>
 
         {/* ===== PEDIDOS ===== */}
@@ -321,7 +348,35 @@ export default function MaintenancePage() {
                 {equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eq.name}</SelectItem>)}
               </SelectContent>
             </Select>
+            <div className="flex gap-2 flex-wrap">
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => {
+                const wb = XLSX.utils.book_new();
+                const data = filteredRequests.map(r => {
+                  const eq = equipments.find(e => e.id === r.equipment_id);
+                  return {
+                    Data: new Date(r.created_at).toLocaleDateString('pt-BR'),
+                    Equipamento: eq?.name || '—',
+                    Descrição: r.description,
+                    Prioridade: priorityConfig[r.priority]?.label || r.priority,
+                    Status: requestStatusConfig[r.status]?.label || r.status,
+                    Operador: r.operator_name,
+                    Observações: r.notes || '—',
+                    Concluído: r.resolved_at ? new Date(r.resolved_at).toLocaleDateString('pt-BR') : '—',
+                  };
+                });
+                const ws = XLSX.utils.json_to_sheet(data);
+                XLSX.utils.book_append_sheet(wb, ws, 'Pedidos Manutenção');
+                const filterName = requestFilter === 'all' ? '' : `_${equipments.find(e => e.id === requestFilter)?.name || ''}`;
+                XLSX.writeFile(wb, `Pedidos_Manutencao${filterName}.xlsx`);
+              }}>
+                <FileSpreadsheet className="w-4 h-4 text-success" /> Excel
+              </Button>
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => exportElementToPDF('requests-content', 'Pedidos_Manutencao.pdf')}>
+                <FileText className="w-4 h-4 text-primary" /> PDF
+              </Button>
+            </div>
           </div>
+          <div id="requests-content">
           {filteredRequests.length === 0 ? (
             <div className="glass-card rounded-xl p-8 text-center">
               <p className="text-muted-foreground">{requestFilter === 'all' ? 'Nenhum pedido registrado.' : 'Nenhum pedido para este equipamento.'}</p>
@@ -390,6 +445,7 @@ export default function MaintenancePage() {
               })}
             </div>
           )}
+          </div>
         </TabsContent>
 
         {/* ===== HISTÓRICO ===== */}
@@ -425,7 +481,7 @@ export default function MaintenancePage() {
               }}>
                 <FileSpreadsheet className="w-4 h-4 text-success" /> Excel
               </Button>
-              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => window.print()}>
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => exportElementToPDF('history-content', 'Historico_Manutencao.pdf')}>
                 <FileText className="w-4 h-4 text-primary" /> PDF
               </Button>
               <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
@@ -454,6 +510,7 @@ export default function MaintenancePage() {
             </div>
           </div>
 
+          <div id="history-content">
           {filteredHistory.length === 0 ? (
             <div className="glass-card rounded-xl p-8 text-center">
               <History className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
@@ -481,6 +538,7 @@ export default function MaintenancePage() {
               })}
             </div>
           )}
+          </div>
         </TabsContent>
       </Tabs>
 

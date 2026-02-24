@@ -74,6 +74,9 @@ export default function QRFuel() {
           <CheckCircle className="w-16 h-16 text-success mx-auto mb-4" />
           <h2 className="text-xl font-bold text-success">Abastecimento Registrado!</h2>
           <p className="text-muted-foreground mt-2">{liters}L registrados com sucesso.</p>
+          <Button variant="outline" className="mt-6" onClick={() => window.history.back()}>
+            Voltar ao Equipamento
+          </Button>
         </div>
       </PublicLayout>
     );

@@ -179,27 +179,35 @@ export default function FuelSupplyPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-muted-foreground border-b border-border">
-                  <th className="pb-2 pr-4">Data</th>
-                  <th className="pb-2 pr-4">Comboio</th>
-                  <th className="pb-2 pr-4">Litros</th>
-                  <th className="pb-2 pr-4">Nota Fiscal</th>
-                  <th className="pb-2 pr-4">Fornecedor</th>
-                  <th className="pb-2">Responsável</th>
-                </tr>
+                 <tr className="text-left text-muted-foreground border-b border-border">
+                   <th className="pb-2 pr-4">Foto</th>
+                   <th className="pb-2 pr-4">Data</th>
+                   <th className="pb-2 pr-4">Comboio</th>
+                   <th className="pb-2 pr-4">Litros</th>
+                   <th className="pb-2 pr-4">Nota Fiscal</th>
+                   <th className="pb-2 pr-4">Fornecedor</th>
+                   <th className="pb-2">Responsável</th>
+                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {records.map(r => {
                   const combo = combos.find(c => c.id === r.combo_equipment_id);
                   return (
-                    <tr key={r.id} className="hover:bg-secondary/30 transition-colors">
-                      <td className="py-2 pr-4 font-mono text-xs">{new Date(r.date + 'T12:00:00').toLocaleDateString('pt-BR')}</td>
-                      <td className="py-2 pr-4 font-medium">{combo?.name || '—'}</td>
-                      <td className="py-2 pr-4 font-mono font-bold text-success">+{r.liters}L</td>
-                      <td className="py-2 pr-4 text-muted-foreground">{r.invoice_number || '—'}</td>
-                      <td className="py-2 pr-4 text-muted-foreground">{r.supplier || '—'}</td>
-                      <td className="py-2 text-muted-foreground">{r.responsible_name}</td>
-                    </tr>
+                     <tr key={r.id} className="hover:bg-secondary/30 transition-colors">
+                       <td className="py-2 pr-4">
+                         {(r as any).photo_url ? (
+                           <a href={(r as any).photo_url} target="_blank" rel="noopener noreferrer">
+                             <img src={(r as any).photo_url} alt="Comprovante" className="w-10 h-10 rounded object-cover border border-border hover:opacity-80 transition-opacity" />
+                           </a>
+                         ) : <span className="text-muted-foreground text-xs">—</span>}
+                       </td>
+                       <td className="py-2 pr-4 font-mono text-xs">{new Date(r.date + 'T12:00:00').toLocaleDateString('pt-BR')}</td>
+                       <td className="py-2 pr-4 font-medium">{combo?.name || '—'}</td>
+                       <td className="py-2 pr-4 font-mono font-bold text-success">+{r.liters}L</td>
+                       <td className="py-2 pr-4 text-muted-foreground">{r.invoice_number || '—'}</td>
+                       <td className="py-2 pr-4 text-muted-foreground">{r.supplier || '—'}</td>
+                       <td className="py-2 text-muted-foreground">{r.responsible_name}</td>
+                     </tr>
                   );
                 })}
               </tbody>

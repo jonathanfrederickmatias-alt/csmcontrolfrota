@@ -50,6 +50,8 @@ export default function MaintenancePage() {
 
   // History filter
   const [historyFilter, setHistoryFilter] = useState('all');
+  const [planFilter, setPlanFilter] = useState('all');
+  const [requestFilter, setRequestFilter] = useState('all');
 
   // Photo dialog state
   const [photoDialog, setPhotoDialog] = useState<{ requestId: string; targetStatus: 'in_progress' | 'done'; label: string } | null>(null);
@@ -203,6 +205,8 @@ export default function MaintenancePage() {
     return order[a.status] - order[b.status];
   });
 
+  const filteredPlans = planFilter === 'all' ? sortedPlans : sortedPlans.filter(p => p.equipment_id === planFilter);
+  const filteredRequests = requestFilter === 'all' ? requests : requests.filter(r => r.equipment_id === requestFilter);
   const filteredHistory = historyFilter === 'all' ? history : history.filter(h => h.equipment_id === historyFilter);
 
   return (
@@ -221,7 +225,14 @@ export default function MaintenancePage() {
 
         {/* ===== PLANOS ===== */}
         <TabsContent value="plans" className="space-y-4 mt-4">
-          <div className="flex justify-end">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <Select value={planFilter} onValueChange={setPlanFilter}>
+              <SelectTrigger className="w-64"><SelectValue placeholder="Filtrar por equipamento" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os equipamentos</SelectItem>
+                {equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eq.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
             <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditPlan(null); setForm({ equipmentId: '', description: '', intervalHours: '', lastDoneAt: '' }); } }}>
               <DialogTrigger asChild>
                 <Button className="gap-2"><Plus className="w-4 h-4" /> Novo Plano</Button>
@@ -248,14 +259,14 @@ export default function MaintenancePage() {
 
           {loading ? (
             <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
-          ) : sortedPlans.length === 0 ? (
+          ) : filteredPlans.length === 0 ? (
             <div className="glass-card rounded-xl p-12 text-center">
               <Wrench className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">Nenhum plano de manutenção cadastrado.</p>
+              <p className="text-muted-foreground">{planFilter === 'all' ? 'Nenhum plano de manutenção cadastrado.' : 'Nenhum plano para este equipamento.'}</p>
             </div>
           ) : (
             <div className="space-y-3">
-              {sortedPlans.map(plan => {
+              {filteredPlans.map(plan => {
                 const eq = equipments.find(e => e.id === plan.equipment_id);
                 const sc = statusConfig[plan.status];
                 const remaining = plan.next_due_at - (eq?.current_hour_meter || 0);
@@ -302,13 +313,22 @@ export default function MaintenancePage() {
 
         {/* ===== PEDIDOS ===== */}
         <TabsContent value="requests" className="space-y-4 mt-4">
-          {requests.length === 0 ? (
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <Select value={requestFilter} onValueChange={setRequestFilter}>
+              <SelectTrigger className="w-64"><SelectValue placeholder="Filtrar por equipamento" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os equipamentos</SelectItem>
+                {equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eq.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          {filteredRequests.length === 0 ? (
             <div className="glass-card rounded-xl p-8 text-center">
-              <p className="text-muted-foreground">Nenhum pedido registrado.</p>
+              <p className="text-muted-foreground">{requestFilter === 'all' ? 'Nenhum pedido registrado.' : 'Nenhum pedido para este equipamento.'}</p>
             </div>
           ) : (
             <div className="space-y-3">
-              {requests.map(r => {
+              {filteredRequests.map(r => {
                 const eq = equipments.find(e => e.id === r.equipment_id);
                 const pc = priorityConfig[r.priority];
                 const sc = requestStatusConfig[r.status];

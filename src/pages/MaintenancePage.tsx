@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { DBEquipment, DBMaintenancePlan, DBMaintenanceRequest } from "@/lib/supabase-types";
+import { DBEquipment, DBMaintenancePlan, DBMaintenanceRequest, DBMaintenanceHistory } from "@/lib/supabase-types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Wrench, AlertTriangle, CheckCircle, Trash2, Edit2, Loader2, Camera, ImageIcon } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Plus, Wrench, AlertTriangle, CheckCircle, Trash2, Edit2, Loader2, Camera, ClipboardList, History } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import PhotoUpload from "@/components/PhotoUpload";
 
@@ -34,11 +35,20 @@ export default function MaintenancePage() {
   const [plans, setPlans] = useState<DBMaintenancePlan[]>([]);
   const [requests, setRequests] = useState<DBMaintenanceRequest[]>([]);
   const [equipments, setEquipments] = useState<DBEquipment[]>([]);
+  const [history, setHistory] = useState<DBMaintenanceHistory[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editPlan, setEditPlan] = useState<DBMaintenancePlan | null>(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ equipmentId: '', description: '', intervalHours: '', lastDoneAt: '' });
+
+  // History dialog
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyForm, setHistoryForm] = useState({ equipmentId: '', description: '', hourMeter: '', notes: '', operatorName: '' });
+  const [historySaving, setHistorySaving] = useState(false);
+
+  // History filter
+  const [historyFilter, setHistoryFilter] = useState('all');
 
   // Photo dialog state
   const [photoDialog, setPhotoDialog] = useState<{ requestId: string; targetStatus: 'in_progress' | 'done'; label: string } | null>(null);
@@ -46,14 +56,16 @@ export default function MaintenancePage() {
   const [photoSaving, setPhotoSaving] = useState(false);
 
   const fetchAll = async () => {
-    const [eqRes, plRes, reqRes] = await Promise.all([
+    const [eqRes, plRes, reqRes, histRes] = await Promise.all([
       supabase.from('equipments').select('*').order('name'),
       supabase.from('maintenance_plans').select('*').order('status'),
       supabase.from('maintenance_requests').select('*').order('created_at', { ascending: false }),
+      supabase.from('maintenance_history').select('*').order('executed_at', { ascending: false }).limit(200),
     ]);
     setEquipments((eqRes.data || []) as DBEquipment[]);
     setPlans((plRes.data || []) as DBMaintenancePlan[]);
     setRequests((reqRes.data || []) as DBMaintenanceRequest[]);
+    setHistory((histRes.data || []) as DBMaintenanceHistory[]);
     setLoading(false);
   };
 
@@ -106,13 +118,24 @@ export default function MaintenancePage() {
   const handleComplete = async (plan: DBMaintenancePlan) => {
     const eq = equipments.find(e => e.id === plan.equipment_id);
     const currentHM = eq?.current_hour_meter || 0;
+
+    // Save to history
+    await supabase.from('maintenance_history').insert({
+      equipment_id: plan.equipment_id,
+      plan_id: plan.id,
+      description: plan.description,
+      hour_meter: currentHM,
+    });
+
+    // Update plan
     await supabase.from('maintenance_plans').update({
       last_done_at: currentHM,
       next_due_at: currentHM + plan.interval_hours,
       status: 'ok',
       last_executed_at: new Date().toISOString(),
     }).eq('id', plan.id);
-    toast({ title: 'Manutenção marcada como concluída!', description: `Próxima em ${currentHM + plan.interval_hours}h` });
+
+    toast({ title: 'Manutenção concluída e registrada no histórico!', description: `Próxima em ${currentHM + plan.interval_hours}h` });
     fetchAll();
   };
 
@@ -127,6 +150,22 @@ export default function MaintenancePage() {
     setOpen(true);
   };
 
+  const handleSaveHistory = async () => {
+    setHistorySaving(true);
+    await supabase.from('maintenance_history').insert({
+      equipment_id: historyForm.equipmentId,
+      description: historyForm.description,
+      hour_meter: Number(historyForm.hourMeter),
+      notes: historyForm.notes || null,
+      operator_name: historyForm.operatorName || null,
+    });
+    setHistorySaving(false);
+    setHistoryOpen(false);
+    setHistoryForm({ equipmentId: '', description: '', hourMeter: '', notes: '', operatorName: '' });
+    toast({ title: 'Registro de manutenção adicionado!' });
+    fetchAll();
+  };
+
   const handleRequestStatusChange = (id: string, newStatus: string) => {
     if (newStatus === 'in_progress') {
       setPhotoDialog({ requestId: id, targetStatus: 'in_progress', label: 'Foto de Início do Serviço' });
@@ -135,7 +174,6 @@ export default function MaintenancePage() {
       setPhotoDialog({ requestId: id, targetStatus: 'done', label: 'Foto de Término do Serviço' });
       setPhotoUrl('');
     } else {
-      // Going back to open doesn't require photo
       updateRequestStatus(id, newStatus as any);
     }
   };
@@ -164,167 +202,239 @@ export default function MaintenancePage() {
     return order[a.status] - order[b.status];
   });
 
+  const filteredHistory = historyFilter === 'all' ? history : history.filter(h => h.equipment_id === historyFilter);
+
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-black text-gradient">Manutenção</h1>
-          <p className="text-muted-foreground mt-1">Planos preventivos e pedidos</p>
-        </div>
-        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditPlan(null); setForm({ equipmentId: '', description: '', intervalHours: '', lastDoneAt: '' }); } }}>
-          <DialogTrigger asChild>
-            <Button className="gap-2"><Plus className="w-4 h-4" /> Novo Plano</Button>
-          </DialogTrigger>
-          <DialogContent className="bg-card border-border">
-            <DialogHeader><DialogTitle>{editPlan ? 'Editar Plano' : 'Novo Plano de Manutenção'}</DialogTitle></DialogHeader>
-            <div className="space-y-4">
-              <div><Label>Equipamento *</Label>
-                <Select value={form.equipmentId} onValueChange={v => setForm({...form, equipmentId: v})}>
-                  <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
-                  <SelectContent>{equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eq.name}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div><Label>Descrição *</Label><Input value={form.description} onChange={e => setForm({...form, description: e.target.value})} placeholder="Ex: Troca de óleo" /></div>
-              <div><Label>Intervalo (horas) *</Label><Input type="number" value={form.intervalHours} onChange={e => setForm({...form, intervalHours: e.target.value})} placeholder="Ex: 500" /></div>
-              <div><Label>Última feita em (horímetro) *</Label><Input type="number" value={form.lastDoneAt} onChange={e => setForm({...form, lastDoneAt: e.target.value})} placeholder="Ex: 1000" /></div>
-              <Button onClick={handleSave} disabled={!form.equipmentId || !form.description || !form.intervalHours || !form.lastDoneAt || saving} className="w-full">
-                {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}{editPlan ? 'Salvar alterações' : 'Salvar'}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-black text-gradient">Manutenção</h1>
+        <p className="text-muted-foreground mt-1">Planos preventivos, pedidos e histórico</p>
       </div>
 
-      {loading ? (
-        <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
-      ) : sortedPlans.length === 0 ? (
-        <div className="glass-card rounded-xl p-12 text-center">
-          <Wrench className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-          <p className="text-muted-foreground">Nenhum plano de manutenção cadastrado.</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {sortedPlans.map(plan => {
-            const eq = equipments.find(e => e.id === plan.equipment_id);
-            const sc = statusConfig[plan.status];
-            const remaining = plan.next_due_at - (eq?.current_hour_meter || 0);
-            return (
-              <div key={plan.id} className={`glass-card rounded-xl p-5 border-l-4 ${sc.border}`}>
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <h3 className="font-bold">{plan.description}</h3>
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${sc.bg} ${sc.color} font-medium`}>{sc.label}</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{eq?.name || 'Equipamento'}</p>
-                    <div className="flex gap-4 mt-2 text-xs text-muted-foreground font-mono flex-wrap">
-                      <span>Intervalo: {plan.interval_hours}h</span>
-                      <span>Próxima: {plan.next_due_at}h</span>
-                      <span className={remaining <= 0 ? 'text-destructive font-bold' : remaining <= plan.interval_hours * 0.1 ? 'text-warning font-bold' : 'text-success'}>
-                        {remaining <= 0 ? `Atrasada ${Math.abs(remaining)}h` : `Faltam ${remaining}h`}
-                      </span>
-                      {plan.last_executed_at && (
-                        <span>Executada: {new Date(plan.last_executed_at).toLocaleDateString('pt-BR')}</span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex gap-2 shrink-0">
-                    <button onClick={() => handleEditPlan(plan)} className="text-muted-foreground hover:text-primary p-2 transition-colors">
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                    {plan.status !== 'ok' && (
-                      <Button size="sm" variant="outline" onClick={() => handleComplete(plan)} className="text-success border-success/30 hover:bg-success/10">
-                        <CheckCircle className="w-3 h-3 mr-1" />Concluir
-                      </Button>
-                    )}
-                    <button onClick={() => handleDelete(plan.id)} className="text-muted-foreground hover:text-destructive p-2 transition-colors">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      <Tabs defaultValue="plans" className="w-full">
+        <TabsList className="w-full grid grid-cols-3">
+          <TabsTrigger value="plans" className="gap-1.5"><Wrench className="w-4 h-4" /> Planos</TabsTrigger>
+          <TabsTrigger value="requests" className="gap-1.5"><AlertTriangle className="w-4 h-4" /> Pedidos</TabsTrigger>
+          <TabsTrigger value="history" className="gap-1.5"><History className="w-4 h-4" /> Histórico</TabsTrigger>
+        </TabsList>
 
-      {/* Pedidos de Manutenção */}
-      <div>
-        <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-          <AlertTriangle className="w-5 h-5 text-warning" />
-          Pedidos de Manutenção
-        </h2>
-        {requests.length === 0 ? (
-          <div className="glass-card rounded-xl p-8 text-center">
-            <p className="text-muted-foreground">Nenhum pedido registrado.</p>
+        {/* ===== PLANOS ===== */}
+        <TabsContent value="plans" className="space-y-4 mt-4">
+          <div className="flex justify-end">
+            <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditPlan(null); setForm({ equipmentId: '', description: '', intervalHours: '', lastDoneAt: '' }); } }}>
+              <DialogTrigger asChild>
+                <Button className="gap-2"><Plus className="w-4 h-4" /> Novo Plano</Button>
+              </DialogTrigger>
+              <DialogContent className="bg-card border-border">
+                <DialogHeader><DialogTitle>{editPlan ? 'Editar Plano' : 'Novo Plano de Manutenção'}</DialogTitle></DialogHeader>
+                <div className="space-y-4">
+                  <div><Label>Equipamento *</Label>
+                    <Select value={form.equipmentId} onValueChange={v => setForm({...form, equipmentId: v})}>
+                      <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
+                      <SelectContent>{equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eq.name}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div><Label>Descrição *</Label><Input value={form.description} onChange={e => setForm({...form, description: e.target.value})} placeholder="Ex: Troca de óleo" /></div>
+                  <div><Label>Intervalo (horas) *</Label><Input type="number" value={form.intervalHours} onChange={e => setForm({...form, intervalHours: e.target.value})} placeholder="Ex: 500" /></div>
+                  <div><Label>Última feita em (horímetro) *</Label><Input type="number" value={form.lastDoneAt} onChange={e => setForm({...form, lastDoneAt: e.target.value})} placeholder="Ex: 1000" /></div>
+                  <Button onClick={handleSave} disabled={!form.equipmentId || !form.description || !form.intervalHours || !form.lastDoneAt || saving} className="w-full">
+                    {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}{editPlan ? 'Salvar alterações' : 'Salvar'}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
-        ) : (
-          <div className="space-y-3">
-            {requests.map(r => {
-              const eq = equipments.find(e => e.id === r.equipment_id);
-              const pc = priorityConfig[r.priority];
-              const sc = requestStatusConfig[r.status];
-              const rAny = r as any;
-              return (
-                <div key={r.id} className="glass-card rounded-xl p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <p className="font-semibold">{r.description}</p>
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${pc.bg}`}>{pc.label}</span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${sc.bg}`}>{sc.label}</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground">{eq?.name} — {r.operator_name} — {new Date(r.created_at).toLocaleDateString('pt-BR')}</p>
-                      {r.notes && <p className="text-xs text-muted-foreground mt-1 italic">Obs: {r.notes}</p>}
-                      {/* Photo thumbnails */}
-                      {(rAny.photo_start_url || rAny.photo_end_url) && (
-                        <div className="flex gap-2 mt-2">
-                          {rAny.photo_start_url && (
-                            <a href={rAny.photo_start_url} target="_blank" rel="noopener noreferrer" className="block">
-                              <div className="relative w-16 h-16 rounded-lg overflow-hidden border border-border">
-                                <img src={rAny.photo_start_url} alt="Início" className="w-full h-full object-cover" />
-                                <span className="absolute bottom-0 left-0 right-0 bg-primary/80 text-primary-foreground text-[8px] text-center py-0.5">Início</span>
-                              </div>
-                            </a>
-                          )}
-                          {rAny.photo_end_url && (
-                            <a href={rAny.photo_end_url} target="_blank" rel="noopener noreferrer" className="block">
-                              <div className="relative w-16 h-16 rounded-lg overflow-hidden border border-border">
-                                <img src={rAny.photo_end_url} alt="Término" className="w-full h-full object-cover" />
-                                <span className="absolute bottom-0 left-0 right-0 bg-success/80 text-success-foreground text-[8px] text-center py-0.5">Término</span>
-                              </div>
-                            </a>
+
+          {loading ? (
+            <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
+          ) : sortedPlans.length === 0 ? (
+            <div className="glass-card rounded-xl p-12 text-center">
+              <Wrench className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">Nenhum plano de manutenção cadastrado.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {sortedPlans.map(plan => {
+                const eq = equipments.find(e => e.id === plan.equipment_id);
+                const sc = statusConfig[plan.status];
+                const remaining = plan.next_due_at - (eq?.current_hour_meter || 0);
+                return (
+                  <div key={plan.id} className={`glass-card rounded-xl p-5 border-l-4 ${sc.border}`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <h3 className="font-bold">{plan.description}</h3>
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${sc.bg} ${sc.color} font-medium`}>{sc.label}</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">{eq?.name || 'Equipamento'}</p>
+                        <div className="flex gap-4 mt-2 text-xs text-muted-foreground font-mono flex-wrap">
+                          <span>Intervalo: {plan.interval_hours}h</span>
+                          <span>Próxima: {plan.next_due_at}h</span>
+                          <span className={remaining <= 0 ? 'text-destructive font-bold' : remaining <= plan.interval_hours * 0.1 ? 'text-warning font-bold' : 'text-success'}>
+                            {remaining <= 0 ? `Atrasada ${Math.abs(remaining)}h` : `Faltam ${remaining}h`}
+                          </span>
+                          {plan.last_executed_at && (
+                            <span>Executada: {new Date(plan.last_executed_at).toLocaleDateString('pt-BR')}</span>
                           )}
                         </div>
+                      </div>
+                      <div className="flex gap-2 shrink-0">
+                        <button onClick={() => handleEditPlan(plan)} className="text-muted-foreground hover:text-primary p-2 transition-colors">
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        {plan.status !== 'ok' && (
+                          <Button size="sm" variant="outline" onClick={() => handleComplete(plan)} className="text-success border-success/30 hover:bg-success/10">
+                            <CheckCircle className="w-3 h-3 mr-1" />Concluir
+                          </Button>
+                        )}
+                        <button onClick={() => handleDelete(plan.id)} className="text-muted-foreground hover:text-destructive p-2 transition-colors">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* ===== PEDIDOS ===== */}
+        <TabsContent value="requests" className="space-y-4 mt-4">
+          {requests.length === 0 ? (
+            <div className="glass-card rounded-xl p-8 text-center">
+              <p className="text-muted-foreground">Nenhum pedido registrado.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {requests.map(r => {
+                const eq = equipments.find(e => e.id === r.equipment_id);
+                const pc = priorityConfig[r.priority];
+                const sc = requestStatusConfig[r.status];
+                const rAny = r as any;
+                return (
+                  <div key={r.id} className="glass-card rounded-xl p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <p className="font-semibold">{r.description}</p>
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${pc.bg}`}>{pc.label}</span>
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${sc.bg}`}>{sc.label}</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">{eq?.name} — {r.operator_name} — {new Date(r.created_at).toLocaleDateString('pt-BR')}</p>
+                        {r.notes && <p className="text-xs text-muted-foreground mt-1 italic">Obs: {r.notes}</p>}
+                        {(rAny.photo_start_url || rAny.photo_end_url) && (
+                          <div className="flex gap-2 mt-2">
+                            {rAny.photo_start_url && (
+                              <a href={rAny.photo_start_url} target="_blank" rel="noopener noreferrer" className="block">
+                                <div className="relative w-16 h-16 rounded-lg overflow-hidden border border-border">
+                                  <img src={rAny.photo_start_url} alt="Início" className="w-full h-full object-cover" />
+                                  <span className="absolute bottom-0 left-0 right-0 bg-primary/80 text-primary-foreground text-[8px] text-center py-0.5">Início</span>
+                                </div>
+                              </a>
+                            )}
+                            {rAny.photo_end_url && (
+                              <a href={rAny.photo_end_url} target="_blank" rel="noopener noreferrer" className="block">
+                                <div className="relative w-16 h-16 rounded-lg overflow-hidden border border-border">
+                                  <img src={rAny.photo_end_url} alt="Término" className="w-full h-full object-cover" />
+                                  <span className="absolute bottom-0 left-0 right-0 bg-success/80 text-success-foreground text-[8px] text-center py-0.5">Término</span>
+                                </div>
+                              </a>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      {r.status !== 'done' && (
+                        <div className="shrink-0">
+                          <Select value={r.status} onValueChange={v => handleRequestStatusChange(r.id, v)}>
+                            <SelectTrigger className="h-8 text-xs w-36">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="open">Aberto</SelectItem>
+                              <SelectItem value="in_progress">Em andamento</SelectItem>
+                              <SelectItem value="done">Concluído</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                      {r.status === 'done' && r.resolved_at && (
+                        <span className="text-xs text-muted-foreground shrink-0">
+                          Concluído em {new Date(r.resolved_at).toLocaleDateString('pt-BR')}
+                        </span>
                       )}
                     </div>
-                    {/* Status control */}
-                    {r.status !== 'done' && (
-                      <div className="shrink-0">
-                        <Select value={r.status} onValueChange={v => handleRequestStatusChange(r.id, v)}>
-                          <SelectTrigger className="h-8 text-xs w-36">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="open">Aberto</SelectItem>
-                            <SelectItem value="in_progress">Em andamento</SelectItem>
-                            <SelectItem value="done">Concluído</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
-                    {r.status === 'done' && r.resolved_at && (
-                      <span className="text-xs text-muted-foreground shrink-0">
-                        Concluído em {new Date(r.resolved_at).toLocaleDateString('pt-BR')}
-                      </span>
-                    )}
                   </div>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* ===== HISTÓRICO ===== */}
+        <TabsContent value="history" className="space-y-4 mt-4">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <Select value={historyFilter} onValueChange={setHistoryFilter}>
+              <SelectTrigger className="w-64"><SelectValue placeholder="Filtrar por equipamento" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os equipamentos</SelectItem>
+                {equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eq.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="gap-2"><Plus className="w-4 h-4" /> Registrar Manual</Button>
+              </DialogTrigger>
+              <DialogContent className="bg-card border-border">
+                <DialogHeader><DialogTitle>Registrar Manutenção Manual</DialogTitle></DialogHeader>
+                <div className="space-y-4">
+                  <div><Label>Equipamento *</Label>
+                    <Select value={historyForm.equipmentId} onValueChange={v => setHistoryForm({...historyForm, equipmentId: v})}>
+                      <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
+                      <SelectContent>{equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eq.name}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div><Label>Descrição do serviço *</Label><Input value={historyForm.description} onChange={e => setHistoryForm({...historyForm, description: e.target.value})} placeholder="Ex: Troca de óleo do motor" /></div>
+                  <div><Label>Horímetro *</Label><Input type="number" value={historyForm.hourMeter} onChange={e => setHistoryForm({...historyForm, hourMeter: e.target.value})} placeholder="Ex: 1500" /></div>
+                  <div><Label>Responsável</Label><Input value={historyForm.operatorName} onChange={e => setHistoryForm({...historyForm, operatorName: e.target.value})} placeholder="Nome do mecânico" /></div>
+                  <div><Label>Observações</Label><Textarea value={historyForm.notes} onChange={e => setHistoryForm({...historyForm, notes: e.target.value})} placeholder="Observações opcionais..." rows={2} /></div>
+                  <Button onClick={handleSaveHistory} disabled={!historyForm.equipmentId || !historyForm.description || !historyForm.hourMeter || historySaving} className="w-full">
+                    {historySaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Salvar Registro
+                  </Button>
                 </div>
-              );
-            })}
+              </DialogContent>
+            </Dialog>
           </div>
-        )}
-      </div>
+
+          {filteredHistory.length === 0 ? (
+            <div className="glass-card rounded-xl p-8 text-center">
+              <History className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">Nenhum registro de manutenção encontrado.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {filteredHistory.map(h => {
+                const eq = equipments.find(e => e.id === h.equipment_id);
+                const plan = plans.find(p => p.id === h.plan_id);
+                return (
+                  <div key={h.id} className="glass-card rounded-xl p-4 flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm">{h.description}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {eq?.name || '—'} — {new Date(h.executed_at).toLocaleDateString('pt-BR')}
+                      </p>
+                      {h.operator_name && <p className="text-xs text-muted-foreground">Responsável: {h.operator_name}</p>}
+                      {h.notes && <p className="text-xs text-muted-foreground italic mt-0.5">Obs: {h.notes}</p>}
+                      {plan && <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary mt-1 inline-block">Plano: {plan.description}</span>}
+                    </div>
+                    <span className="text-sm font-mono font-bold text-muted-foreground shrink-0">{h.hour_meter}h</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
 
       {/* Photo dialog for status change */}
       <Dialog open={!!photoDialog} onOpenChange={(v) => { if (!v) { setPhotoDialog(null); setPhotoUrl(''); } }}>

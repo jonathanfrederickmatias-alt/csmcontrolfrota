@@ -97,26 +97,57 @@ const COLORS = {
   border: [45, 50, 65] as [number, number, number],
 };
 
-function addHeader(pdf: jsPDF, title: string, subtitle: string) {
+// Cache for logo image data
+let logoCache: string | null = null;
+
+async function loadLogoAsBase64(): Promise<string | null> {
+  if (logoCache) return logoCache;
+  try {
+    const response = await fetch('/csm-logo.png');
+    const blob = await response.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        logoCache = reader.result as string;
+        resolve(logoCache);
+      };
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
+function addHeader(pdf: jsPDF, title: string, subtitle: string, logoData?: string | null) {
   // Dark background header band
   pdf.setFillColor(...COLORS.primary);
   pdf.rect(0, 0, 210, 38, 'F');
+
+  // Logo
+  if (logoData) {
+    // White bg circle for logo
+    pdf.setFillColor(255, 255, 255);
+    pdf.roundedRect(12, 5, 28, 28, 3, 3, 'F');
+    pdf.addImage(logoData, 'PNG', 14, 7, 24, 24);
+  }
+
+  const textX = logoData ? 45 : 15;
 
   // Company name
   pdf.setTextColor(...COLORS.white);
   pdf.setFontSize(22);
   pdf.setFont('helvetica', 'bold');
-  pdf.text('CSM CONTROL', 15, 16);
+  pdf.text('CSM CONSTRUÇÕES', textX, 16);
 
   // Title
   pdf.setFontSize(11);
   pdf.setFont('helvetica', 'normal');
-  pdf.text(title, 15, 25);
+  pdf.text(title, textX, 25);
 
   // Subtitle / date
   pdf.setFontSize(8);
   pdf.setTextColor(255, 220, 220);
-  pdf.text(subtitle, 15, 32);
+  pdf.text(subtitle, textX, 32);
 
   // Right side - generation date
   const now = new Date();
@@ -125,7 +156,7 @@ function addHeader(pdf: jsPDF, title: string, subtitle: string) {
   pdf.setTextColor(...COLORS.white);
   pdf.text(`Emitido em: ${dateStr}`, 195, 16, { align: 'right' });
 
-  // Logo placeholder text
+  // System name
   pdf.setFontSize(7);
   pdf.setTextColor(255, 200, 200);
   pdf.text('Sistema de Gestão de Frota', 195, 25, { align: 'right' });
@@ -175,10 +206,11 @@ function drawSummaryCard(pdf: jsPDF, x: number, y: number, w: number, label: str
 }
 
 // ===== PLANS REPORT =====
-export function exportMaintenancePlansPDF(
+export async function exportMaintenancePlansPDF(
   plans: PlanRow[],
   filterName: string
 ) {
+  const logoData = await loadLogoAsBase64();
   const pdf = new jsPDF('p', 'mm', 'a4');
   const pageWidth = 210;
   const margin = 12;
@@ -189,7 +221,7 @@ export function exportMaintenancePlansPDF(
   pdf.rect(0, 0, pageWidth, pdf.internal.pageSize.getHeight(), 'F');
 
   const subtitleParts = [`Filtro: ${filterName}`];
-  addHeader(pdf, 'Relatório de Planos de Manutenção Preventiva', subtitleParts.join(' | '));
+  addHeader(pdf, 'Relatório de Planos de Manutenção Preventiva', subtitleParts.join(' | '), logoData);
 
   let y = 46;
 
@@ -323,10 +355,11 @@ export function exportMaintenancePlansPDF(
 }
 
 // ===== REQUESTS REPORT =====
-export function exportMaintenanceRequestsPDF(
+export async function exportMaintenanceRequestsPDF(
   requests: RequestRow[],
   filterName: string
 ) {
+  const logoData = await loadLogoAsBase64();
   const pdf = new jsPDF('p', 'mm', 'a4');
   const pageWidth = 210;
   const margin = 12;
@@ -335,7 +368,7 @@ export function exportMaintenanceRequestsPDF(
   pdf.setFillColor(...COLORS.dark);
   pdf.rect(0, 0, pageWidth, pdf.internal.pageSize.getHeight(), 'F');
 
-  addHeader(pdf, 'Relatório de Pedidos de Manutenção', `Filtro: ${filterName}`);
+  addHeader(pdf, 'Relatório de Pedidos de Manutenção', `Filtro: ${filterName}`, logoData);
 
   let y = 46;
 
@@ -408,10 +441,11 @@ export function exportMaintenanceRequestsPDF(
 }
 
 // ===== HISTORY REPORT =====
-export function exportMaintenanceHistoryPDF(
+export async function exportMaintenanceHistoryPDF(
   records: HistoryRow[],
   filterName: string
 ) {
+  const logoData = await loadLogoAsBase64();
   const pdf = new jsPDF('p', 'mm', 'a4');
   const pageWidth = 210;
   const margin = 12;
@@ -420,7 +454,7 @@ export function exportMaintenanceHistoryPDF(
   pdf.setFillColor(...COLORS.dark);
   pdf.rect(0, 0, pageWidth, pdf.internal.pageSize.getHeight(), 'F');
 
-  addHeader(pdf, 'Relatório de Histórico de Manutenção', `Filtro: ${filterName} | Total: ${records.length} registros`);
+  addHeader(pdf, 'Relatório de Histórico de Manutenção', `Filtro: ${filterName} | Total: ${records.length} registros`, logoData);
 
   let y = 46;
 

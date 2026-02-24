@@ -12,7 +12,7 @@ import { Plus, Wrench, AlertTriangle, CheckCircle, Trash2, Edit2, Loader2, Camer
 import { toast } from "@/hooks/use-toast";
 import PhotoUpload from "@/components/PhotoUpload";
 import * as XLSX from 'xlsx';
-import { exportElementToPDF } from '@/lib/pdf-export';
+import { exportMaintenancePlansPDF, exportMaintenanceRequestsPDF, exportMaintenanceHistoryPDF } from '@/lib/pdf-export';
 
 const statusConfig = {
   ok: { color: 'text-success', bg: 'bg-success/10', border: 'border-l-success', label: 'OK' },
@@ -254,7 +254,25 @@ export default function MaintenancePage() {
               }}>
                 <FileSpreadsheet className="w-4 h-4 text-success" /> Excel
               </Button>
-              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => exportElementToPDF('plans-content', 'Planos_Manutencao.pdf')}>
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => {
+                const filterName = planFilter === 'all' ? 'Todos' : equipments.find(e => e.id === planFilter)?.name || 'Filtrado';
+                const rows = filteredPlans.map(p => {
+                  const eq = equipments.find(e => e.id === p.equipment_id);
+                  const currentHM = eq?.current_hour_meter || 0;
+                  return {
+                    equipment: eq?.name || '—',
+                    description: p.description,
+                    intervalHours: p.interval_hours,
+                    nextDueAt: p.next_due_at,
+                    lastDoneAt: p.last_done_at,
+                    currentHM,
+                    remaining: p.next_due_at - currentHM,
+                    status: p.status as 'ok' | 'approaching' | 'overdue',
+                    lastExecuted: p.last_executed_at ? new Date(p.last_executed_at).toLocaleDateString('pt-BR') : undefined,
+                  };
+                });
+                exportMaintenancePlansPDF(rows, filterName);
+              }}>
                 <FileText className="w-4 h-4 text-primary" /> PDF
               </Button>
             <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditPlan(null); setForm({ equipmentId: '', description: '', intervalHours: '', lastDoneAt: '' }); } }}>
@@ -371,7 +389,23 @@ export default function MaintenancePage() {
               }}>
                 <FileSpreadsheet className="w-4 h-4 text-success" /> Excel
               </Button>
-              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => exportElementToPDF('requests-content', 'Pedidos_Manutencao.pdf')}>
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => {
+                const filterName = requestFilter === 'all' ? 'Todos' : equipments.find(e => e.id === requestFilter)?.name || 'Filtrado';
+                const rows = filteredRequests.map(r => {
+                  const eq = equipments.find(e => e.id === r.equipment_id);
+                  return {
+                    equipment: eq?.name || '—',
+                    description: r.description,
+                    priority: priorityConfig[r.priority]?.label || r.priority,
+                    status: requestStatusConfig[r.status]?.label || r.status,
+                    operator: r.operator_name,
+                    date: new Date(r.created_at).toLocaleDateString('pt-BR'),
+                    resolvedAt: r.resolved_at ? new Date(r.resolved_at).toLocaleDateString('pt-BR') : undefined,
+                    notes: r.notes || undefined,
+                  };
+                });
+                exportMaintenanceRequestsPDF(rows, filterName);
+              }}>
                 <FileText className="w-4 h-4 text-primary" /> PDF
               </Button>
             </div>
@@ -481,7 +515,23 @@ export default function MaintenancePage() {
               }}>
                 <FileSpreadsheet className="w-4 h-4 text-success" /> Excel
               </Button>
-              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => exportElementToPDF('history-content', 'Historico_Manutencao.pdf')}>
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => {
+                const filterName = historyFilter === 'all' ? 'Todos' : equipments.find(e => e.id === historyFilter)?.name || 'Filtrado';
+                const rows = filteredHistory.map(h => {
+                  const eq = equipments.find(e => e.id === h.equipment_id);
+                  const plan = plans.find(p => p.id === h.plan_id);
+                  return {
+                    equipment: eq?.name || '—',
+                    description: h.description,
+                    hourMeter: h.hour_meter,
+                    executedAt: new Date(h.executed_at).toLocaleDateString('pt-BR'),
+                    operator: h.operator_name || undefined,
+                    notes: h.notes || undefined,
+                    planDescription: plan?.description || undefined,
+                  };
+                });
+                exportMaintenanceHistoryPDF(rows, filterName);
+              }}>
                 <FileText className="w-4 h-4 text-primary" /> PDF
               </Button>
               <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>

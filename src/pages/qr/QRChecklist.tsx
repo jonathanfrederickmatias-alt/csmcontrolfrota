@@ -8,9 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { ClipboardCheck, CheckCircle, Loader2, AlertTriangle, ShieldCheck, ShieldX } from "lucide-react";
+import { ClipboardCheck, CheckCircle, Loader2, AlertTriangle, ShieldCheck, ShieldX, Camera } from "lucide-react";
 import PublicLayout from "@/components/PublicLayout";
 import { useSearchParams } from "react-router-dom";
+import PhotoUpload from "@/components/PhotoUpload";
 
 const defaultItems = [
   "Nível de óleo do motor","Nível de água/refrigerante","Nível de óleo hidráulico",
@@ -36,6 +37,7 @@ export default function QRChecklist() {
   const [maintenancePriority, setMaintenancePriority] = useState('medium');
   const [savingMaintenance, setSavingMaintenance] = useState(false);
   const [maintenanceSaved, setMaintenanceSaved] = useState(false);
+  const [photoUrl, setPhotoUrl] = useState('');
 
   useEffect(() => {
     supabase.from('equipments').select('*').order('name').then(({ data }) => {
@@ -143,7 +145,7 @@ export default function QRChecklist() {
             <Label>Prioridade</Label>
             <Select value={maintenancePriority} onValueChange={setMaintenancePriority}>
               <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-              <SelectContent position="popper" className="z-[9999]">
+              <SelectContent position="popper" sideOffset={4} className="z-[9999]">
                 <SelectItem value="low">Baixa</SelectItem>
                 <SelectItem value="medium">Média</SelectItem>
                 <SelectItem value="high">Alta</SelectItem>
@@ -216,7 +218,7 @@ export default function QRChecklist() {
                       className="h-7 px-2 text-xs"
                       onClick={() => toggleItem(item.id, false)}
                     >
-                      <ShieldX className="w-3.5 h-3.5 mr-1" />Não Conforme
+                      <ShieldX className="w-3.5 h-3.5 mr-1" />NC
                     </Button>
                     <Button
                       type="button"
@@ -225,7 +227,7 @@ export default function QRChecklist() {
                       className={`h-7 px-2 text-xs ${item.checked === true ? 'bg-success text-success-foreground hover:bg-success/90' : ''}`}
                       onClick={() => toggleItem(item.id, true)}
                     >
-                      <ShieldCheck className="w-3.5 h-3.5 mr-1" />Conforme
+                      <ShieldCheck className="w-3.5 h-3.5 mr-1" />C
                     </Button>
                   </div>
                 </div>
@@ -235,6 +237,10 @@ export default function QRChecklist() {
               </div>
             ))}
           </div>
+        </div>
+
+        <div className="glass-card rounded-xl p-5">
+          <PhotoUpload label="Foto do Equipamento (opcional)" onUploaded={setPhotoUrl} />
         </div>
 
         <div>

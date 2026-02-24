@@ -1,1 +1,4 @@
 project_id = "fehcpvmowfjpctjkndka"
+
+[functions.check-maintenance-alerts]
+verify_jwt = false

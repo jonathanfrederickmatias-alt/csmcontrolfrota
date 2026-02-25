@@ -6,9 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { CheckCircle, Wrench, Loader2, Play, Square, Camera } from "lucide-react";
+import { CheckCircle, Wrench, Loader2, Play, Square, Plus, Trash2, Package } from "lucide-react";
 import PublicLayout from "@/components/PublicLayout";
 import PhotoUpload from "@/components/PhotoUpload";
+
+interface Part {
+  code: string;
+  description: string;
+}
 
 interface WorkOrder {
   id: string;
@@ -20,6 +25,7 @@ interface WorkOrder {
   mechanic_name: string | null;
   notes: string | null;
   part_code: string | null;
+  parts: Part[];
   photo_start_url: string | null;
   photo_end_url: string | null;
   started_at: string | null;
@@ -44,7 +50,7 @@ export default function QRMechanicOS() {
 
   // Form fields
   const [mechanicName, setMechanicName] = useState('');
-  const [partCode, setPartCode] = useState('');
+  const [parts, setParts] = useState<Part[]>([{ code: '', description: '' }]);
   const [notes, setNotes] = useState('');
   const [photoStartUrl, setPhotoStartUrl] = useState('');
   const [photoEndUrl, setPhotoEndUrl] = useState('');
@@ -56,10 +62,17 @@ export default function QRMechanicOS() {
       const wo = data as unknown as WorkOrder;
       setOs(wo);
       setMechanicName(wo.mechanic_name || '');
-      setPartCode(wo.part_code || '');
       setNotes(wo.notes || '');
       setPhotoStartUrl(wo.photo_start_url || '');
       setPhotoEndUrl(wo.photo_end_url || '');
+
+      // Load parts from DB or migrate from old part_code field
+      const dbParts = Array.isArray(wo.parts) && wo.parts.length > 0
+        ? wo.parts
+        : wo.part_code
+          ? [{ code: wo.part_code, description: '' }]
+          : [{ code: '', description: '' }];
+      setParts(dbParts);
 
       const { data: eq } = await supabase.from('equipments').select('*').eq('id', wo.equipment_id).single();
       setEquipment(eq as DBEquipment | null);
@@ -69,6 +82,14 @@ export default function QRMechanicOS() {
 
   useEffect(() => { fetchOS(); }, [osId]);
 
+  const addPart = () => setParts(prev => [...prev, { code: '', description: '' }]);
+  const removePart = (index: number) => setParts(prev => prev.filter((_, i) => i !== index));
+  const updatePart = (index: number, field: keyof Part, value: string) => {
+    setParts(prev => prev.map((p, i) => i === index ? { ...p, [field]: value } : p));
+  };
+
+  const cleanParts = () => parts.filter(p => p.code.trim() || p.description.trim());
+
   const handleStartService = async () => {
     if (!os || !mechanicName || !photoStartUrl) return;
     setSaving(true);
@@ -77,7 +98,8 @@ export default function QRMechanicOS() {
       mechanic_name: mechanicName,
       photo_start_url: photoStartUrl,
       started_at: new Date().toISOString(),
-      part_code: partCode || null,
+      parts: cleanParts() as unknown as any,
+      part_code: cleanParts().map(p => p.code).filter(Boolean).join(', ') || null,
       notes: notes || null,
     }).eq('id', os.id);
     setSaving(false);
@@ -91,7 +113,8 @@ export default function QRMechanicOS() {
       status: 'done',
       photo_end_url: photoEndUrl,
       completed_at: new Date().toISOString(),
-      part_code: partCode || null,
+      parts: cleanParts() as unknown as any,
+      part_code: cleanParts().map(p => p.code).filter(Boolean).join(', ') || null,
       notes: notes || null,
     }).eq('id', os.id);
     setSaving(false);
@@ -119,6 +142,7 @@ export default function QRMechanicOS() {
   }
 
   if (os.status === 'done') {
+    const doneParts = Array.isArray(os.parts) ? os.parts : [];
     return (
       <PublicLayout>
         <div className="glass-card rounded-xl p-8 text-center">
@@ -126,9 +150,25 @@ export default function QRMechanicOS() {
           <h2 className="text-xl font-bold text-success">OS #{os.os_number} Concluída!</h2>
           <p className="text-muted-foreground mt-2">Serviço finalizado e registrado no histórico.</p>
           {os.mechanic_name && <p className="text-sm text-muted-foreground mt-2">Mecânico: <strong>{os.mechanic_name}</strong></p>}
-          {os.part_code && <p className="text-sm text-muted-foreground">Peça: <strong>{os.part_code}</strong></p>}
           {os.started_at && <p className="text-sm text-muted-foreground">Início: {new Date(os.started_at).toLocaleString('pt-BR')}</p>}
           {os.completed_at && <p className="text-sm text-success">Término: {new Date(os.completed_at).toLocaleString('pt-BR')}</p>}
+
+          {doneParts.length > 0 && (
+            <div className="mt-4 text-left">
+              <p className="text-xs text-muted-foreground font-semibold mb-2 flex items-center gap-1.5">
+                <Package className="w-3.5 h-3.5" /> Peças Trocadas ({doneParts.length})
+              </p>
+              <div className="space-y-1.5">
+                {doneParts.map((p, i) => (
+                  <div key={i} className="bg-secondary/50 rounded-lg px-3 py-2 text-sm">
+                    <span className="font-mono font-bold text-primary">{p.code || '—'}</span>
+                    {p.description && <span className="text-muted-foreground ml-2">— {p.description}</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-3 mt-4">
             {os.photo_start_url && (
               <div>
@@ -176,14 +216,47 @@ export default function QRMechanicOS() {
           />
         </div>
 
-        {/* Part code */}
+        {/* Parts list */}
         <div>
-          <Label>Código da Peça Trocada</Label>
-          <Input
-            value={partCode}
-            onChange={e => setPartCode(e.target.value)}
-            placeholder="Ex: RLM-4520, FLT-001..."
-          />
+          <div className="flex items-center justify-between mb-2">
+            <Label className="flex items-center gap-1.5">
+              <Package className="w-4 h-4" /> Peças Trocadas
+            </Label>
+            <Button type="button" variant="outline" size="sm" onClick={addPart} className="gap-1 text-xs h-7">
+              <Plus className="w-3.5 h-3.5" /> Adicionar
+            </Button>
+          </div>
+          <div className="space-y-2">
+            {parts.map((part, index) => (
+              <div key={index} className="flex gap-2 items-start">
+                <div className="flex-1 space-y-1.5">
+                  <Input
+                    value={part.code}
+                    onChange={e => updatePart(index, 'code', e.target.value)}
+                    placeholder="Código (ex: RLM-4520)"
+                    className="h-9 text-sm"
+                  />
+                  <Input
+                    value={part.description}
+                    onChange={e => updatePart(index, 'description', e.target.value)}
+                    placeholder="Descrição da peça"
+                    className="h-9 text-sm"
+                  />
+                </div>
+                {parts.length > 1 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removePart(index)}
+                    className="h-9 w-9 p-0 text-destructive hover:text-destructive shrink-0 mt-0"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Notes */}

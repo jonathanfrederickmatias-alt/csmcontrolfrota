@@ -405,6 +405,7 @@ export type Database = {
           notes: string | null
           os_number: number
           part_code: string | null
+          parts: Json
           photo_end_url: string | null
           photo_start_url: string | null
           priority: string
@@ -423,6 +424,7 @@ export type Database = {
           notes?: string | null
           os_number?: number
           part_code?: string | null
+          parts?: Json
           photo_end_url?: string | null
           photo_start_url?: string | null
           priority?: string
@@ -441,6 +443,7 @@ export type Database = {
           notes?: string | null
           os_number?: number
           part_code?: string | null
+          parts?: Json
           photo_end_url?: string | null
           photo_start_url?: string | null
           priority?: string

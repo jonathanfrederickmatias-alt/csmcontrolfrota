@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { DBEquipment, DBMaintenancePlan, DBMaintenanceRequest, DBMaintenanceHistory } from "@/lib/supabase-types";
+import { DBEquipment, DBMaintenancePlan, DBMaintenanceRequest, DBMaintenanceHistory, DBWorkOrder } from "@/lib/supabase-types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Wrench, AlertTriangle, CheckCircle, Trash2, Edit2, Loader2, Camera, ClipboardList, History, FileSpreadsheet, FileText } from "lucide-react";
+import { Plus, Wrench, AlertTriangle, CheckCircle, Trash2, Edit2, Loader2, Camera, ClipboardList, History, FileSpreadsheet, FileText, Clipboard } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import PhotoUpload from "@/components/PhotoUpload";
 import * as XLSX from 'xlsx';
@@ -32,12 +32,18 @@ const priorityConfig = {
   high: { label: 'Alta', bg: 'bg-warning/20 text-warning' },
   urgent: { label: 'Urgente', bg: 'bg-destructive/20 text-destructive' },
 };
+const osStatusConfig = {
+  open: { label: 'Aberta', bg: 'bg-secondary text-muted-foreground' },
+  in_progress: { label: 'Em andamento', bg: 'bg-primary/15 text-primary' },
+  done: { label: 'Concluída', bg: 'bg-success/15 text-success' },
+};
 
 export default function MaintenancePage() {
   const [plans, setPlans] = useState<DBMaintenancePlan[]>([]);
   const [requests, setRequests] = useState<DBMaintenanceRequest[]>([]);
   const [equipments, setEquipments] = useState<DBEquipment[]>([]);
   const [history, setHistory] = useState<DBMaintenanceHistory[]>([]);
+  const [workOrders, setWorkOrders] = useState<DBWorkOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editPlan, setEditPlan] = useState<DBMaintenancePlan | null>(null);
@@ -53,23 +59,25 @@ export default function MaintenancePage() {
   const [historyFilter, setHistoryFilter] = useState('all');
   const [planFilter, setPlanFilter] = useState('all');
   const [requestFilter, setRequestFilter] = useState('all');
-
+  const [osFilter, setOsFilter] = useState('all');
   // Photo dialog state
   const [photoDialog, setPhotoDialog] = useState<{ requestId: string; targetStatus: 'in_progress' | 'done'; label: string } | null>(null);
   const [photoUrl, setPhotoUrl] = useState('');
   const [photoSaving, setPhotoSaving] = useState(false);
 
   const fetchAll = async () => {
-    const [eqRes, plRes, reqRes, histRes] = await Promise.all([
+    const [eqRes, plRes, reqRes, histRes, osRes] = await Promise.all([
       supabase.from('equipments').select('*').order('name'),
       supabase.from('maintenance_plans').select('*').order('status'),
       supabase.from('maintenance_requests').select('*').order('created_at', { ascending: false }),
       supabase.from('maintenance_history').select('*').order('executed_at', { ascending: false }).limit(200),
+      supabase.from('work_orders').select('*').order('created_at', { ascending: false }),
     ]);
     setEquipments((eqRes.data || []) as DBEquipment[]);
     setPlans((plRes.data || []) as DBMaintenancePlan[]);
     setRequests((reqRes.data || []) as DBMaintenanceRequest[]);
     setHistory((histRes.data || []) as DBMaintenanceHistory[]);
+    setWorkOrders((osRes.data || []) as DBWorkOrder[]);
     setLoading(false);
   };
 
@@ -209,7 +217,21 @@ export default function MaintenancePage() {
   const filteredPlans = planFilter === 'all' ? sortedPlans : sortedPlans.filter(p => p.equipment_id === planFilter);
   const filteredRequests = requestFilter === 'all' ? requests : requests.filter(r => r.equipment_id === requestFilter);
   const filteredHistory = historyFilter === 'all' ? history : history.filter(h => h.equipment_id === historyFilter);
+  const filteredOrders = osFilter === 'all' ? workOrders : workOrders.filter(o => o.equipment_id === osFilter);
 
+  const handleOsStatusChange = async (os: DBWorkOrder, newStatus: string) => {
+    const update: any = { status: newStatus };
+    if (newStatus === 'in_progress') update.started_at = new Date().toISOString();
+    if (newStatus === 'done') update.completed_at = new Date().toISOString();
+    await supabase.from('work_orders').update(update).eq('id', os.id);
+    toast({ title: 'Status da OS atualizado!' });
+    fetchAll();
+  };
+
+  const handleOsMechanicChange = async (os: DBWorkOrder, mechanic: string) => {
+    await supabase.from('work_orders').update({ mechanic_name: mechanic }).eq('id', os.id);
+    fetchAll();
+  };
   return (
     <div className="space-y-6">
       <div>
@@ -218,11 +240,83 @@ export default function MaintenancePage() {
       </div>
 
       <Tabs defaultValue="plans" className="w-full">
-        <TabsList className="w-full grid grid-cols-3">
+        <TabsList className="w-full grid grid-cols-4">
+          <TabsTrigger value="os" className="gap-1.5"><Clipboard className="w-4 h-4" /> OS</TabsTrigger>
           <TabsTrigger value="plans" className="gap-1.5"><Wrench className="w-4 h-4" /> Planos</TabsTrigger>
           <TabsTrigger value="requests" className="gap-1.5"><AlertTriangle className="w-4 h-4" /> Pedidos</TabsTrigger>
           <TabsTrigger value="history" className="gap-1.5"><History className="w-4 h-4" /> Histórico</TabsTrigger>
         </TabsList>
+
+        {/* ===== ORDENS DE SERVIÇO ===== */}
+        <TabsContent value="os" className="space-y-4 mt-4">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <Select value={osFilter} onValueChange={setOsFilter}>
+              <SelectTrigger className="w-64"><SelectValue placeholder="Filtrar por equipamento" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os equipamentos</SelectItem>
+                {equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eq.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          {loading ? (
+            <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
+          ) : filteredOrders.length === 0 ? (
+            <div className="glass-card rounded-xl p-12 text-center">
+              <Clipboard className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">Nenhuma OS registrada. As OS são geradas automaticamente ao criar um pedido de manutenção.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredOrders.map(os => {
+                const eq = equipments.find(e => e.id === os.equipment_id);
+                const pc = priorityConfig[os.priority] || priorityConfig.medium;
+                const sc = osStatusConfig[os.status] || osStatusConfig.open;
+                return (
+                  <div key={os.id} className="glass-card rounded-xl p-5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <span className="text-xs font-mono font-bold bg-primary/10 text-primary px-2 py-0.5 rounded">OS #{os.os_number}</span>
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${pc.bg}`}>{pc.label}</span>
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${sc.bg}`}>{sc.label}</span>
+                        </div>
+                        <p className="font-semibold mt-1">{os.description}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{eq?.name || '—'} — {new Date(os.created_at).toLocaleDateString('pt-BR')}</p>
+                        {os.mechanic_name && <p className="text-xs text-muted-foreground">Mecânico: {os.mechanic_name}</p>}
+                        {os.started_at && <p className="text-xs text-muted-foreground">Início: {new Date(os.started_at).toLocaleDateString('pt-BR')}</p>}
+                        {os.completed_at && <p className="text-xs text-success">Concluída: {new Date(os.completed_at).toLocaleDateString('pt-BR')}</p>}
+                        {os.notes && <p className="text-xs text-muted-foreground italic mt-1">Obs: {os.notes}</p>}
+                      </div>
+                      {os.status !== 'done' && (
+                        <div className="shrink-0 space-y-2">
+                          <Input
+                            placeholder="Nome do mecânico"
+                            className="h-8 text-xs w-40"
+                            defaultValue={os.mechanic_name || ''}
+                            onBlur={e => { if (e.target.value !== (os.mechanic_name || '')) handleOsMechanicChange(os, e.target.value); }}
+                          />
+                          <Select value={os.status} onValueChange={v => handleOsStatusChange(os, v)}>
+                            <SelectTrigger className="h-8 text-xs w-40"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="open">Aberta</SelectItem>
+                              <SelectItem value="in_progress">Em andamento</SelectItem>
+                              <SelectItem value="done">Concluída</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                      {os.status === 'done' && os.completed_at && (
+                        <span className="text-xs text-muted-foreground shrink-0">
+                          Concluída em {new Date(os.completed_at).toLocaleDateString('pt-BR')}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
 
         {/* ===== PLANOS ===== */}
         <TabsContent value="plans" className="space-y-4 mt-4">

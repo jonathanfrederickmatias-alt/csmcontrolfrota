@@ -11,7 +11,7 @@ import { toast } from "sonner";
 
 type EqType = 'machine' | 'truck' | 'combo';
 
-const emptyForm = { name: '', type: 'machine' as EqType, plate: '', model: '', fuelCapacity: '', currentFuel: '', hourMeter: '' };
+const emptyForm = { name: '', type: 'machine' as EqType, plate: '', model: '', brand: '', costCenter: '', fuelCapacity: '', currentFuel: '', hourMeter: '' };
 
 export default function EquipmentPage() {
   const [equipments, setEquipments] = useState<DBEquipment[]>([]);
@@ -43,6 +43,8 @@ export default function EquipmentPage() {
       type: eq.type,
       plate: eq.plate || '',
       model: eq.model || '',
+      brand: eq.brand || '',
+      costCenter: eq.cost_center || '',
       fuelCapacity: eq.fuel_capacity?.toString() || '',
       currentFuel: eq.current_fuel?.toString() || '',
       hourMeter: eq.current_hour_meter?.toString() || '0',
@@ -59,6 +61,8 @@ export default function EquipmentPage() {
         type: form.type,
         plate: form.plate || null,
         model: form.model || null,
+        brand: form.brand || null,
+        cost_center: form.costCenter || null,
         current_hour_meter: form.hourMeter ? Number(form.hourMeter) : 0,
         fuel_capacity: form.fuelCapacity ? Number(form.fuelCapacity) : null,
         current_fuel: form.currentFuel ? Number(form.currentFuel) : 0,
@@ -71,6 +75,8 @@ export default function EquipmentPage() {
         type: form.type,
         plate: form.plate || null,
         model: form.model || null,
+        brand: form.brand || null,
+        cost_center: form.costCenter || null,
         current_hour_meter: 0,
         fuel_capacity: form.fuelCapacity ? Number(form.fuelCapacity) : null,
         current_fuel: form.currentFuel ? Number(form.currentFuel) : 0,
@@ -123,8 +129,10 @@ export default function EquipmentPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div><Label>Placa</Label><Input value={form.plate} onChange={e => setForm({...form, plate: e.target.value})} /></div>
+              <div><Label>Placa/Série</Label><Input value={form.plate} onChange={e => setForm({...form, plate: e.target.value})} /></div>
               <div><Label>Modelo</Label><Input value={form.model} onChange={e => setForm({...form, model: e.target.value})} /></div>
+              <div><Label>Marca</Label><Input value={form.brand} onChange={e => setForm({...form, brand: e.target.value})} /></div>
+              <div><Label>Centro de Custo</Label><Input value={form.costCenter} onChange={e => setForm({...form, costCenter: e.target.value})} /></div>
               {editingId && (
                 <div><Label>Horímetro</Label><Input type="number" value={form.hourMeter} onChange={e => setForm({...form, hourMeter: e.target.value})} /></div>
               )}
@@ -168,7 +176,7 @@ export default function EquipmentPage() {
                   </div>
                   {selectedEq.plate && (
                     <div className="bg-secondary/50 rounded-lg p-3">
-                      <p className="text-xs text-muted-foreground">Placa</p>
+                      <p className="text-xs text-muted-foreground">Placa/Série</p>
                       <p className="font-mono font-semibold text-foreground">{selectedEq.plate}</p>
                     </div>
                   )}
@@ -176,6 +184,18 @@ export default function EquipmentPage() {
                     <div className="bg-secondary/50 rounded-lg p-3">
                       <p className="text-xs text-muted-foreground">Modelo</p>
                       <p className="font-semibold text-foreground">{selectedEq.model}</p>
+                    </div>
+                  )}
+                  {selectedEq.brand && (
+                    <div className="bg-secondary/50 rounded-lg p-3">
+                      <p className="text-xs text-muted-foreground">Marca</p>
+                      <p className="font-semibold text-foreground">{selectedEq.brand}</p>
+                    </div>
+                  )}
+                  {selectedEq.cost_center && (
+                    <div className="bg-secondary/50 rounded-lg p-3">
+                      <p className="text-xs text-muted-foreground">Centro de Custo</p>
+                      <p className="font-semibold text-foreground">{selectedEq.cost_center}</p>
                     </div>
                   )}
                   {selectedEq.type === 'combo' && selectedEq.fuel_capacity && (
@@ -223,8 +243,9 @@ export default function EquipmentPage() {
                   {statusLabels[eq.status] || eq.status}
                 </span>
               </div>
-              {eq.plate && <p className="text-xs text-muted-foreground">Placa: {eq.plate}</p>}
+              {eq.plate && <p className="text-xs text-muted-foreground">Placa/Série: {eq.plate}</p>}
               {eq.model && <p className="text-xs text-muted-foreground">Modelo: {eq.model}</p>}
+              {eq.brand && <p className="text-xs text-muted-foreground">Marca: {eq.brand}</p>}
               <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
                 <div>
                   <p className="text-xs text-muted-foreground">Horímetro</p>

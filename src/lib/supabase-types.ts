@@ -5,6 +5,8 @@ export interface DBEquipment {
   type: 'machine' | 'truck' | 'combo';
   plate?: string;
   model?: string;
+  brand?: string;
+  cost_center?: string;
   current_hour_meter: number;
   fuel_capacity?: number;
   current_fuel?: number;

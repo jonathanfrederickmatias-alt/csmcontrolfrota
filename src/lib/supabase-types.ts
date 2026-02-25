@@ -70,6 +70,8 @@ export interface DBChecklist {
   hour_meter: number;
   date: string;
   status: 'ok' | 'attention' | 'critical';
+  type: 'daily' | 'corrective' | 'preventive';
+  photo_url?: string;
   items: ChecklistItemDB[];
   created_at: string;
 }

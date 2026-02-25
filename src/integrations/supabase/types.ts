@@ -23,7 +23,9 @@ export type Database = {
           id: string
           items: Json
           operator_name: string
+          photo_url: string | null
           status: string
+          type: string
         }
         Insert: {
           created_at?: string
@@ -33,7 +35,9 @@ export type Database = {
           id?: string
           items?: Json
           operator_name: string
+          photo_url?: string | null
           status?: string
+          type?: string
         }
         Update: {
           created_at?: string
@@ -43,7 +47,9 @@ export type Database = {
           id?: string
           items?: Json
           operator_name?: string
+          photo_url?: string | null
           status?: string
+          type?: string
         }
         Relationships: [
           {

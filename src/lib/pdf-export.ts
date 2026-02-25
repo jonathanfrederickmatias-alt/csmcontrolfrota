@@ -516,6 +516,7 @@ interface WorkOrderRow {
   priority: string;
   status: string;
   mechanic: string;
+  parts?: string;
   date: string;
   startedAt?: string;
   completedAt?: string;
@@ -549,8 +550,8 @@ export async function exportWorkOrdersPDF(
 
   y += 30;
 
-  const colWidths = [12, 32, 38, 18, 22, 22, 20, 22];
-  const colHeaders = ['OS #', 'Equipamento', 'Descrição', 'Prioridade', 'Status', 'Mecânico', 'Início', 'Concl.'];
+  const colWidths = [10, 26, 30, 16, 18, 20, 26, 18, 22];
+  const colHeaders = ['OS #', 'Equipamento', 'Descrição', 'Prioridade', 'Status', 'Mecânico', 'Peças', 'Início', 'Concl.'];
   const colX = [margin];
   for (let i = 1; i < colWidths.length; i++) colX.push(colX[i - 1] + colWidths[i - 1]);
 
@@ -577,8 +578,8 @@ export async function exportWorkOrdersPDF(
 
     pdf.setFont('helvetica', 'normal');
     pdf.setTextColor(...COLORS.text);
-    pdf.text(o.equipment.substring(0, 20), colX[1] + 2, y + 4.5);
-    pdf.text(o.description.substring(0, 24), colX[2] + 2, y + 4.5);
+    pdf.text(o.equipment.substring(0, 16), colX[1] + 2, y + 4.5);
+    pdf.text(o.description.substring(0, 20), colX[2] + 2, y + 4.5);
 
     const prioColor = o.priority === 'Urgente' ? COLORS.danger : o.priority === 'Alta' ? COLORS.warning : o.priority === 'Média' ? COLORS.primary : COLORS.textMuted;
     pdf.setTextColor(...prioColor);
@@ -591,9 +592,10 @@ export async function exportWorkOrdersPDF(
 
     pdf.setFont('helvetica', 'normal');
     pdf.setTextColor(...COLORS.textMuted);
-    pdf.text((o.mechanic || '—').substring(0, 14), colX[5] + 2, y + 4.5);
-    pdf.text(o.startedAt || '—', colX[6] + 2, y + 4.5);
-    pdf.text(o.completedAt || '—', colX[7] + 2, y + 4.5);
+    pdf.text((o.mechanic || '—').substring(0, 12), colX[5] + 2, y + 4.5);
+    pdf.text((o.parts || '—').substring(0, 18), colX[6] + 2, y + 4.5);
+    pdf.text(o.startedAt || '—', colX[7] + 2, y + 4.5);
+    pdf.text(o.completedAt || '—', colX[8] + 2, y + 4.5);
 
     y += 6.5;
   });

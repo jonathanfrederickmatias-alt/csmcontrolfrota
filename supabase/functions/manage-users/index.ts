@@ -28,16 +28,15 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Check admin role
+    // Check admin or gestor role
     const { data: roleData } = await supabaseAdmin
       .from('user_roles')
       .select('role')
       .eq('user_id', caller.id)
-      .eq('role', 'admin')
-      .maybeSingle();
+      .in('role', ['admin', 'gestor']);
 
-    if (!roleData) {
-      return new Response(JSON.stringify({ error: 'Apenas administradores podem gerenciar usuários' }), {
+    if (!roleData || roleData.length === 0) {
+      return new Response(JSON.stringify({ error: 'Apenas administradores e gestores podem gerenciar usuários' }), {
         status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }

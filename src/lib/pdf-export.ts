@@ -507,3 +507,354 @@ export async function exportMaintenanceHistoryPDF(
 
   pdf.save(`Historico_Manutencao_${filterName.replace(/\s/g, '_')}.pdf`);
 }
+
+// ===== GENERAL REPORTS PDF =====
+interface GeneralReportData {
+  period: string;
+  filterName: string;
+  totalFuel: number;
+  totalChecklists: number;
+  activeEquipments: number;
+  overdueMaintenances: number;
+  fuelByEquipment: { name: string; litros: number }[];
+  fuelByDay: { date: string; litros: number }[];
+  hoursByEquipment: { name: string; horimetro: number }[];
+  checklistStatus: { name: string; value: number }[];
+  maintenanceStatus: { name: string; value: number; color: string }[];
+  fuelRecords: { date: string; equipment: string; combo: string; liters: number; operator: string }[];
+  checklistRecords: { date: string; equipment: string; operator: string; hourMeter: number; status: string }[];
+  maintenancePlans: { equipment: string; description: string; interval: number; nextDue: number; status: string; lastExec: string }[];
+}
+
+export async function exportGeneralReportsPDF(data: GeneralReportData) {
+  const logoData = await loadLogoAsBase64();
+  const pdf = new jsPDF('p', 'mm', 'a4');
+  const pageWidth = 210;
+  const margin = 12;
+  const contentWidth = pageWidth - margin * 2;
+
+  pdf.setFillColor(...COLORS.dark);
+  pdf.rect(0, 0, pageWidth, pdf.internal.pageSize.getHeight(), 'F');
+
+  addHeader(pdf, 'Relatório Geral de Frota e Operações', `Período: ${data.period} | Equipamento: ${data.filterName}`, logoData);
+
+  let y = 46;
+
+  // KPI Summary Cards
+  const cardW = (contentWidth - 9) / 4;
+  drawSummaryCard(pdf, margin, y, cardW, 'Combustível (L)', data.totalFuel.toLocaleString('pt-BR'), COLORS.primary);
+  drawSummaryCard(pdf, margin + cardW + 3, y, cardW, 'Checklists', String(data.totalChecklists), COLORS.success);
+  drawSummaryCard(pdf, margin + (cardW + 3) * 2, y, cardW, 'Manutenções Atrasadas', String(data.overdueMaintenances), COLORS.danger);
+  drawSummaryCard(pdf, margin + (cardW + 3) * 3, y, cardW, 'Equipamentos Ativos', String(data.activeEquipments), COLORS.warning);
+  y += 30;
+
+  // === FUEL BY EQUIPMENT TABLE ===
+  if (data.fuelByEquipment.length > 0) {
+    y = checkPageBreak(pdf, y, 20);
+    pdf.setFillColor(...COLORS.headerBg);
+    pdf.roundedRect(margin, y, contentWidth, 8, 1, 1, 'F');
+    pdf.setFillColor(...COLORS.primary);
+    pdf.rect(margin, y, 3, 8, 'F');
+    pdf.setTextColor(...COLORS.white);
+    pdf.setFontSize(9);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('Consumo de Combustível por Equipamento', margin + 6, y + 5.5);
+    y += 10;
+
+    const fColW = [90, 96];
+    const fColX = [margin, margin + fColW[0]];
+    pdf.setFillColor(35, 38, 52);
+    pdf.rect(margin, y, contentWidth, 6, 'F');
+    pdf.setTextColor(...COLORS.textMuted);
+    pdf.setFontSize(6.5);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('Equipamento', fColX[0] + 2, y + 4);
+    pdf.text('Litros Consumidos', fColX[1] + 2, y + 4);
+    y += 6;
+
+    data.fuelByEquipment.forEach((item, idx) => {
+      y = checkPageBreak(pdf, y, 7);
+      if (idx % 2 === 1) { pdf.setFillColor(...COLORS.rowAlt); pdf.rect(margin, y, contentWidth, 6.5, 'F'); }
+      pdf.setFontSize(7); pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(...COLORS.text);
+      pdf.text(item.name, fColX[0] + 2, y + 4.5);
+      pdf.setTextColor(...COLORS.primary);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(`${item.litros.toLocaleString('pt-BR')}L`, fColX[1] + 2, y + 4.5);
+      y += 6.5;
+    });
+    y += 6;
+  }
+
+  // === FUEL BY DAY TABLE ===
+  if (data.fuelByDay.length > 0) {
+    y = checkPageBreak(pdf, y, 20);
+    pdf.setFillColor(...COLORS.headerBg);
+    pdf.roundedRect(margin, y, contentWidth, 8, 1, 1, 'F');
+    pdf.setFillColor(...COLORS.primary);
+    pdf.rect(margin, y, 3, 8, 'F');
+    pdf.setTextColor(...COLORS.white);
+    pdf.setFontSize(9);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('Consumo Diário de Combustível', margin + 6, y + 5.5);
+    y += 10;
+
+    const dColW = [90, 96];
+    const dColX = [margin, margin + dColW[0]];
+    pdf.setFillColor(35, 38, 52);
+    pdf.rect(margin, y, contentWidth, 6, 'F');
+    pdf.setTextColor(...COLORS.textMuted);
+    pdf.setFontSize(6.5);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('Data', dColX[0] + 2, y + 4);
+    pdf.text('Litros', dColX[1] + 2, y + 4);
+    y += 6;
+
+    data.fuelByDay.forEach((item, idx) => {
+      y = checkPageBreak(pdf, y, 7);
+      if (idx % 2 === 1) { pdf.setFillColor(...COLORS.rowAlt); pdf.rect(margin, y, contentWidth, 6.5, 'F'); }
+      pdf.setFontSize(7); pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(...COLORS.text);
+      pdf.text(item.date, dColX[0] + 2, y + 4.5);
+      pdf.setTextColor(...COLORS.warning);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(`${item.litros.toLocaleString('pt-BR')}L`, dColX[1] + 2, y + 4.5);
+      y += 6.5;
+    });
+    y += 6;
+  }
+
+  // === HORIMETER TABLE ===
+  if (data.hoursByEquipment.length > 0) {
+    y = checkPageBreak(pdf, y, 20);
+    pdf.setFillColor(...COLORS.headerBg);
+    pdf.roundedRect(margin, y, contentWidth, 8, 1, 1, 'F');
+    pdf.setFillColor(...COLORS.warning);
+    pdf.rect(margin, y, 3, 8, 'F');
+    pdf.setTextColor(...COLORS.white);
+    pdf.setFontSize(9);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('Horímetro Atual por Equipamento', margin + 6, y + 5.5);
+    y += 10;
+
+    const hColW = [90, 96];
+    const hColX = [margin, margin + hColW[0]];
+    pdf.setFillColor(35, 38, 52);
+    pdf.rect(margin, y, contentWidth, 6, 'F');
+    pdf.setTextColor(...COLORS.textMuted);
+    pdf.setFontSize(6.5);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('Equipamento', hColX[0] + 2, y + 4);
+    pdf.text('Horímetro (h)', hColX[1] + 2, y + 4);
+    y += 6;
+
+    data.hoursByEquipment.forEach((item, idx) => {
+      y = checkPageBreak(pdf, y, 7);
+      if (idx % 2 === 1) { pdf.setFillColor(...COLORS.rowAlt); pdf.rect(margin, y, contentWidth, 6.5, 'F'); }
+      pdf.setFontSize(7); pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(...COLORS.text);
+      pdf.text(item.name, hColX[0] + 2, y + 4.5);
+      pdf.setTextColor(...COLORS.warning);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(`${item.horimetro.toLocaleString('pt-BR')}h`, hColX[1] + 2, y + 4.5);
+      y += 6.5;
+    });
+    y += 6;
+  }
+
+  // === CHECKLIST STATUS SUMMARY ===
+  if (data.checklistStatus.length > 0) {
+    y = checkPageBreak(pdf, y, 30);
+    pdf.setFillColor(...COLORS.headerBg);
+    pdf.roundedRect(margin, y, contentWidth, 8, 1, 1, 'F');
+    pdf.setFillColor(...COLORS.success);
+    pdf.rect(margin, y, 3, 8, 'F');
+    pdf.setTextColor(...COLORS.white);
+    pdf.setFontSize(9);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('Status dos Checklists', margin + 6, y + 5.5);
+    y += 12;
+
+    const statusColors: Record<string, [number, number, number]> = { 'OK': COLORS.success, 'Atenção': COLORS.warning, 'Crítico': COLORS.danger };
+    const totalCL = data.checklistStatus.reduce((s, c) => s + c.value, 0);
+    data.checklistStatus.forEach(item => {
+      pdf.setFontSize(8); pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(...(statusColors[item.name] || COLORS.text));
+      const pct = totalCL > 0 ? ((item.value / totalCL) * 100).toFixed(0) : '0';
+      pdf.text(`${item.name}: ${item.value} (${pct}%)`, margin + 4, y);
+      y += 6;
+    });
+    y += 4;
+  }
+
+  // === MAINTENANCE STATUS SUMMARY ===
+  if (data.maintenanceStatus.some(s => s.value > 0)) {
+    y = checkPageBreak(pdf, y, 30);
+    pdf.setFillColor(...COLORS.headerBg);
+    pdf.roundedRect(margin, y, contentWidth, 8, 1, 1, 'F');
+    pdf.setFillColor(...COLORS.warning);
+    pdf.rect(margin, y, 3, 8, 'F');
+    pdf.setTextColor(...COLORS.white);
+    pdf.setFontSize(9);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('Status dos Planos de Manutenção', margin + 6, y + 5.5);
+    y += 12;
+
+    const mStatusColors: Record<string, [number, number, number]> = { 'OK': COLORS.success, 'Próxima': COLORS.warning, 'Atrasada': COLORS.danger };
+    data.maintenanceStatus.forEach(item => {
+      if (item.value > 0) {
+        pdf.setFontSize(8); pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(...(mStatusColors[item.name] || COLORS.text));
+        pdf.text(`${item.name}: ${item.value}`, margin + 4, y);
+        y += 6;
+      }
+    });
+    y += 4;
+  }
+
+  // === DETAILED FUEL RECORDS ===
+  if (data.fuelRecords.length > 0) {
+    y = checkPageBreak(pdf, y, 20);
+    pdf.setFillColor(...COLORS.headerBg);
+    pdf.roundedRect(margin, y, contentWidth, 8, 1, 1, 'F');
+    pdf.setFillColor(...COLORS.primary);
+    pdf.rect(margin, y, 3, 8, 'F');
+    pdf.setTextColor(...COLORS.white);
+    pdf.setFontSize(9);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('Detalhamento de Abastecimentos', margin + 6, y + 5.5);
+    y += 10;
+
+    const rColW = [22, 45, 45, 22, 52];
+    const rColX = [margin];
+    for (let i = 1; i < rColW.length; i++) rColX.push(rColX[i - 1] + rColW[i - 1]);
+    const rHeaders = ['Data', 'Equipamento', 'Comboio', 'Litros', 'Responsável'];
+
+    pdf.setFillColor(35, 38, 52);
+    pdf.rect(margin, y, contentWidth, 6, 'F');
+    pdf.setTextColor(...COLORS.textMuted);
+    pdf.setFontSize(6.5);
+    pdf.setFont('helvetica', 'bold');
+    rHeaders.forEach((h, i) => pdf.text(h, rColX[i] + 2, y + 4));
+    y += 6;
+
+    data.fuelRecords.forEach((r, idx) => {
+      y = checkPageBreak(pdf, y, 7);
+      if (idx % 2 === 1) { pdf.setFillColor(...COLORS.rowAlt); pdf.rect(margin, y, contentWidth, 6.5, 'F'); }
+      pdf.setFontSize(6.5); pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(...COLORS.text);
+      pdf.text(r.date, rColX[0] + 2, y + 4.5);
+      pdf.text(r.equipment.substring(0, 28), rColX[1] + 2, y + 4.5);
+      pdf.text(r.combo.substring(0, 28), rColX[2] + 2, y + 4.5);
+      pdf.setTextColor(...COLORS.primary);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(`${r.liters}L`, rColX[3] + 2, y + 4.5);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(...COLORS.textMuted);
+      pdf.text(r.operator.substring(0, 32), rColX[4] + 2, y + 4.5);
+      y += 6.5;
+    });
+    y += 6;
+  }
+
+  // === DETAILED CHECKLISTS ===
+  if (data.checklistRecords.length > 0) {
+    y = checkPageBreak(pdf, y, 20);
+    pdf.setFillColor(...COLORS.headerBg);
+    pdf.roundedRect(margin, y, contentWidth, 8, 1, 1, 'F');
+    pdf.setFillColor(...COLORS.success);
+    pdf.rect(margin, y, 3, 8, 'F');
+    pdf.setTextColor(...COLORS.white);
+    pdf.setFontSize(9);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('Detalhamento de Checklists', margin + 6, y + 5.5);
+    y += 10;
+
+    const cColW = [22, 50, 42, 28, 44];
+    const cColX = [margin];
+    for (let i = 1; i < cColW.length; i++) cColX.push(cColX[i - 1] + cColW[i - 1]);
+    const cHeaders = ['Data', 'Equipamento', 'Operador', 'Horímetro', 'Status'];
+
+    pdf.setFillColor(35, 38, 52);
+    pdf.rect(margin, y, contentWidth, 6, 'F');
+    pdf.setTextColor(...COLORS.textMuted);
+    pdf.setFontSize(6.5);
+    pdf.setFont('helvetica', 'bold');
+    cHeaders.forEach((h, i) => pdf.text(h, cColX[i] + 2, y + 4));
+    y += 6;
+
+    data.checklistRecords.forEach((c, idx) => {
+      y = checkPageBreak(pdf, y, 7);
+      if (idx % 2 === 1) { pdf.setFillColor(...COLORS.rowAlt); pdf.rect(margin, y, contentWidth, 6.5, 'F'); }
+      pdf.setFontSize(6.5); pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(...COLORS.text);
+      pdf.text(c.date, cColX[0] + 2, y + 4.5);
+      pdf.text(c.equipment.substring(0, 30), cColX[1] + 2, y + 4.5);
+      pdf.text(c.operator.substring(0, 26), cColX[2] + 2, y + 4.5);
+      pdf.setTextColor(...COLORS.textMuted);
+      pdf.text(`${c.hourMeter}h`, cColX[3] + 2, y + 4.5);
+      const sColor = c.status === 'OK' ? COLORS.success : c.status === 'Atenção' ? COLORS.warning : COLORS.danger;
+      pdf.setTextColor(...sColor);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(c.status, cColX[4] + 2, y + 4.5);
+      y += 6.5;
+    });
+    y += 6;
+  }
+
+  // === MAINTENANCE PLANS ===
+  if (data.maintenancePlans.length > 0) {
+    y = checkPageBreak(pdf, y, 20);
+    pdf.setFillColor(...COLORS.headerBg);
+    pdf.roundedRect(margin, y, contentWidth, 8, 1, 1, 'F');
+    pdf.setFillColor(...COLORS.warning);
+    pdf.rect(margin, y, 3, 8, 'F');
+    pdf.setTextColor(...COLORS.white);
+    pdf.setFontSize(9);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('Planos de Manutenção', margin + 6, y + 5.5);
+    y += 10;
+
+    const mColW = [40, 42, 22, 22, 22, 38];
+    const mColX = [margin];
+    for (let i = 1; i < mColW.length; i++) mColX.push(mColX[i - 1] + mColW[i - 1]);
+    const mHeaders = ['Equipamento', 'Descrição', 'Intervalo', 'Próxima', 'Status', 'Última Execução'];
+
+    pdf.setFillColor(35, 38, 52);
+    pdf.rect(margin, y, contentWidth, 6, 'F');
+    pdf.setTextColor(...COLORS.textMuted);
+    pdf.setFontSize(6.5);
+    pdf.setFont('helvetica', 'bold');
+    mHeaders.forEach((h, i) => pdf.text(h, mColX[i] + 2, y + 4));
+    y += 6;
+
+    data.maintenancePlans.forEach((p, idx) => {
+      y = checkPageBreak(pdf, y, 7);
+      if (idx % 2 === 1) { pdf.setFillColor(...COLORS.rowAlt); pdf.rect(margin, y, contentWidth, 6.5, 'F'); }
+      pdf.setFontSize(6.5); pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(...COLORS.text);
+      pdf.text(p.equipment.substring(0, 24), mColX[0] + 2, y + 4.5);
+      pdf.text(p.description.substring(0, 26), mColX[1] + 2, y + 4.5);
+      pdf.setTextColor(...COLORS.textMuted);
+      pdf.text(`${p.interval}h`, mColX[2] + 2, y + 4.5);
+      pdf.text(`${p.nextDue}h`, mColX[3] + 2, y + 4.5);
+      const sColor = p.status === 'OK' ? COLORS.success : p.status === 'Próxima' ? COLORS.warning : COLORS.danger;
+      pdf.setTextColor(...sColor);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(p.status, mColX[4] + 2, y + 4.5);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(...COLORS.textMuted);
+      pdf.text(p.lastExec, mColX[5] + 2, y + 4.5);
+      y += 6.5;
+    });
+  }
+
+  // Page numbers
+  const totalPages = pdf.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    pdf.setPage(i);
+    addFooter(pdf, i, totalPages);
+  }
+
+  pdf.save(`CSM_Relatorio_Geral_${data.period}_${data.filterName.replace(/\s/g, '_')}.pdf`);
+}

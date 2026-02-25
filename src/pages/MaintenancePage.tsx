@@ -12,7 +12,7 @@ import { Plus, Wrench, AlertTriangle, CheckCircle, Trash2, Edit2, Loader2, Camer
 import { toast } from "@/hooks/use-toast";
 import PhotoUpload from "@/components/PhotoUpload";
 import * as XLSX from 'xlsx';
-import { exportMaintenancePlansPDF, exportMaintenanceRequestsPDF, exportMaintenanceHistoryPDF } from '@/lib/pdf-export';
+import { exportMaintenancePlansPDF, exportMaintenanceRequestsPDF, exportMaintenanceHistoryPDF, exportWorkOrdersPDF } from '@/lib/pdf-export';
 
 const statusConfig = {
   ok: { color: 'text-success', bg: 'bg-success/10', border: 'border-l-success', label: 'OK' },
@@ -257,6 +257,51 @@ export default function MaintenancePage() {
                 {equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eq.name}</SelectItem>)}
               </SelectContent>
             </Select>
+            <div className="flex gap-2 flex-wrap">
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => {
+                const wb = XLSX.utils.book_new();
+                const data = filteredOrders.map(o => {
+                  const eq = equipments.find(e => e.id === o.equipment_id);
+                  return {
+                    'OS #': o.os_number,
+                    Equipamento: eq?.name || '—',
+                    Descrição: o.description,
+                    Prioridade: priorityConfig[o.priority]?.label || o.priority,
+                    Status: osStatusConfig[o.status]?.label || o.status,
+                    Mecânico: o.mechanic_name || '—',
+                    'Data Abertura': new Date(o.created_at).toLocaleDateString('pt-BR'),
+                    Início: o.started_at ? new Date(o.started_at).toLocaleDateString('pt-BR') : '—',
+                    Conclusão: o.completed_at ? new Date(o.completed_at).toLocaleDateString('pt-BR') : '—',
+                  };
+                });
+                const ws = XLSX.utils.json_to_sheet(data);
+                XLSX.utils.book_append_sheet(wb, ws, 'Ordens de Serviço');
+                const filterName = osFilter === 'all' ? '' : `_${equipments.find(e => e.id === osFilter)?.name || ''}`;
+                XLSX.writeFile(wb, `Ordens_Servico${filterName}.xlsx`);
+              }}>
+                <FileSpreadsheet className="w-4 h-4 text-success" /> Excel
+              </Button>
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => {
+                const filterName = osFilter === 'all' ? 'Todos' : equipments.find(e => e.id === osFilter)?.name || 'Filtrado';
+                const rows = filteredOrders.map(o => {
+                  const eq = equipments.find(e => e.id === o.equipment_id);
+                  return {
+                    osNumber: o.os_number,
+                    equipment: eq?.name || '—',
+                    description: o.description,
+                    priority: priorityConfig[o.priority]?.label || o.priority,
+                    status: osStatusConfig[o.status]?.label || o.status,
+                    mechanic: o.mechanic_name || '—',
+                    date: new Date(o.created_at).toLocaleDateString('pt-BR'),
+                    startedAt: o.started_at ? new Date(o.started_at).toLocaleDateString('pt-BR') : undefined,
+                    completedAt: o.completed_at ? new Date(o.completed_at).toLocaleDateString('pt-BR') : undefined,
+                  };
+                });
+                exportWorkOrdersPDF(rows, filterName);
+              }}>
+                <FileText className="w-4 h-4 text-primary" /> PDF
+              </Button>
+            </div>
           </div>
           {loading ? (
             <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>

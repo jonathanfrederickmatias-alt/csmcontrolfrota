@@ -508,6 +508,105 @@ export async function exportMaintenanceHistoryPDF(
   pdf.save(`Historico_Manutencao_${filterName.replace(/\s/g, '_')}.pdf`);
 }
 
+// ===== WORK ORDERS (OS) REPORT =====
+interface WorkOrderRow {
+  osNumber: number;
+  equipment: string;
+  description: string;
+  priority: string;
+  status: string;
+  mechanic: string;
+  date: string;
+  startedAt?: string;
+  completedAt?: string;
+}
+
+export async function exportWorkOrdersPDF(
+  orders: WorkOrderRow[],
+  filterName: string
+) {
+  const logoData = await loadLogoAsBase64();
+  const pdf = new jsPDF('p', 'mm', 'a4');
+  const pageWidth = 210;
+  const margin = 12;
+  const contentWidth = pageWidth - margin * 2;
+
+  pdf.setFillColor(...COLORS.dark);
+  pdf.rect(0, 0, pageWidth, pdf.internal.pageSize.getHeight(), 'F');
+
+  addHeader(pdf, 'Relatório de Ordens de Serviço', `Filtro: ${filterName} | Total: ${orders.length} OS`, logoData);
+
+  let y = 46;
+
+  const openCount = orders.filter(o => o.status === 'Aberta').length;
+  const progressCount = orders.filter(o => o.status === 'Em andamento').length;
+  const doneCount = orders.filter(o => o.status === 'Concluída').length;
+  const cardW = (contentWidth - 6) / 3;
+
+  drawSummaryCard(pdf, margin, y, cardW, 'Abertas', String(openCount), COLORS.warning);
+  drawSummaryCard(pdf, margin + cardW + 3, y, cardW, 'Em andamento', String(progressCount), COLORS.primary);
+  drawSummaryCard(pdf, margin + (cardW + 3) * 2, y, cardW, 'Concluídas', String(doneCount), COLORS.success);
+
+  y += 30;
+
+  const colWidths = [12, 32, 38, 18, 22, 22, 20, 22];
+  const colHeaders = ['OS #', 'Equipamento', 'Descrição', 'Prioridade', 'Status', 'Mecânico', 'Início', 'Concl.'];
+  const colX = [margin];
+  for (let i = 1; i < colWidths.length; i++) colX.push(colX[i - 1] + colWidths[i - 1]);
+
+  pdf.setFillColor(35, 38, 52);
+  pdf.rect(margin, y, contentWidth, 6, 'F');
+  pdf.setTextColor(...COLORS.textMuted);
+  pdf.setFontSize(6.5);
+  pdf.setFont('helvetica', 'bold');
+  colHeaders.forEach((h, i) => pdf.text(h, colX[i] + 2, y + 4));
+  y += 6;
+
+  orders.forEach((o, idx) => {
+    y = checkPageBreak(pdf, y, 7);
+
+    if (idx % 2 === 1) {
+      pdf.setFillColor(...COLORS.rowAlt);
+      pdf.rect(margin, y, contentWidth, 6.5, 'F');
+    }
+
+    pdf.setFontSize(6.5);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(...COLORS.primary);
+    pdf.text(String(o.osNumber), colX[0] + 2, y + 4.5);
+
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(...COLORS.text);
+    pdf.text(o.equipment.substring(0, 20), colX[1] + 2, y + 4.5);
+    pdf.text(o.description.substring(0, 24), colX[2] + 2, y + 4.5);
+
+    const prioColor = o.priority === 'Urgente' ? COLORS.danger : o.priority === 'Alta' ? COLORS.warning : o.priority === 'Média' ? COLORS.primary : COLORS.textMuted;
+    pdf.setTextColor(...prioColor);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text(o.priority, colX[3] + 2, y + 4.5);
+
+    const statusColor = o.status === 'Concluída' ? COLORS.success : o.status === 'Em andamento' ? COLORS.primary : COLORS.textMuted;
+    pdf.setTextColor(...statusColor);
+    pdf.text(o.status, colX[4] + 2, y + 4.5);
+
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(...COLORS.textMuted);
+    pdf.text((o.mechanic || '—').substring(0, 14), colX[5] + 2, y + 4.5);
+    pdf.text(o.startedAt || '—', colX[6] + 2, y + 4.5);
+    pdf.text(o.completedAt || '—', colX[7] + 2, y + 4.5);
+
+    y += 6.5;
+  });
+
+  const totalPages = pdf.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    pdf.setPage(i);
+    addFooter(pdf, i, totalPages);
+  }
+
+  pdf.save(`Ordens_Servico_${filterName.replace(/\s/g, '_')}.pdf`);
+}
+
 // ===== GENERAL REPORTS PDF =====
 interface GeneralReportData {
   period: string;

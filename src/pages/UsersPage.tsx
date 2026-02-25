@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Trash2, Key, Loader2, Users } from 'lucide-react';
@@ -90,6 +91,19 @@ export default function UsersPage() {
       fetchUsers();
     }
     setSaving(false);
+  };
+
+  const handleDeleteUser = async (userId: string, name: string) => {
+    const { data, error } = await supabase.functions.invoke('manage-users', {
+      body: { action: 'delete', userId },
+    });
+
+    if (error || data?.error) {
+      toast.error(data?.error || 'Erro ao excluir usuário');
+    } else {
+      toast.success(`Usuário ${name} excluído com sucesso`);
+      fetchUsers();
+    }
   };
 
   const handleDeleteRole = async (userId: string, roleToDelete: AppRole) => {
@@ -222,15 +236,41 @@ export default function UsersPage() {
                     )}
                   </TableCell>
                   <TableCell className="text-right">
-                    {u.roles.includes('abastecedor') && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => { setSelectedUser(u); setNewPin(u.pin || ''); setPinDialogOpen(true); }}
-                      >
-                        <Key className="w-4 h-4" />
-                      </Button>
-                    )}
+                    <div className="flex items-center justify-end gap-1">
+                      {u.roles.includes('abastecedor') && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => { setSelectedUser(u); setNewPin(u.pin || ''); setPinDialogOpen(true); }}
+                        >
+                          <Key className="w-4 h-4" />
+                        </Button>
+                      )}
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Excluir usuário</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Tem certeza que deseja excluir <strong>{u.display_name}</strong>? Esta ação não pode ser desfeita.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              onClick={() => handleDeleteUser(u.user_id, u.display_name)}
+                            >
+                              Excluir
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

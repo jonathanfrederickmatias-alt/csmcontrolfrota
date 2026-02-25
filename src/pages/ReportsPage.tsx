@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import * as XLSX from 'xlsx';
-import { exportElementToPDF } from '@/lib/pdf-export';
+import { exportGeneralReportsPDF } from '@/lib/pdf-export';
 
 const COLORS = ['hsl(0,80%,50%)', 'hsl(38,92%,50%)', 'hsl(142,71%,45%)', 'hsl(210,80%,56%)', 'hsl(280,70%,60%)', 'hsl(16,80%,55%)'];
 
@@ -172,7 +172,34 @@ export default function ReportsPage() {
     XLSX.writeFile(wb, `CSMCONTROL_Relatorio_${period}${suffix}.xlsx`);
   };
 
-  const exportPDF = () => { exportElementToPDF('reports-content', `CSMCONTROL_Relatorio_${period}.pdf`); };
+  const exportPDF = () => {
+    exportGeneralReportsPDF({
+      period: periodLabels[period],
+      filterName: selectedEqName,
+      totalFuel,
+      totalChecklists,
+      activeEquipments,
+      overdueMaintenances: filteredPlans.filter(p => p.status === 'overdue').length,
+      fuelByEquipment: fuelByEquipment.map(f => ({ name: f.name, litros: f.litros })),
+      fuelByDay: fuelByDay.map(f => ({ date: f.date, litros: f.litros })),
+      hoursByEquipment: hoursByEquipment.map(h => ({ name: h.name, horimetro: h.horímetro })),
+      checklistStatus,
+      maintenanceStatus: maintenanceStatus.map(s => ({ name: s.name, value: s.value, color: s.color })),
+      fuelRecords: filteredFuel.map(r => {
+        const target = equipments.find(e => e.id === r.target_equipment_id);
+        const combo = equipments.find(e => e.id === r.combo_equipment_id);
+        return { date: r.date, equipment: target?.name || '—', combo: combo?.name || '—', liters: r.liters, operator: r.operator_name };
+      }),
+      checklistRecords: filteredChecklists.map(c => {
+        const eq = equipments.find(e => e.id === c.equipment_id);
+        return { date: c.date, equipment: eq?.name || '—', operator: c.operator_name, hourMeter: c.hour_meter, status: c.status === 'ok' ? 'OK' : c.status === 'attention' ? 'Atenção' : 'Crítico' };
+      }),
+      maintenancePlans: filteredPlans.map(p => {
+        const eq = equipments.find(e => e.id === p.equipment_id);
+        return { equipment: eq?.name || '—', description: p.description, interval: p.interval_hours, nextDue: p.next_due_at, status: p.status === 'ok' ? 'OK' : p.status === 'approaching' ? 'Próxima' : 'Atrasada', lastExec: p.last_executed_at ? new Date(p.last_executed_at).toLocaleDateString('pt-BR') : '—' };
+      }),
+    });
+  };
 
   return (
     <div className="space-y-6">

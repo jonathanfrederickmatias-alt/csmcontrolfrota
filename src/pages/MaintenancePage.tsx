@@ -333,6 +333,17 @@ export default function MaintenancePage() {
                         {os.started_at && <p className="text-xs text-muted-foreground">Início: {new Date(os.started_at).toLocaleDateString('pt-BR')}</p>}
                         {os.completed_at && <p className="text-xs text-success">Concluída: {new Date(os.completed_at).toLocaleDateString('pt-BR')}</p>}
                         {os.notes && <p className="text-xs text-muted-foreground italic mt-1">Obs: {os.notes}</p>}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="mt-2 gap-1.5 text-xs"
+                          onClick={() => {
+                            const url = `${window.location.origin}/qr/mecanico?id=${os.id}`;
+                            window.open(url, '_blank');
+                          }}
+                        >
+                          <Wrench className="w-3.5 h-3.5" /> Tela Mecânico
+                        </Button>
                       </div>
                       {os.status !== 'done' && (
                         <div className="shrink-0 space-y-2">

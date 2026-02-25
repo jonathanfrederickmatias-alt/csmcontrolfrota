@@ -68,11 +68,7 @@ export default function QRChecklist() {
   const removeItem = (id: string) => setItems(prev => prev.filter(i => i.id !== id));
 
   const handleSaveChecklist = async () => {
-    const hasNC = items.some(i => i.checked === false);
-    if (hasNC && !photoUrl) {
-      toast.error('Foto obrigatória quando há itens não conformes.');
-      return;
-    }
+    // Photo is optional now
 
     setSaving(true);
     const unchecked = items.filter(i => i.checked === false).length;
@@ -106,10 +102,7 @@ export default function QRChecklist() {
   };
 
   const handleSaveMaintenance = async () => {
-    if (!maintenancePhotoUrl) {
-      toast.error('Foto obrigatória para o pedido de manutenção.');
-      return;
-    }
+    // Photo is optional for maintenance request
     setSavingMaintenance(true);
     await supabase.from('maintenance_requests').insert({
       equipment_id: selectedEquipment,
@@ -117,7 +110,7 @@ export default function QRChecklist() {
       description: maintenanceDesc,
       priority: maintenancePriority,
       status: 'open',
-      photo_start_url: maintenancePhotoUrl,
+      photo_start_url: maintenancePhotoUrl || null,
     });
     setSavingMaintenance(false);
     setMaintenanceSaved(true);
@@ -134,7 +127,7 @@ export default function QRChecklist() {
 
   const allAnswered = items.length > 0 && items.every(i => i.checked === true || i.checked === false);
   const hasNC = items.some(i => i.checked === false);
-  const canSave = selectedEquipment && operatorName && hourMeter && allAnswered && (hasNC ? !!photoUrl : true);
+  const canSave = selectedEquipment && operatorName && hourMeter && allAnswered;
 
   if (maintenanceSaved) {
     return (
@@ -172,10 +165,10 @@ export default function QRChecklist() {
               <option value="urgent">Urgente</option>
             </select>
           </div>
-          <PhotoUpload label="Foto da Não Conformidade" required onUploaded={setMaintenancePhotoUrl} />
+          <PhotoUpload label="Foto da Não Conformidade (opcional)" onUploaded={setMaintenancePhotoUrl} />
           <Button
             onClick={handleSaveMaintenance}
-            disabled={!maintenanceDesc || !maintenancePhotoUrl || savingMaintenance}
+            disabled={!maintenanceDesc || savingMaintenance}
             className="w-full h-12 text-base font-bold bg-warning text-warning-foreground hover:bg-warning/90"
           >
             {savingMaintenance && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
@@ -276,7 +269,7 @@ export default function QRChecklist() {
 
         {hasNC && (
           <div className="glass-card rounded-xl p-5">
-            <PhotoUpload label="Foto de Evidência (obrigatório)" required onUploaded={setPhotoUrl} />
+            <PhotoUpload label="Foto de Evidência (opcional)" onUploaded={setPhotoUrl} />
           </div>
         )}
 

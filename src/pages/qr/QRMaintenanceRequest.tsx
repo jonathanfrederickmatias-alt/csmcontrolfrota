@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { CheckCircle, Wrench, Loader2 } from "lucide-react";
 import PublicLayout from "@/components/PublicLayout";
+import PhotoUpload from "@/components/PhotoUpload";
 
 export default function QRMaintenanceRequest() {
   const [searchParams] = useSearchParams();
@@ -19,6 +20,7 @@ export default function QRMaintenanceRequest() {
   const [operatorName, setOperatorName] = useState('');
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [photoUrl, setPhotoUrl] = useState('');
 
   useEffect(() => {
     supabase.from('equipments').select('*').order('name').then(({ data }) => {
@@ -34,6 +36,7 @@ export default function QRMaintenanceRequest() {
       priority,
       status: 'open',
       operator_name: operatorName,
+      photo_start_url: photoUrl || null,
     }).select().single();
 
     if (inserted && ['urgent', 'high'].includes(priority)) {
@@ -98,6 +101,7 @@ export default function QRMaintenanceRequest() {
             <option value="urgent">🔴 Urgente</option>
           </select>
         </div>
+        <PhotoUpload label="Foto do Problema (opcional)" onUploaded={setPhotoUrl} />
         <Button onClick={handleSave} disabled={!equipmentId || !description || !operatorName || saving} className="w-full h-12 text-base font-bold">
           {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
           <Wrench className="w-5 h-5 mr-2" /> Enviar Pedido

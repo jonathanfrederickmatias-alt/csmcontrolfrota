@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, Legend
+  Tooltip, ResponsiveContainer, Legend, AreaChart, Area
 } from "recharts";
 
 const COLORS = {
@@ -114,11 +114,39 @@ export default function Dashboard() {
     const osProgress = data.workOrders.filter((w: any) => w.status === 'in_progress').length;
     const osDone = data.workOrders.filter((w: any) => w.status === 'completed').length;
 
+    // Maintenance trend last 3 months (by week)
+    const now = new Date();
+    const threeMonthsAgo = new Date(now);
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+    const weeks: { label: string; pedidos: number; os: number; concluidas: number }[] = [];
+    const weekStart = new Date(threeMonthsAgo);
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay()); // align to Sunday
+    while (weekStart < now) {
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 7);
+      const wLabel = `${weekStart.getDate().toString().padStart(2, '0')}/${(weekStart.getMonth() + 1).toString().padStart(2, '0')}`;
+      const pedidos = data.requests.filter((r: any) => {
+        const d = new Date(r.created_at);
+        return d >= weekStart && d < weekEnd;
+      }).length;
+      const os = data.workOrders.filter((w: any) => {
+        const d = new Date(w.created_at);
+        return d >= weekStart && d < weekEnd;
+      }).length;
+      const concluidas = data.workOrders.filter((w: any) => {
+        if (w.status !== 'completed' || !w.completed_at) return false;
+        const d = new Date(w.completed_at);
+        return d >= weekStart && d < weekEnd;
+      }).length;
+      weeks.push({ label: wLabel, pedidos, os, concluidas });
+      weekStart.setDate(weekStart.getDate() + 7);
+    }
+
     return {
       overdue, approaching, okPlans, openRequests, inProgressRequests, resolvedRequests,
       activeEquipments, inactiveEquipments, todayChecklists, totalFuelToday,
       clOk, clAttention, clCritical, checklistScore,
-      fuelByDay, topFuelEquip, osOpen, osProgress, osDone,
+      fuelByDay, topFuelEquip, osOpen, osProgress, osDone, maintenanceTrend: weeks,
     };
   }, [data, today]);
 
@@ -307,6 +335,44 @@ export default function Dashboard() {
               </BarChart>
             </ResponsiveContainer>
           </div>
+        </div>
+      </div>
+
+      {/* Maintenance trend 3 months */}
+      <div className="glass-card rounded-xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-bold flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-primary" /> Tendência de Manutenções (Últimos 3 Meses)
+          </h3>
+          <button onClick={() => navigate('/manutencao')} className="text-xs text-primary hover:underline">Manutenção →</button>
+        </div>
+        <div className="h-[260px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={stats.maintenanceTrend}>
+              <defs>
+                <linearGradient id="gradPedidos" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={COLORS.warning} stopOpacity={0.3} />
+                  <stop offset="95%" stopColor={COLORS.warning} stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="gradOS" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={COLORS.blue} stopOpacity={0.3} />
+                  <stop offset="95%" stopColor={COLORS.blue} stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="gradConcluidas" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={COLORS.ok} stopOpacity={0.3} />
+                  <stop offset="95%" stopColor={COLORS.ok} stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 14%, 20%)" />
+              <XAxis dataKey="label" tick={{ fill: 'hsl(220, 10%, 55%)', fontSize: 10 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+              <YAxis tick={{ fill: 'hsl(220, 10%, 55%)', fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+              <Tooltip contentStyle={{ backgroundColor: 'hsl(220, 18%, 14%)', border: '1px solid hsl(220, 14%, 22%)', borderRadius: '8px', color: 'hsl(40, 10%, 92%)' }} />
+              <Legend iconType="circle" wrapperStyle={{ fontSize: 11 }} />
+              <Area type="monotone" dataKey="pedidos" name="Pedidos" stroke={COLORS.warning} fill="url(#gradPedidos)" strokeWidth={2} />
+              <Area type="monotone" dataKey="os" name="OS Abertas" stroke={COLORS.blue} fill="url(#gradOS)" strokeWidth={2} />
+              <Area type="monotone" dataKey="concluidas" name="Concluídas" stroke={COLORS.ok} fill="url(#gradConcluidas)" strokeWidth={2} />
+            </AreaChart>
+          </ResponsiveContainer>
         </div>
       </div>
 

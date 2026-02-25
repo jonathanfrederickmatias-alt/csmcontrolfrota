@@ -1,54 +1,102 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { DBEquipment } from "@/lib/supabase-types";
-import { Plus, Trash2, Truck, Loader2 } from "lucide-react";
+import { Plus, Trash2, Truck, Loader2, Pencil, X, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 
 type EqType = 'machine' | 'truck' | 'combo';
+
+const emptyForm = { name: '', type: 'machine' as EqType, plate: '', model: '', fuelCapacity: '', currentFuel: '', hourMeter: '' };
 
 export default function EquipmentPage() {
   const [equipments, setEquipments] = useState<DBEquipment[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ name: '', type: 'machine' as EqType, plate: '', model: '', fuelCapacity: '', currentFuel: '' });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState(emptyForm);
+  const [selectedEq, setSelectedEq] = useState<DBEquipment | null>(null);
 
-  const fetch = async () => {
+  const fetchData = async () => {
     const { data } = await supabase.from('equipments').select('*').order('created_at');
     setEquipments((data || []) as DBEquipment[]);
     setLoading(false);
   };
 
-  useEffect(() => { fetch(); }, []);
+  useEffect(() => { fetchData(); }, []);
+
+  const openNew = () => {
+    setEditingId(null);
+    setForm(emptyForm);
+    setOpen(true);
+  };
+
+  const openEdit = (eq: DBEquipment) => {
+    setEditingId(eq.id);
+    setForm({
+      name: eq.name,
+      type: eq.type,
+      plate: eq.plate || '',
+      model: eq.model || '',
+      fuelCapacity: eq.fuel_capacity?.toString() || '',
+      currentFuel: eq.current_fuel?.toString() || '',
+      hourMeter: eq.current_hour_meter?.toString() || '0',
+    });
+    setOpen(true);
+    setSelectedEq(null);
+  };
 
   const handleSave = async () => {
     setSaving(true);
-    await supabase.from('equipments').insert({
-      name: form.name,
-      type: form.type,
-      plate: form.plate || null,
-      model: form.model || null,
-      current_hour_meter: 0,
-      fuel_capacity: form.fuelCapacity ? Number(form.fuelCapacity) : null,
-      current_fuel: form.currentFuel ? Number(form.currentFuel) : 0,
-      status: 'active',
-    });
+    if (editingId) {
+      const { error } = await supabase.from('equipments').update({
+        name: form.name,
+        type: form.type,
+        plate: form.plate || null,
+        model: form.model || null,
+        current_hour_meter: form.hourMeter ? Number(form.hourMeter) : 0,
+        fuel_capacity: form.fuelCapacity ? Number(form.fuelCapacity) : null,
+        current_fuel: form.currentFuel ? Number(form.currentFuel) : 0,
+      }).eq('id', editingId);
+      if (error) toast.error("Erro ao atualizar");
+      else toast.success("Equipamento atualizado!");
+    } else {
+      const { error } = await supabase.from('equipments').insert({
+        name: form.name,
+        type: form.type,
+        plate: form.plate || null,
+        model: form.model || null,
+        current_hour_meter: 0,
+        fuel_capacity: form.fuelCapacity ? Number(form.fuelCapacity) : null,
+        current_fuel: form.currentFuel ? Number(form.currentFuel) : 0,
+        status: 'active',
+      });
+      if (error) toast.error("Erro ao criar");
+      else toast.success("Equipamento criado!");
+    }
     setSaving(false);
     setOpen(false);
-    setForm({ name: '', type: 'machine', plate: '', model: '', fuelCapacity: '', currentFuel: '' });
-    fetch();
+    setForm(emptyForm);
+    setEditingId(null);
+    fetchData();
   };
 
   const handleDelete = async (id: string) => {
+    if (!confirm("Excluir este equipamento?")) return;
     await supabase.from('equipments').delete().eq('id', id);
-    fetch();
+    setSelectedEq(null);
+    toast.success("Equipamento excluído");
+    fetchData();
   };
 
   const typeLabels: Record<string, string> = { machine: 'Máquina', truck: 'Caminhão', combo: 'Comboio' };
+  const statusLabels: Record<string, string> = { active: 'Ativo', maintenance: 'Em Manutenção', inactive: 'Inativo' };
+  const statusColors: Record<string, string> = { active: 'bg-green-500/10 text-green-500', maintenance: 'bg-yellow-500/10 text-yellow-500', inactive: 'bg-red-500/10 text-red-500' };
 
   return (
     <div>
@@ -57,12 +105,12 @@ export default function EquipmentPage() {
           <h1 className="text-3xl font-black text-gradient">Equipamentos</h1>
           <p className="text-muted-foreground mt-1">Cadastro e gestão da frota</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditingId(null); setForm(emptyForm); } }}>
           <DialogTrigger asChild>
-            <Button className="gap-2"><Plus className="w-4 h-4" /> Novo</Button>
+            <Button className="gap-2" onClick={openNew}><Plus className="w-4 h-4" /> Novo</Button>
           </DialogTrigger>
           <DialogContent className="bg-card border-border">
-            <DialogHeader><DialogTitle>Novo Equipamento</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{editingId ? 'Editar Equipamento' : 'Novo Equipamento'}</DialogTitle></DialogHeader>
             <div className="space-y-4">
               <div><Label>Nome *</Label><Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="Ex: Fresadora CAT" /></div>
               <div><Label>Tipo *</Label>
@@ -77,6 +125,9 @@ export default function EquipmentPage() {
               </div>
               <div><Label>Placa</Label><Input value={form.plate} onChange={e => setForm({...form, plate: e.target.value})} /></div>
               <div><Label>Modelo</Label><Input value={form.model} onChange={e => setForm({...form, model: e.target.value})} /></div>
+              {editingId && (
+                <div><Label>Horímetro</Label><Input type="number" value={form.hourMeter} onChange={e => setForm({...form, hourMeter: e.target.value})} /></div>
+              )}
               {form.type === 'combo' && (
                 <>
                   <div><Label>Capacidade (litros)</Label><Input type="number" value={form.fuelCapacity} onChange={e => setForm({...form, fuelCapacity: e.target.value})} /></div>
@@ -84,12 +135,69 @@ export default function EquipmentPage() {
                 </>
               )}
               <Button onClick={handleSave} disabled={!form.name || saving} className="w-full">
-                {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Salvar
+                {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                {editingId ? 'Atualizar' : 'Salvar'}
               </Button>
             </div>
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Detail Panel */}
+      <Dialog open={!!selectedEq} onOpenChange={(v) => { if (!v) setSelectedEq(null); }}>
+        <DialogContent className="bg-card border-border max-w-md">
+          {selectedEq && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  {selectedEq.name}
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[selectedEq.status] || ''}`}>
+                    {statusLabels[selectedEq.status] || selectedEq.status}
+                  </span>
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-secondary/50 rounded-lg p-3">
+                    <p className="text-xs text-muted-foreground">Tipo</p>
+                    <p className="font-semibold text-foreground">{typeLabels[selectedEq.type]}</p>
+                  </div>
+                  <div className="bg-secondary/50 rounded-lg p-3">
+                    <p className="text-xs text-muted-foreground">Horímetro</p>
+                    <p className="font-mono font-bold text-primary text-lg">{selectedEq.current_hour_meter}h</p>
+                  </div>
+                  {selectedEq.plate && (
+                    <div className="bg-secondary/50 rounded-lg p-3">
+                      <p className="text-xs text-muted-foreground">Placa</p>
+                      <p className="font-mono font-semibold text-foreground">{selectedEq.plate}</p>
+                    </div>
+                  )}
+                  {selectedEq.model && (
+                    <div className="bg-secondary/50 rounded-lg p-3">
+                      <p className="text-xs text-muted-foreground">Modelo</p>
+                      <p className="font-semibold text-foreground">{selectedEq.model}</p>
+                    </div>
+                  )}
+                  {selectedEq.type === 'combo' && selectedEq.fuel_capacity && (
+                    <div className="col-span-2 bg-secondary/50 rounded-lg p-3">
+                      <p className="text-xs text-muted-foreground">Combustível</p>
+                      <p className="font-mono font-bold text-accent text-lg">{selectedEq.current_fuel || 0}L / {selectedEq.fuel_capacity}L</p>
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <Button onClick={() => openEdit(selectedEq)} className="flex-1 gap-2">
+                    <Pencil className="w-4 h-4" /> Editar
+                  </Button>
+                  <Button variant="destructive" onClick={() => handleDelete(selectedEq.id)} className="gap-2">
+                    <Trash2 className="w-4 h-4" /> Excluir
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {loading ? (
         <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
@@ -101,15 +209,19 @@ export default function EquipmentPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {equipments.map(eq => (
-            <div key={eq.id} className="glass-card rounded-xl p-5 hover:border-primary/30 transition-all group">
+            <div
+              key={eq.id}
+              onClick={() => setSelectedEq(eq)}
+              className="glass-card rounded-xl p-5 hover:border-primary/30 transition-all group cursor-pointer"
+            >
               <div className="flex items-start justify-between mb-3">
                 <div>
                   <h3 className="font-bold text-foreground">{eq.name}</h3>
                   <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">{typeLabels[eq.type]}</span>
                 </div>
-                <button onClick={() => handleDelete(eq.id)} className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[eq.status] || ''}`}>
+                  {statusLabels[eq.status] || eq.status}
+                </span>
               </div>
               {eq.plate && <p className="text-xs text-muted-foreground">Placa: {eq.plate}</p>}
               {eq.model && <p className="text-xs text-muted-foreground">Modelo: {eq.model}</p>}

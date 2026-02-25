@@ -6,6 +6,11 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Threshold: truck = 1000h/km, machine/combo = 50h
+function getThreshold(equipmentType: string): number {
+  return equipmentType === 'truck' ? 1000 : 50;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -20,8 +25,7 @@ serve(async (req) => {
     // Fetch all plans with their equipment
     const { data: plans, error: plansErr } = await supabase
       .from('maintenance_plans')
-      .select('*, equipments(name, plate, current_hour_meter)')
-      .in('status', ['approaching', 'overdue']);
+      .select('*, equipments(name, plate, current_hour_meter, type)');
 
     if (plansErr) {
       console.error('Error fetching plans:', plansErr);
@@ -32,6 +36,36 @@ serve(async (req) => {
     }
 
     if (!plans || plans.length === 0) {
+      return new Response(JSON.stringify({ skipped: true, reason: 'No plans found' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Recalculate status based on type-specific thresholds
+    const alertPlans: any[] = [];
+    for (const p of plans) {
+      const eq = (p as any).equipments;
+      const currentHM = eq?.current_hour_meter || 0;
+      const eqType = eq?.type || 'machine';
+      const remaining = p.next_due_at - currentHM;
+      const threshold = getThreshold(eqType);
+
+      let status: string;
+      if (remaining <= 0) status = 'overdue';
+      else if (remaining <= threshold) status = 'approaching';
+      else status = 'ok';
+
+      // Update status in DB if changed
+      if (status !== p.status) {
+        await supabase.from('maintenance_plans').update({ status }).eq('id', p.id);
+      }
+
+      if (status === 'overdue' || status === 'approaching') {
+        alertPlans.push({ ...p, status, _remaining: remaining, _threshold: threshold, _eqType: eqType });
+      }
+    }
+
+    if (alertPlans.length === 0) {
       console.log('No approaching/overdue plans found');
       return new Response(JSON.stringify({ skipped: true, reason: 'No alerts needed' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -48,23 +82,24 @@ serve(async (req) => {
       });
     }
 
-    // Build alert rows
-    const overdueItems = plans.filter((p: any) => p.status === 'overdue');
-    const approachingItems = plans.filter((p: any) => p.status === 'approaching');
+    const overdueItems = alertPlans.filter((p) => p.status === 'overdue');
+    const approachingItems = alertPlans.filter((p) => p.status === 'approaching');
 
     const buildRow = (p: any) => {
       const eq = p.equipments;
       const eqName = eq?.name || 'Equipamento';
       const currentHM = eq?.current_hour_meter || 0;
       const remaining = p.next_due_at - currentHM;
+      const unit = p._eqType === 'truck' ? 'km' : 'h';
+      const thresholdLabel = `${p._threshold}${unit}`;
       const statusLabel = p.status === 'overdue' ? '🔴 Atrasada' : '🟡 Próxima';
-      const remainingLabel = remaining <= 0 ? `Atrasada ${Math.abs(remaining)}h` : `Faltam ${remaining}h`;
+      const remainingLabel = remaining <= 0 ? `Atrasada ${Math.abs(remaining)}${unit}` : `Faltam ${remaining}${unit}`;
       return `<tr>
         <td style="padding:8px;border-bottom:1px solid #e2e8f0;font-weight:600;">${eqName}</td>
         <td style="padding:8px;border-bottom:1px solid #e2e8f0;">${p.description}</td>
-        <td style="padding:8px;border-bottom:1px solid #e2e8f0;text-align:center;">${p.interval_hours}h</td>
-        <td style="padding:8px;border-bottom:1px solid #e2e8f0;text-align:center;">${p.next_due_at}h</td>
-        <td style="padding:8px;border-bottom:1px solid #e2e8f0;text-align:center;">${currentHM}h</td>
+        <td style="padding:8px;border-bottom:1px solid #e2e8f0;text-align:center;">${p.interval_hours}${unit}</td>
+        <td style="padding:8px;border-bottom:1px solid #e2e8f0;text-align:center;">${p.next_due_at}${unit}</td>
+        <td style="padding:8px;border-bottom:1px solid #e2e8f0;text-align:center;">${currentHM}${unit}</td>
         <td style="padding:8px;border-bottom:1px solid #e2e8f0;text-align:center;font-weight:700;color:${p.status === 'overdue' ? '#dc2626' : '#f59e0b'};">${remainingLabel}</td>
       </tr>`;
     };
@@ -80,6 +115,7 @@ serve(async (req) => {
       </tr></thead><tbody>`;
 
     let body = `<div style="font-family:sans-serif;max-width:700px;margin:0 auto;">`;
+    body += `<p style="color:#64748b;font-size:12px;margin-bottom:12px;">Limites de alerta: Caminhão = 1.000 km | Máquina = 50 horas</p>`;
 
     if (overdueItems.length > 0) {
       body += `<div style="background:#dc2626;color:white;padding:16px;border-radius:8px 8px 0 0;">

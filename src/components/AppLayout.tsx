@@ -1,22 +1,34 @@
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Truck, ClipboardCheck, Wrench, Fuel, QrCode, Menu, X, BarChart2, Droplets, Building2 } from "lucide-react";
+import { LayoutDashboard, Truck, ClipboardCheck, Wrench, Fuel, QrCode, Menu, X, BarChart2, Droplets, Building2, Users, LogOut } from "lucide-react";
 import { useState } from "react";
 import csmLogo from "@/assets/csm-logo.png";
-const navItems = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/equipamentos", label: "Equipamentos", icon: Truck },
-  { to: "/checklist", label: "Checklist", icon: ClipboardCheck },
-  { to: "/manutencao", label: "Manutenção", icon: Wrench },
-  { to: "/abastecimento", label: "Abastecimento", icon: Fuel },
-  { to: "/reabastecimento", label: "Reabastecimento", icon: Droplets },
-  { to: "/relatorios", label: "Relatórios", icon: BarChart2 },
-  { to: "/obras", label: "Obras", icon: Building2 },
-  { to: "/qrcode", label: "QR Code", icon: QrCode },
+import { useUserRoles } from "@/hooks/useUserRoles";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
+
+const allNavItems = [
+  { to: "/", label: "Dashboard", icon: LayoutDashboard, roles: ['admin', 'gestor'] },
+  { to: "/equipamentos", label: "Equipamentos", icon: Truck, roles: ['admin', 'gestor'] },
+  { to: "/checklist", label: "Checklist", icon: ClipboardCheck, roles: ['admin', 'gestor'] },
+  { to: "/manutencao", label: "Manutenção", icon: Wrench, roles: ['admin', 'gestor', 'mecanico'] },
+  { to: "/abastecimento", label: "Abastecimento", icon: Fuel, roles: ['admin', 'gestor', 'abastecedor'] },
+  { to: "/reabastecimento", label: "Reabastecimento", icon: Droplets, roles: ['admin', 'gestor'] },
+  { to: "/relatorios", label: "Relatórios", icon: BarChart2, roles: ['admin', 'gestor'] },
+  { to: "/obras", label: "Obras", icon: Building2, roles: ['admin', 'gestor'] },
+  { to: "/qrcode", label: "QR Code", icon: QrCode, roles: ['admin', 'gestor'] },
+  { to: "/usuarios", label: "Usuários", icon: Users, roles: ['admin'] },
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { roles, loading: rolesLoading } = useUserRoles();
+  const { signOut } = useAuth();
+
+  // Filter nav items based on user roles; if no roles yet, show nothing (loading)
+  const navItems = rolesLoading
+    ? []
+    : allNavItems.filter(item => item.roles.some(r => roles.includes(r as any)));
 
   return (
     <div className="min-h-screen flex">
@@ -51,6 +63,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
+        <div className="p-4 border-t border-sidebar-border">
+          <Button variant="ghost" size="sm" className="w-full justify-start text-muted-foreground" onClick={signOut}>
+            <LogOut className="w-4 h-4 mr-2" /> Sair
+          </Button>
+        </div>
       </aside>
 
       {/* Mobile header */}
@@ -70,25 +87,32 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Mobile nav overlay */}
       {mobileOpen && (
         <div className="lg:hidden fixed inset-0 z-30 bg-background/80 backdrop-blur-sm" onClick={() => setMobileOpen(false)}>
-          <div className="bg-sidebar w-64 h-full p-4 pt-20 space-y-1 overflow-y-auto" onClick={e => e.stopPropagation()}>
-            {navItems.map(item => {
-              const active = location.pathname === item.to;
-              return (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  onClick={() => setMobileOpen(false)}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-                    active
-                      ? "bg-primary/10 text-primary"
-                      : "text-sidebar-foreground hover:bg-sidebar-accent"
-                  }`}
-                >
-                  <item.icon className="w-5 h-5" />
-                  {item.label}
-                </Link>
-              );
-            })}
+          <div className="bg-sidebar w-64 h-full p-4 pt-20 space-y-1 overflow-y-auto flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex-1 space-y-1">
+              {navItems.map(item => {
+                const active = location.pathname === item.to;
+                return (
+                  <Link
+                    key={item.to}
+                    to={item.to}
+                    onClick={() => setMobileOpen(false)}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                      active
+                        ? "bg-primary/10 text-primary"
+                        : "text-sidebar-foreground hover:bg-sidebar-accent"
+                    }`}
+                  >
+                    <item.icon className="w-5 h-5" />
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </div>
+            <div className="pt-4 border-t border-sidebar-border">
+              <Button variant="ghost" size="sm" className="w-full justify-start text-muted-foreground" onClick={signOut}>
+                <LogOut className="w-4 h-4 mr-2" /> Sair
+              </Button>
+            </div>
           </div>
         </div>
       )}

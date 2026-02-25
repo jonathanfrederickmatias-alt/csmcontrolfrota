@@ -294,6 +294,11 @@ export default function MaintenancePage() {
                     priority: priorityConfig[o.priority]?.label || o.priority,
                     status: osStatusConfig[o.status]?.label || o.status,
                     mechanic: o.mechanic_name || '—',
+                    parts: (() => {
+                      const p = Array.isArray((o as any).parts) ? (o as any).parts : [];
+                      if (p.length > 0) return p.map((x: any) => x.code + (x.description ? ` (${x.description})` : '')).join(', ');
+                      return (o as any).part_code || '—';
+                    })(),
                     date: new Date(o.created_at).toLocaleDateString('pt-BR'),
                     startedAt: o.started_at ? new Date(o.started_at).toLocaleDateString('pt-BR') : undefined,
                     completedAt: o.completed_at ? new Date(o.completed_at).toLocaleDateString('pt-BR') : undefined,

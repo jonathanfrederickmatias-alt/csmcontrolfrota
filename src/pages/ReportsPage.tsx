@@ -1,6 +1,13 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { DBEquipment, DBFuelRecord, DBChecklist, DBMaintenancePlan, DBWorkOrder } from '@/lib/supabase-types';
+
+interface Part { code: string; description: string; }
+function formatParts(o: any): string {
+  const parts = Array.isArray(o.parts) ? o.parts as Part[] : [];
+  if (parts.length > 0) return parts.map(p => p.code + (p.description ? ` (${p.description})` : '')).join(', ');
+  return o.part_code || '—';
+}
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
@@ -174,6 +181,7 @@ export default function ReportsPage() {
           Prioridade: priorityLabels[o.priority] || o.priority,
           Status: osStatusLabels[o.status] || o.status,
           Mecânico: o.mechanic_name || '—',
+          'Peças Trocadas': formatParts(o),
           'Data Abertura': new Date(o.created_at).toLocaleDateString('pt-BR'),
           Início: o.started_at ? new Date(o.started_at).toLocaleString('pt-BR') : '—',
           Conclusão: o.completed_at ? new Date(o.completed_at).toLocaleString('pt-BR') : '—',
@@ -546,6 +554,7 @@ export default function ReportsPage() {
                       <th className="pb-2 pr-4">Descrição</th>
                       <th className="pb-2 pr-4">Prioridade</th>
                       <th className="pb-2 pr-4">Mecânico</th>
+                      <th className="pb-2 pr-4">Peças Trocadas</th>
                       <th className="pb-2 pr-4">Início</th>
                       <th className="pb-2 pr-4">Conclusão</th>
                       <th className="pb-2">Status</th>
@@ -554,6 +563,7 @@ export default function ReportsPage() {
                   <tbody className="divide-y divide-border">
                     {filteredOrders.map(o => {
                       const eq = equipments.find(e => e.id === o.equipment_id);
+                      const partsText = formatParts(o);
                       return (
                         <tr key={o.id} className="hover:bg-secondary/30 transition-colors">
                           <td className="py-2 pr-4 font-mono font-bold">#{o.os_number}</td>
@@ -565,6 +575,7 @@ export default function ReportsPage() {
                             </span>
                           </td>
                           <td className="py-2 pr-4 text-muted-foreground">{o.mechanic_name || '—'}</td>
+                          <td className="py-2 pr-4 text-muted-foreground text-xs">{partsText}</td>
                           <td className="py-2 pr-4 text-muted-foreground">{o.started_at ? new Date(o.started_at).toLocaleString('pt-BR') : '—'}</td>
                           <td className="py-2 pr-4">{o.completed_at ? <span className="text-success">{new Date(o.completed_at).toLocaleString('pt-BR')}</span> : '—'}</td>
                           <td className="py-2">

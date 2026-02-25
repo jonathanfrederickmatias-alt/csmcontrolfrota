@@ -57,6 +57,8 @@ export type Database = {
       }
       equipments: {
         Row: {
+          brand: string | null
+          cost_center: string | null
           created_at: string
           current_fuel: number | null
           current_hour_meter: number
@@ -71,6 +73,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          brand?: string | null
+          cost_center?: string | null
           created_at?: string
           current_fuel?: number | null
           current_hour_meter?: number
@@ -85,6 +89,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          brand?: string | null
+          cost_center?: string | null
           created_at?: string
           current_fuel?: number | null
           current_hour_meter?: number

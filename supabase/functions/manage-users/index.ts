@@ -42,7 +42,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { action, email, password, displayName, role } = await req.json();
+    const { action, email, password, displayName, role, userId } = await req.json();
 
     if (action === 'create') {
       // Create user
@@ -76,6 +76,38 @@ Deno.serve(async (req) => {
       }
 
       return new Response(JSON.stringify({ success: true, userId: newUser.user?.id }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (action === 'delete') {
+      if (!userId) {
+        return new Response(JSON.stringify({ error: 'userId é obrigatório' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Prevent self-deletion
+      if (userId === caller.id) {
+        return new Response(JSON.stringify({ error: 'Você não pode excluir a si mesmo' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Delete related data first
+      await supabaseAdmin.from('fuel_pins').delete().eq('user_id', userId);
+      await supabaseAdmin.from('user_roles').delete().eq('user_id', userId);
+      await supabaseAdmin.from('profiles').delete().eq('user_id', userId);
+
+      // Delete the auth user
+      const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+      if (deleteError) {
+        return new Response(JSON.stringify({ error: deleteError.message }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }

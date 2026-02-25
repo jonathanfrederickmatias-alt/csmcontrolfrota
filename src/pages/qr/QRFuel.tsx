@@ -9,7 +9,7 @@ import { Fuel, CheckCircle, Lock, Loader2 } from "lucide-react";
 import PublicLayout from "@/components/PublicLayout";
 import PhotoUpload from "@/components/PhotoUpload";
 
-const FUEL_PIN = "1234";
+// PIN is now validated against fuel_pins table
 
 export default function QRFuel() {
   const [searchParams] = useSearchParams();
@@ -38,8 +38,9 @@ export default function QRFuel() {
   const selectedCombo = equipments.find(e => e.id === comboId);
   const selectedTarget = equipments.find(e => e.id === targetId);
 
-  const handleVerifyPin = () => {
-    if (pin === FUEL_PIN) { setPinVerified(true); setPinError(false); }
+  const handleVerifyPin = async () => {
+    const { data } = await supabase.from('fuel_pins').select('pin').eq('pin', pin).maybeSingle();
+    if (data) { setPinVerified(true); setPinError(false); }
     else setPinError(true);
   };
 

@@ -16,6 +16,7 @@ import ReportsPage from "@/pages/ReportsPage";
 import QRCodePage from "@/pages/QRCodePage";
 import MaintenanceRequestPage from "@/pages/MaintenanceRequestPage";
 import ObrasPage from "@/pages/ObrasPage";
+import UsersPage from "@/pages/UsersPage";
 import QRChecklist from "@/pages/qr/QRChecklist";
 import QRFuel from "@/pages/qr/QRFuel";
 import QRMaintenanceRequest from "@/pages/qr/QRMaintenanceRequest";
@@ -57,6 +58,7 @@ const App = () => (
                     <Route path="/qrcode" element={<QRCodePage />} />
                     <Route path="/pedido-manutencao" element={<MaintenanceRequestPage />} />
                     <Route path="/obras" element={<ObrasPage />} />
+                    <Route path="/usuarios" element={<UsersPage />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </AppLayout>

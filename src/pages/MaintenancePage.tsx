@@ -13,6 +13,7 @@ import { toast } from "@/hooks/use-toast";
 import PhotoUpload from "@/components/PhotoUpload";
 import * as XLSX from 'xlsx';
 import { exportMaintenancePlansPDF, exportMaintenanceRequestsPDF, exportMaintenanceHistoryPDF, exportWorkOrdersPDF } from '@/lib/pdf-export';
+import { calculateMaintenanceStatus } from '@/lib/maintenance-utils';
 
 const statusConfig = {
   ok: { color: 'text-success', bg: 'bg-success/10', border: 'border-l-success', label: 'OK' },
@@ -89,9 +90,10 @@ export default function MaintenancePage() {
     const interval = Number(form.intervalHours);
     const eq = equipments.find(e => e.id === form.equipmentId);
     const currentHM = eq?.current_hour_meter || 0;
+    const eqType = eq?.type || 'machine';
     const nextDue = lastDone + interval;
     const remaining = nextDue - currentHM;
-    const status = remaining <= 0 ? 'overdue' : remaining <= interval * 0.1 ? 'approaching' : 'ok';
+    const status = calculateMaintenanceStatus(remaining, eqType);
 
     if (editPlan) {
       await supabase.from('maintenance_plans').update({

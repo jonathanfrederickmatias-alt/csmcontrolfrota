@@ -55,7 +55,7 @@ export const store = {
       const remaining = p.nextDueAt - currentHourMeter;
       let status: MaintenancePlan['status'] = 'ok';
       if (remaining <= 0) status = 'overdue';
-      else if (remaining <= p.intervalHours * 0.1) status = 'approaching';
+      else if (remaining <= 50) status = 'approaching'; // 50h default for local store
       return { ...p, status };
     });
     setItem('maintenancePlans', updated);

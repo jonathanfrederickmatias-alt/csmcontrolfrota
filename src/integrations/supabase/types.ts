@@ -404,6 +404,9 @@ export type Database = {
           mechanic_name: string | null
           notes: string | null
           os_number: number
+          part_code: string | null
+          photo_end_url: string | null
+          photo_start_url: string | null
           priority: string
           started_at: string | null
           status: string
@@ -419,6 +422,9 @@ export type Database = {
           mechanic_name?: string | null
           notes?: string | null
           os_number?: number
+          part_code?: string | null
+          photo_end_url?: string | null
+          photo_start_url?: string | null
           priority?: string
           started_at?: string | null
           status?: string
@@ -434,6 +440,9 @@ export type Database = {
           mechanic_name?: string | null
           notes?: string | null
           os_number?: number
+          part_code?: string | null
+          photo_end_url?: string | null
+          photo_start_url?: string | null
           priority?: string
           started_at?: string | null
           status?: string

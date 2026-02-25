@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { DBEquipment, DBFuelRecord, DBChecklist, DBMaintenancePlan } from '@/lib/supabase-types';
+import { DBEquipment, DBFuelRecord, DBChecklist, DBMaintenancePlan, DBWorkOrder } from '@/lib/supabase-types';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
 } from 'recharts';
-import { BarChart2, Droplets, Clock, Wrench, Calendar, FileSpreadsheet, FileText, Filter } from 'lucide-react';
+import { BarChart2, Droplets, Clock, Wrench, Calendar, FileSpreadsheet, FileText, Filter, ClipboardList, Clipboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
@@ -16,6 +16,10 @@ const COLORS = ['hsl(0,80%,50%)', 'hsl(38,92%,50%)', 'hsl(142,71%,45%)', 'hsl(21
 
 type Period = '7d' | '30d' | '90d' | 'all';
 
+const osStatusLabels: Record<string, string> = { open: 'Aberta', in_progress: 'Em andamento', done: 'Concluída' };
+const priorityLabels: Record<string, string> = { low: 'Baixa', medium: 'Média', high: 'Alta', urgent: 'Urgente' };
+const checklistStatusLabels: Record<string, string> = { ok: 'OK', attention: 'Atenção', critical: 'Crítico' };
+
 export default function ReportsPage() {
   const [period, setPeriod] = useState<Period>('30d');
   const [selectedEquipment, setSelectedEquipment] = useState<string>('all');
@@ -23,6 +27,7 @@ export default function ReportsPage() {
   const [fuelRecords, setFuelRecords] = useState<DBFuelRecord[]>([]);
   const [checklists, setChecklists] = useState<DBChecklist[]>([]);
   const [plans, setPlans] = useState<DBMaintenancePlan[]>([]);
+  const [workOrders, setWorkOrders] = useState<DBWorkOrder[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -30,7 +35,7 @@ export default function ReportsPage() {
       setLoading(true);
       const cutoff = period === 'all' ? null : new Date(Date.now() - parseInt(period) * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-      const [eqRes, frRes, clRes, mpRes] = await Promise.all([
+      const [eqRes, frRes, clRes, mpRes, osRes] = await Promise.all([
         supabase.from('equipments').select('*'),
         cutoff
           ? supabase.from('fuel_records').select('*').gte('date', cutoff).order('date')
@@ -39,12 +44,16 @@ export default function ReportsPage() {
           ? supabase.from('checklists').select('*').gte('date', cutoff).order('date')
           : supabase.from('checklists').select('*').order('date'),
         supabase.from('maintenance_plans').select('*'),
+        cutoff
+          ? supabase.from('work_orders').select('*').gte('created_at', cutoff + 'T00:00:00').order('created_at', { ascending: false })
+          : supabase.from('work_orders').select('*').order('created_at', { ascending: false }),
       ]);
 
       setEquipments((eqRes.data || []) as DBEquipment[]);
       setFuelRecords((frRes.data || []) as DBFuelRecord[]);
       setChecklists((clRes.data || []) as unknown as DBChecklist[]);
       setPlans((mpRes.data || []) as DBMaintenancePlan[]);
+      setWorkOrders((osRes.data || []) as DBWorkOrder[]);
       setLoading(false);
     };
     fetchAll();
@@ -55,6 +64,7 @@ export default function ReportsPage() {
   const filteredChecklists = selectedEquipment === 'all' ? checklists : checklists.filter(c => c.equipment_id === selectedEquipment);
   const filteredPlans = selectedEquipment === 'all' ? plans : plans.filter(p => p.equipment_id === selectedEquipment);
   const filteredEquipments = selectedEquipment === 'all' ? equipments : equipments.filter(e => e.id === selectedEquipment);
+  const filteredOrders = selectedEquipment === 'all' ? workOrders : workOrders.filter(o => o.equipment_id === selectedEquipment);
 
   // Fuel by equipment
   const fuelByEquipment = filteredEquipments
@@ -115,9 +125,18 @@ export default function ReportsPage() {
     { name: 'Atrasada', value: filteredPlans.filter(p => p.status === 'overdue').length, color: 'hsl(0,72%,51%)' },
   ];
 
+  // OS status pie
+  const osStatus = [
+    { name: 'Aberta', value: filteredOrders.filter(o => o.status === 'open').length },
+    { name: 'Em andamento', value: filteredOrders.filter(o => o.status === 'in_progress').length },
+    { name: 'Concluída', value: filteredOrders.filter(o => o.status === 'done').length },
+  ].filter(d => d.value > 0);
+
   const totalFuel = filteredFuel.reduce((s, r) => s + Number(r.liters), 0);
   const totalChecklists = filteredChecklists.length;
   const activeEquipments = filteredEquipments.filter(e => e.status === 'active').length;
+  const totalOS = filteredOrders.length;
+  const doneOS = filteredOrders.filter(o => o.status === 'done').length;
 
   const periodLabels: Record<Period, string> = { '7d': '7 dias', '30d': '30 dias', '90d': '90 dias', 'all': 'Todo período' };
 
@@ -128,24 +147,40 @@ export default function ReportsPage() {
     const suffix = selectedEquipment === 'all' ? '' : `_${selectedEqName}`;
 
     const fuelSheet = XLSX.utils.json_to_sheet(
-      filteredEquipments.filter(e => e.type !== 'combo').map(eq => ({
-        Equipamento: eq.name,
-        'Litros consumidos': filteredFuel.filter(r => r.target_equipment_id === eq.id).reduce((s, r) => s + Number(r.liters), 0),
-        'Horímetro atual': eq.current_hour_meter,
-      }))
+      filteredFuel.map(r => {
+        const target = equipments.find(e => e.id === r.target_equipment_id);
+        const combo = equipments.find(e => e.id === r.combo_equipment_id);
+        return { Data: r.date, Equipamento: target?.name || '—', Comboio: combo?.name || '—', Litros: r.liters, Responsável: r.operator_name };
+      })
     );
-    XLSX.utils.book_append_sheet(wb, fuelSheet, 'Combustível');
+    XLSX.utils.book_append_sheet(wb, fuelSheet, 'Abastecimentos');
 
     const clSheet = XLSX.utils.json_to_sheet(
       filteredChecklists.map(c => {
         const eq = equipments.find(e => e.id === c.equipment_id);
         return {
-          Data: c.date, Equipamento: eq?.name || '—', Operador: c.operator_name,
-          Horímetro: c.hour_meter, Status: c.status === 'ok' ? 'OK' : c.status === 'attention' ? 'Atenção' : 'Crítico',
+          Data: c.date, Equipamento: eq?.name || '—', Operador: c.operator_name, Tipo: c.type,
+          Horímetro: c.hour_meter, Status: checklistStatusLabels[c.status] || c.status,
         };
       })
     );
     XLSX.utils.book_append_sheet(wb, clSheet, 'Checklists');
+
+    const osSheet = XLSX.utils.json_to_sheet(
+      filteredOrders.map(o => {
+        const eq = equipments.find(e => e.id === o.equipment_id);
+        return {
+          'OS #': o.os_number, Equipamento: eq?.name || '—', Descrição: o.description,
+          Prioridade: priorityLabels[o.priority] || o.priority,
+          Status: osStatusLabels[o.status] || o.status,
+          Mecânico: o.mechanic_name || '—',
+          'Data Abertura': new Date(o.created_at).toLocaleDateString('pt-BR'),
+          Início: o.started_at ? new Date(o.started_at).toLocaleString('pt-BR') : '—',
+          Conclusão: o.completed_at ? new Date(o.completed_at).toLocaleString('pt-BR') : '—',
+        };
+      })
+    );
+    XLSX.utils.book_append_sheet(wb, osSheet, 'Ordens de Serviço');
 
     const mpSheet = XLSX.utils.json_to_sheet(
       filteredPlans.map(p => {
@@ -159,15 +194,6 @@ export default function ReportsPage() {
       })
     );
     XLSX.utils.book_append_sheet(wb, mpSheet, 'Manutenções');
-
-    const fdSheet = XLSX.utils.json_to_sheet(
-      filteredFuel.map(r => {
-        const target = equipments.find(e => e.id === r.target_equipment_id);
-        const combo = equipments.find(e => e.id === r.combo_equipment_id);
-        return { Data: r.date, Equipamento: target?.name || '—', Comboio: combo?.name || '—', Litros: r.liters, Responsável: r.operator_name };
-      })
-    );
-    XLSX.utils.book_append_sheet(wb, fdSheet, 'Abastecimentos');
 
     XLSX.writeFile(wb, `CSMCONTROL_Relatorio_${period}${suffix}.xlsx`);
   };
@@ -192,7 +218,7 @@ export default function ReportsPage() {
       }),
       checklistRecords: filteredChecklists.map(c => {
         const eq = equipments.find(e => e.id === c.equipment_id);
-        return { date: c.date, equipment: eq?.name || '—', operator: c.operator_name, hourMeter: c.hour_meter, status: c.status === 'ok' ? 'OK' : c.status === 'attention' ? 'Atenção' : 'Crítico' };
+        return { date: c.date, equipment: eq?.name || '—', operator: c.operator_name, hourMeter: c.hour_meter, status: checklistStatusLabels[c.status] || c.status };
       }),
       maintenancePlans: filteredPlans.map(p => {
         const eq = equipments.find(e => e.id === p.equipment_id);
@@ -206,7 +232,7 @@ export default function ReportsPage() {
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-black text-gradient">Relatórios</h1>
-          <p className="text-muted-foreground mt-1">Análise de frota, combustível e manutenções</p>
+          <p className="text-muted-foreground mt-1">Análise de frota, combustível, checklists e OS</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <div className="flex gap-1">
@@ -231,12 +257,12 @@ export default function ReportsPage() {
       <div className="glass-card rounded-xl p-4 flex items-center gap-4 flex-wrap">
         <Filter className="w-5 h-5 text-primary shrink-0" />
         <div className="flex-1 min-w-[200px] max-w-xs">
-          <Label className="text-xs text-muted-foreground mb-1 block">Filtrar por Máquina</Label>
+          <Label className="text-xs text-muted-foreground mb-1 block">Filtrar por Máquina / Caminhão</Label>
           <Select value={selectedEquipment} onValueChange={setSelectedEquipment}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent position="popper">
               <SelectItem value="all">Todos os Equipamentos</SelectItem>
-              {equipments.filter(e => e.type !== 'combo').map(eq => (
+              {equipments.map(eq => (
                 <SelectItem key={eq.id} value={eq.id}>{eq.name}</SelectItem>
               ))}
             </SelectContent>
@@ -250,21 +276,26 @@ export default function ReportsPage() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <div className="glass-card rounded-xl p-4">
           <Droplets className="w-5 h-5 text-primary mb-2" />
           <p className="text-2xl font-black font-mono text-primary">{totalFuel.toLocaleString('pt-BR')}L</p>
           <p className="text-xs text-muted-foreground mt-1">Combustível consumido</p>
         </div>
         <div className="glass-card rounded-xl p-4">
-          <BarChart2 className="w-5 h-5 text-success mb-2" />
+          <ClipboardList className="w-5 h-5 text-success mb-2" />
           <p className="text-2xl font-black font-mono text-success">{totalChecklists}</p>
           <p className="text-xs text-muted-foreground mt-1">Checklists realizados</p>
         </div>
         <div className="glass-card rounded-xl p-4">
+          <Clipboard className="w-5 h-5 text-primary mb-2" />
+          <p className="text-2xl font-black font-mono text-primary">{totalOS}</p>
+          <p className="text-xs text-muted-foreground mt-1">Ordens de Serviço</p>
+        </div>
+        <div className="glass-card rounded-xl p-4">
           <Wrench className="w-5 h-5 text-warning mb-2" />
-          <p className="text-2xl font-black font-mono text-warning">{filteredPlans.filter(p => p.status === 'overdue').length}</p>
-          <p className="text-xs text-muted-foreground mt-1">Manutenções atrasadas</p>
+          <p className="text-2xl font-black font-mono text-warning">{doneOS}</p>
+          <p className="text-xs text-muted-foreground mt-1">OS Concluídas</p>
         </div>
         <div className="glass-card rounded-xl p-4">
           <Clock className="w-5 h-5 text-accent mb-2" />
@@ -367,6 +398,26 @@ export default function ReportsPage() {
             )}
           </div>
 
+          {/* OS status pie */}
+          <div className="glass-card rounded-xl p-5">
+            <h2 className="font-bold mb-4 flex items-center gap-2">
+              <Clipboard className="w-5 h-5 text-primary" />
+              Status das Ordens de Serviço
+            </h2>
+            {osStatus.length === 0 ? (
+              <p className="text-muted-foreground text-sm">Nenhuma OS no período.</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={220}>
+                <PieChart>
+                  <Pie data={osStatus} cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={4} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                    {osStatus.map((_, i) => (<Cell key={i} fill={['hsl(220,10%,55%)', 'hsl(210,80%,56%)', 'hsl(142,71%,45%)'][i]} />))}
+                  </Pie>
+                  <Tooltip contentStyle={{ background: 'hsl(220 18% 14%)', border: '1px solid hsl(220 14% 22%)', borderRadius: 8 }} />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+
           {/* Maintenance status */}
           <div className="glass-card rounded-xl p-5">
             <h2 className="font-bold mb-4 flex items-center gap-2">
@@ -392,11 +443,149 @@ export default function ReportsPage() {
             </div>
           </div>
 
+          {/* ===== TABELA CHECKLISTS ===== */}
+          <div className="glass-card rounded-xl p-5 lg:col-span-2">
+            <h2 className="font-bold mb-4 flex items-center gap-2">
+              <ClipboardList className="w-5 h-5 text-success" />
+              Registros de Checklists
+            </h2>
+            {filteredChecklists.length === 0 ? (
+              <p className="text-muted-foreground text-sm">Nenhum checklist no período.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-muted-foreground border-b border-border">
+                      <th className="pb-2 pr-4">Data</th>
+                      <th className="pb-2 pr-4">Equipamento</th>
+                      <th className="pb-2 pr-4">Operador</th>
+                      <th className="pb-2 pr-4">Tipo</th>
+                      <th className="pb-2 pr-4">Horímetro</th>
+                      <th className="pb-2">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {filteredChecklists.map(c => {
+                      const eq = equipments.find(e => e.id === c.equipment_id);
+                      return (
+                        <tr key={c.id} className="hover:bg-secondary/30 transition-colors">
+                          <td className="py-2 pr-4">{new Date(c.date + 'T12:00:00').toLocaleDateString('pt-BR')}</td>
+                          <td className="py-2 pr-4 font-medium">{eq?.name || '—'}</td>
+                          <td className="py-2 pr-4 text-muted-foreground">{c.operator_name}</td>
+                          <td className="py-2 pr-4 capitalize">{c.type === 'daily' ? 'Diário' : c.type === 'corrective' ? 'Corretivo' : 'Preventivo'}</td>
+                          <td className="py-2 pr-4 font-mono">{c.hour_meter}h</td>
+                          <td className="py-2">
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${c.status === 'ok' ? 'bg-success/15 text-success' : c.status === 'attention' ? 'bg-warning/15 text-warning' : 'bg-destructive/15 text-destructive'}`}>
+                              {checklistStatusLabels[c.status] || c.status}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* ===== TABELA ABASTECIMENTOS ===== */}
+          <div className="glass-card rounded-xl p-5 lg:col-span-2">
+            <h2 className="font-bold mb-4 flex items-center gap-2">
+              <Droplets className="w-5 h-5 text-primary" />
+              Registros de Abastecimento
+            </h2>
+            {filteredFuel.length === 0 ? (
+              <p className="text-muted-foreground text-sm">Nenhum abastecimento no período.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-muted-foreground border-b border-border">
+                      <th className="pb-2 pr-4">Data</th>
+                      <th className="pb-2 pr-4">Equipamento</th>
+                      <th className="pb-2 pr-4">Comboio</th>
+                      <th className="pb-2 pr-4">Litros</th>
+                      <th className="pb-2">Responsável</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {filteredFuel.map(r => {
+                      const target = equipments.find(e => e.id === r.target_equipment_id);
+                      const combo = equipments.find(e => e.id === r.combo_equipment_id);
+                      return (
+                        <tr key={r.id} className="hover:bg-secondary/30 transition-colors">
+                          <td className="py-2 pr-4">{new Date(r.date + 'T12:00:00').toLocaleDateString('pt-BR')}</td>
+                          <td className="py-2 pr-4 font-medium">{target?.name || '—'}</td>
+                          <td className="py-2 pr-4 text-muted-foreground">{combo?.name || '—'}</td>
+                          <td className="py-2 pr-4 font-mono font-bold">{Number(r.liters).toLocaleString('pt-BR')}L</td>
+                          <td className="py-2 text-muted-foreground">{r.operator_name}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* ===== TABELA ORDENS DE SERVIÇO ===== */}
+          <div className="glass-card rounded-xl p-5 lg:col-span-2">
+            <h2 className="font-bold mb-4 flex items-center gap-2">
+              <Clipboard className="w-5 h-5 text-primary" />
+              Ordens de Serviço
+            </h2>
+            {filteredOrders.length === 0 ? (
+              <p className="text-muted-foreground text-sm">Nenhuma OS no período.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-muted-foreground border-b border-border">
+                      <th className="pb-2 pr-4">OS #</th>
+                      <th className="pb-2 pr-4">Equipamento</th>
+                      <th className="pb-2 pr-4">Descrição</th>
+                      <th className="pb-2 pr-4">Prioridade</th>
+                      <th className="pb-2 pr-4">Mecânico</th>
+                      <th className="pb-2 pr-4">Início</th>
+                      <th className="pb-2 pr-4">Conclusão</th>
+                      <th className="pb-2">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {filteredOrders.map(o => {
+                      const eq = equipments.find(e => e.id === o.equipment_id);
+                      return (
+                        <tr key={o.id} className="hover:bg-secondary/30 transition-colors">
+                          <td className="py-2 pr-4 font-mono font-bold">#{o.os_number}</td>
+                          <td className="py-2 pr-4 font-medium">{eq?.name || '—'}</td>
+                          <td className="py-2 pr-4 text-muted-foreground max-w-[200px] truncate">{o.description}</td>
+                          <td className="py-2 pr-4">
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${o.priority === 'urgent' ? 'bg-destructive/15 text-destructive' : o.priority === 'high' ? 'bg-warning/15 text-warning' : o.priority === 'medium' ? 'bg-primary/15 text-primary' : 'bg-secondary text-muted-foreground'}`}>
+                              {priorityLabels[o.priority] || o.priority}
+                            </span>
+                          </td>
+                          <td className="py-2 pr-4 text-muted-foreground">{o.mechanic_name || '—'}</td>
+                          <td className="py-2 pr-4 text-muted-foreground">{o.started_at ? new Date(o.started_at).toLocaleString('pt-BR') : '—'}</td>
+                          <td className="py-2 pr-4">{o.completed_at ? <span className="text-success">{new Date(o.completed_at).toLocaleString('pt-BR')}</span> : '—'}</td>
+                          <td className="py-2">
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${o.status === 'done' ? 'bg-success/15 text-success' : o.status === 'in_progress' ? 'bg-primary/15 text-primary' : 'bg-secondary text-muted-foreground'}`}>
+                              {osStatusLabels[o.status] || o.status}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
           {/* Histórico de planos */}
           <div className="glass-card rounded-xl p-5 lg:col-span-2">
             <h2 className="font-bold mb-4 flex items-center gap-2">
               <Wrench className="w-5 h-5 text-primary" />
-              Histórico de Planos de Manutenção
+              Planos de Manutenção Preventiva
             </h2>
             {filteredPlans.length === 0 ? (
               <p className="text-muted-foreground text-sm">Nenhum plano cadastrado.</p>

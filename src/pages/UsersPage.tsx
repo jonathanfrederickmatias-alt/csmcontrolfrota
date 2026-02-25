@@ -47,6 +47,7 @@ export default function UsersPage() {
   const [displayName, setDisplayName] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<AppRole>('gestor');
+  const [createPin, setCreatePin] = useState('');
   const [saving, setSaving] = useState(false);
 
   const fetchUsers = async () => {
@@ -75,11 +76,15 @@ export default function UsersPage() {
       toast.error('Preencha todos os campos');
       return;
     }
+    if (role === 'abastecedor' && (!createPin || createPin.length < 4)) {
+      toast.error('PIN deve ter pelo menos 4 dígitos');
+      return;
+    }
     setSaving(true);
 
     // Create user via edge function
     const { data, error } = await supabase.functions.invoke('manage-users', {
-      body: { action: 'create', email, password, displayName, role },
+      body: { action: 'create', email, password, displayName, role, pin: role === 'abastecedor' ? createPin : undefined },
     });
 
     if (error || data?.error) {
@@ -87,7 +92,7 @@ export default function UsersPage() {
     } else {
       toast.success('Usuário criado com sucesso!');
       setDialogOpen(false);
-      setEmail(''); setPassword(''); setDisplayName(''); setRole('gestor');
+      setEmail(''); setPassword(''); setDisplayName(''); setRole('gestor'); setCreatePin('');
       fetchUsers();
     }
     setSaving(false);
@@ -176,6 +181,18 @@ export default function UsersPage() {
                   </SelectContent>
                 </Select>
               </div>
+              {role === 'abastecedor' && (
+                <div>
+                  <Label>PIN de Abastecimento *</Label>
+                  <Input
+                    value={createPin}
+                    onChange={e => setCreatePin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="Ex: 1234"
+                    maxLength={6}
+                    className="text-center text-2xl tracking-widest font-mono"
+                  />
+                </div>
+              )}
               <Button onClick={handleCreateUser} className="w-full" disabled={saving}>
                 {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Criar Usuário

@@ -42,7 +42,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { action, email, password, displayName, role, userId } = await req.json();
+    const { action, email, password, displayName, role, userId, pin } = await req.json();
 
     if (action === 'create') {
       // Create user
@@ -66,11 +66,11 @@ Deno.serve(async (req) => {
           role,
         });
 
-        // If abastecedor, create default PIN
+        // If abastecedor, create PIN
         if (role === 'abastecedor') {
           await supabaseAdmin.from('fuel_pins').insert({
             user_id: newUser.user.id,
-            pin: '1234',
+            pin: pin || '1234',
           });
         }
       }

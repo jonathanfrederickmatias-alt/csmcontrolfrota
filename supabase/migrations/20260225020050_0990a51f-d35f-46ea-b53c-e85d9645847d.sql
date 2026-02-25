@@ -1,0 +1,1 @@
+ALTER TABLE public.equipments ADD COLUMN year integer;

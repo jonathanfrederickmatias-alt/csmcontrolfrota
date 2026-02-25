@@ -12,6 +12,7 @@ export interface DBEquipment {
   current_fuel?: number;
   status: 'active' | 'maintenance' | 'inactive';
   obra_id?: string;
+  year?: number;
   created_at: string;
   updated_at: string;
 }

@@ -7,32 +7,19 @@ import { Loader2 } from 'lucide-react';
 import csmLogo from '@/assets/csm-logo.png';
 
 export default function LoginPage() {
-  const { signIn, signUp } = useAuth();
-  const [isSignUp, setIsSignUp] = useState(false);
+  const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setMessage('');
     setLoading(true);
-
-    if (isSignUp) {
-      const { error } = await signUp(email, password);
-      if (error) {
-        setError(error.message);
-      } else {
-        setMessage('Conta criada! Verifique seu e-mail para confirmar o acesso.');
-      }
-    } else {
-      const { error } = await signIn(email, password);
-      if (error) {
-        setError('E-mail ou senha incorretos.');
-      }
+    const { error } = await signIn(email, password);
+    if (error) {
+      setError('E-mail ou senha incorretos.');
     }
     setLoading(false);
   };
@@ -51,9 +38,7 @@ export default function LoginPage() {
         </div>
 
         <div className="glass-card rounded-2xl p-6">
-          <h2 className="text-lg font-bold mb-4">
-            {isSignUp ? 'Criar conta de gestor' : 'Acesso do gestor'}
-          </h2>
+          <h2 className="text-lg font-bold mb-4">Acesso do gestor</h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -76,31 +61,19 @@ export default function LoginPage() {
                 placeholder="••••••••"
                 required
                 minLength={6}
-                autoComplete={isSignUp ? 'new-password' : 'current-password'}
+                autoComplete="current-password"
               />
             </div>
 
             {error && (
               <p className="text-sm text-destructive bg-destructive/10 rounded-lg p-3">{error}</p>
             )}
-            {message && (
-              <p className="text-sm text-success bg-success/10 rounded-lg p-3">{message}</p>
-            )}
 
             <Button type="submit" className="w-full h-11 font-bold" disabled={loading}>
               {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              {isSignUp ? 'Criar conta' : 'Entrar'}
+              Entrar
             </Button>
           </form>
-
-          <div className="mt-4 text-center">
-            <button
-              onClick={() => { setIsSignUp(!isSignUp); setError(''); setMessage(''); }}
-              className="text-sm text-muted-foreground hover:text-primary transition-colors"
-            >
-              {isSignUp ? 'Já tem conta? Fazer login' : 'Não tem conta? Criar agora'}
-            </button>
-          </div>
         </div>
 
         <p className="text-center text-xs text-muted-foreground mt-6">

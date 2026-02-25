@@ -104,3 +104,19 @@ export interface DBFuelSupplyRecord {
   responsible_name: string;
   created_at: string;
 }
+
+export interface DBWorkOrder {
+  id: string;
+  os_number: number;
+  maintenance_request_id: string;
+  equipment_id: string;
+  description: string;
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  mechanic_name?: string;
+  status: 'open' | 'in_progress' | 'done';
+  notes?: string;
+  started_at?: string;
+  completed_at?: string;
+  created_at: string;
+  updated_at: string;
+}

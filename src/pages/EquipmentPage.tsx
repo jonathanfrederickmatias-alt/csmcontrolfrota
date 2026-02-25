@@ -11,7 +11,7 @@ import { toast } from "sonner";
 
 type EqType = 'machine' | 'truck' | 'combo';
 
-const emptyForm = { name: '', type: 'machine' as EqType, plate: '', model: '', brand: '', costCenter: '', fuelCapacity: '', currentFuel: '', hourMeter: '' };
+const emptyForm = { name: '', type: 'machine' as EqType, plate: '', model: '', brand: '', costCenter: '', fuelCapacity: '', currentFuel: '', hourMeter: '', year: '' };
 
 export default function EquipmentPage() {
   const [equipments, setEquipments] = useState<DBEquipment[]>([]);
@@ -48,6 +48,7 @@ export default function EquipmentPage() {
       fuelCapacity: eq.fuel_capacity?.toString() || '',
       currentFuel: eq.current_fuel?.toString() || '',
       hourMeter: eq.current_hour_meter?.toString() || '0',
+      year: eq.year?.toString() || '',
     });
     setOpen(true);
     setSelectedEq(null);
@@ -66,6 +67,7 @@ export default function EquipmentPage() {
         current_hour_meter: form.hourMeter ? Number(form.hourMeter) : 0,
         fuel_capacity: form.fuelCapacity ? Number(form.fuelCapacity) : null,
         current_fuel: form.currentFuel ? Number(form.currentFuel) : 0,
+        year: form.year ? Number(form.year) : null,
       }).eq('id', editingId);
       if (error) toast.error("Erro ao atualizar");
       else toast.success("Equipamento atualizado!");
@@ -80,6 +82,7 @@ export default function EquipmentPage() {
         current_hour_meter: 0,
         fuel_capacity: form.fuelCapacity ? Number(form.fuelCapacity) : null,
         current_fuel: form.currentFuel ? Number(form.currentFuel) : 0,
+        year: form.year ? Number(form.year) : null,
         status: 'active',
       });
       if (error) toast.error("Erro ao criar");
@@ -133,6 +136,7 @@ export default function EquipmentPage() {
               <div><Label>Modelo</Label><Input value={form.model} onChange={e => setForm({...form, model: e.target.value})} /></div>
               <div><Label>Marca</Label><Input value={form.brand} onChange={e => setForm({...form, brand: e.target.value})} /></div>
               <div><Label>Centro de Custo</Label><Input value={form.costCenter} onChange={e => setForm({...form, costCenter: e.target.value})} /></div>
+              <div><Label>Ano</Label><Input type="number" value={form.year} onChange={e => setForm({...form, year: e.target.value})} placeholder="Ex: 2024" /></div>
               {editingId && (
                 <div><Label>Horímetro</Label><Input type="number" value={form.hourMeter} onChange={e => setForm({...form, hourMeter: e.target.value})} /></div>
               )}
@@ -198,6 +202,12 @@ export default function EquipmentPage() {
                       <p className="font-semibold text-foreground">{selectedEq.cost_center}</p>
                     </div>
                   )}
+                  {selectedEq.year && (
+                    <div className="bg-secondary/50 rounded-lg p-3">
+                      <p className="text-xs text-muted-foreground">Ano</p>
+                      <p className="font-semibold text-foreground">{selectedEq.year}</p>
+                    </div>
+                  )}
                   {selectedEq.type === 'combo' && selectedEq.fuel_capacity && (
                     <div className="col-span-2 bg-secondary/50 rounded-lg p-3">
                       <p className="text-xs text-muted-foreground">Combustível</p>
@@ -246,6 +256,7 @@ export default function EquipmentPage() {
               {eq.plate && <p className="text-xs text-muted-foreground">Placa/Série: {eq.plate}</p>}
               {eq.model && <p className="text-xs text-muted-foreground">Modelo: {eq.model}</p>}
               {eq.brand && <p className="text-xs text-muted-foreground">Marca: {eq.brand}</p>}
+              {eq.year && <p className="text-xs text-muted-foreground">Ano: {eq.year}</p>}
               <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
                 <div>
                   <p className="text-xs text-muted-foreground">Horímetro</p>

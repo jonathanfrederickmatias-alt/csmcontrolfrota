@@ -77,6 +77,7 @@ export type Database = {
           status: string
           type: string
           updated_at: string
+          year: number | null
         }
         Insert: {
           brand?: string | null
@@ -93,6 +94,7 @@ export type Database = {
           status?: string
           type: string
           updated_at?: string
+          year?: number | null
         }
         Update: {
           brand?: string | null
@@ -109,6 +111,7 @@ export type Database = {
           status?: string
           type?: string
           updated_at?: string
+          year?: number | null
         }
         Relationships: [
           {

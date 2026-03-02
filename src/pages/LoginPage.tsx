@@ -47,7 +47,7 @@ export default function LoginPage() {
           <img src={csmLogo} alt="CSM Construções" className="w-80 h-52 object-contain mx-auto mb-4" />
           <h1 className="text-3xl font-black">
             <span className="text-gradient">CSM</span>
-            <span className="text-foreground">CONTROL</span>
+            <span className="text-logo-blue">CONTROLFROTA</span>
           </h1>
           <p className="text-muted-foreground text-sm mt-1">Gestão de Frota & Manutenção</p>
         </div>

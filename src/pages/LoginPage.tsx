@@ -44,7 +44,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-8">
-          <img src={csmLogo} alt="CSM Construções" className="w-40 h-28 object-contain mx-auto mb-4" />
+          <img src={csmLogo} alt="CSM Construções" className="w-52 h-36 object-contain mx-auto mb-4" />
           <h1 className="text-3xl font-black">
             <span className="text-gradient">CSM</span>
             <span className="text-foreground">CONTROL</span>

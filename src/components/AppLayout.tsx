@@ -34,7 +34,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen flex">
       {/* Sidebar desktop */}
       <aside className="hidden lg:flex flex-col w-64 bg-sidebar border-r border-sidebar-border fixed h-full z-30">
-        <Link to="/" className="flex items-center gap-3 p-5 border-b border-sidebar-border hover:bg-white/90 transition-colors bg-white rounded-b-lg">
+        <Link to="/" className="flex items-center gap-3 p-5 border-b border-sidebar-border hover:bg-background/90 transition-colors bg-background">
           <img src={csmLogo} alt="CSM Construções" className="w-36 h-24 object-contain" />
           <div>
             <h1 className="text-lg font-black tracking-tight">
@@ -71,7 +71,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Mobile header */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-white border-b border-sidebar-border px-4 py-3 flex items-center justify-between">
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-background border-b border-border px-4 py-3 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2 text-lg font-black">
           <img src={csmLogo} alt="CSM" className="w-24 h-20 object-contain" />
           <span>

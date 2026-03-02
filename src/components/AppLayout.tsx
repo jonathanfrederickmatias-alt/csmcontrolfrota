@@ -39,7 +39,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <div>
             <h1 className="text-lg font-black tracking-tight">
               <span className="text-gradient">CSM</span>
-              <span className="text-sidebar-foreground">CONTROL</span>
+              <span className="text-logo-blue">CONTROLFROTA</span>
             </h1>
             <p className="text-[10px] text-muted-foreground">Gestão de Frota & Manutenção</p>
           </div>
@@ -76,7 +76,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <img src={csmLogo} alt="CSM" className="w-24 h-20 object-contain" />
           <span>
             <span className="text-gradient">CSM</span>
-            <span className="text-sidebar-foreground">CONTROL</span>
+            <span className="text-logo-blue">CONTROLFROTA</span>
           </span>
         </Link>
         <button onClick={() => setMobileOpen(!mobileOpen)} className="text-sidebar-foreground p-2">

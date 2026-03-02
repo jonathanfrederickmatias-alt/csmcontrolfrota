@@ -50,6 +50,7 @@
     --sidebar-accent-foreground: 40 10% 85%;
     --sidebar-border: 220 14% 18%;
     --sidebar-ring: 0 80% 50%;
+    --logo-blue: 210 80% 45%;
   }
 }
 
@@ -78,6 +79,10 @@
 
   .text-gradient {
     @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent;
+  }
+
+  .text-logo-blue {
+    color: hsl(var(--logo-blue));
   }
 
   .status-ok {

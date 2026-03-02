@@ -35,9 +35,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Sidebar desktop */}
       <aside className="hidden lg:flex flex-col w-64 bg-sidebar border-r border-sidebar-border fixed h-full z-30">
         <Link to="/" className="flex items-center gap-3 p-5 border-b border-sidebar-border hover:bg-sidebar-accent/50 transition-colors">
-          <div className="w-10 h-10 rounded overflow-hidden bg-foreground/90 flex items-center justify-center">
-            <img src={csmLogo} alt="CSM Construções" className="w-full h-full object-contain mix-blend-multiply" />
-          </div>
+          <img src={csmLogo} alt="CSM Construções" className="w-10 h-10 object-contain" />
           <div>
             <h1 className="text-lg font-black tracking-tight">
               <span className="text-gradient">CSM</span>
@@ -75,9 +73,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Mobile header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-sidebar border-b border-sidebar-border px-4 py-3 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2 text-lg font-black">
-          <div className="w-8 h-8 rounded overflow-hidden bg-foreground/90 flex items-center justify-center">
-            <img src={csmLogo} alt="CSM" className="w-full h-full object-contain mix-blend-multiply" />
-          </div>
+          <img src={csmLogo} alt="CSM" className="w-8 h-8 object-contain" />
           <span>
             <span className="text-gradient">CSM</span>
             <span className="text-sidebar-foreground">CONTROL</span>

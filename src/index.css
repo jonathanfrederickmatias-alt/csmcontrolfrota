@@ -51,7 +51,7 @@
     --sidebar-border: 220 20% 25%;
     --sidebar-ring: 210 80% 45%;
 
-    --logo-blue: 210 80% 45%;
+    --logo-blue: 210 85% 30%;
   }
 }
 
@@ -79,7 +79,10 @@
   }
 
   .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent;
+    background: linear-gradient(to right, hsl(0 80% 50%), hsl(0 70% 40%));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
 
   .text-logo-blue {

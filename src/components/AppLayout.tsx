@@ -35,7 +35,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Sidebar desktop */}
       <aside className="hidden lg:flex flex-col w-64 bg-sidebar border-r border-sidebar-border fixed h-full z-30">
         <Link to="/" className="flex items-center gap-3 p-5 border-b border-sidebar-border hover:bg-sidebar-accent/50 transition-colors">
-          <img src={csmLogo} alt="CSM Construções" className="w-20 h-16 object-contain" />
+          <img src={csmLogo} alt="CSM Construções" className="w-28 h-20 object-contain" />
           <div>
             <h1 className="text-lg font-black tracking-tight">
               <span className="text-gradient">CSM</span>
@@ -73,7 +73,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Mobile header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-sidebar border-b border-sidebar-border px-4 py-3 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2 text-lg font-black">
-          <img src={csmLogo} alt="CSM" className="w-16 h-14 object-contain" />
+          <img src={csmLogo} alt="CSM" className="w-20 h-16 object-contain" />
           <span>
             <span className="text-gradient">CSM</span>
             <span className="text-sidebar-foreground">CONTROL</span>

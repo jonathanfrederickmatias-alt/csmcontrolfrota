@@ -19,7 +19,7 @@ import { Label } from '@/components/ui/label';
 import * as XLSX from 'xlsx';
 import { exportGeneralReportsPDF } from '@/lib/pdf-export';
 
-const COLORS = ['hsl(0,80%,50%)', 'hsl(38,92%,50%)', 'hsl(142,71%,45%)', 'hsl(210,80%,56%)', 'hsl(280,70%,60%)', 'hsl(16,80%,55%)'];
+const COLORS = ['hsl(210,80%,45%)', 'hsl(38,92%,50%)', 'hsl(142,71%,45%)', 'hsl(0,72%,51%)', 'hsl(280,70%,60%)', 'hsl(16,80%,55%)'];
 
 type Period = '7d' | '30d' | '90d' | 'all';
 
@@ -330,11 +330,11 @@ export default function ReportsPage() {
             ) : (
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={fuelByDay} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 14% 22%)" />
-                  <XAxis dataKey="date" tick={{ fill: 'hsl(220 10% 55%)', fontSize: 11 }} />
-                  <YAxis tick={{ fill: 'hsl(220 10% 55%)', fontSize: 11 }} />
-                  <Tooltip contentStyle={{ background: 'hsl(220 18% 14%)', border: '1px solid hsl(220 14% 22%)', borderRadius: 8 }} labelStyle={{ color: 'hsl(40 10% 92%)' }} itemStyle={{ color: 'hsl(0 80% 50%)' }} formatter={(v: number) => [`${v}L`, 'Litros']} />
-                  <Bar dataKey="litros" fill="hsl(0 80% 50%)" radius={[4, 4, 0, 0]} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 14% 82%)" />
+                  <XAxis dataKey="date" tick={{ fill: 'hsl(220 10% 40%)', fontSize: 11 }} />
+                  <YAxis tick={{ fill: 'hsl(220 10% 40%)', fontSize: 11 }} />
+                  <Tooltip contentStyle={{ background: 'white', border: '1px solid hsl(220 14% 85%)', borderRadius: 8 }} labelStyle={{ color: 'hsl(220 10% 25%)' }} itemStyle={{ color: 'hsl(210 80% 45%)' }} formatter={(v: number) => [`${v}L`, 'Litros']} />
+                  <Bar dataKey="litros" fill="hsl(210 80% 45%)" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -351,11 +351,11 @@ export default function ReportsPage() {
             ) : (
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={fuelByEquipment} layout="vertical" margin={{ top: 0, right: 20, bottom: 0, left: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 14% 22%)" />
-                  <XAxis type="number" tick={{ fill: 'hsl(220 10% 55%)', fontSize: 11 }} />
-                  <YAxis dataKey="name" type="category" width={80} tick={{ fill: 'hsl(220 10% 55%)', fontSize: 11 }} />
-                  <Tooltip contentStyle={{ background: 'hsl(220 18% 14%)', border: '1px solid hsl(220 14% 22%)', borderRadius: 8 }} formatter={(v: number) => [`${v}L`, 'Litros']} />
-                  <Bar dataKey="litros" fill="hsl(0 80% 50%)" radius={[0, 4, 4, 0]}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 14% 82%)" />
+                  <XAxis type="number" tick={{ fill: 'hsl(220 10% 40%)', fontSize: 11 }} />
+                  <YAxis dataKey="name" type="category" width={80} tick={{ fill: 'hsl(220 10% 40%)', fontSize: 11 }} />
+                  <Tooltip contentStyle={{ background: 'white', border: '1px solid hsl(220 14% 85%)', borderRadius: 8 }} formatter={(v: number) => [`${v}L`, 'Litros']} />
+                  <Bar dataKey="litros" fill="hsl(210 80% 45%)" radius={[0, 4, 4, 0]}>
                     {fuelByEquipment.map((_, i) => (<Cell key={i} fill={COLORS[i % COLORS.length]} />))}
                   </Bar>
                 </BarChart>
@@ -374,10 +374,10 @@ export default function ReportsPage() {
             ) : (
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={hoursByEquipment} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 14% 22%)" />
-                  <XAxis dataKey="name" tick={{ fill: 'hsl(220 10% 55%)', fontSize: 11 }} />
-                  <YAxis tick={{ fill: 'hsl(220 10% 55%)', fontSize: 11 }} />
-                  <Tooltip contentStyle={{ background: 'hsl(220 18% 14%)', border: '1px solid hsl(220 14% 22%)', borderRadius: 8 }} formatter={(v: number) => [`${v}h`, 'Horímetro']} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 14% 82%)" />
+                  <XAxis dataKey="name" tick={{ fill: 'hsl(220 10% 40%)', fontSize: 11 }} />
+                  <YAxis tick={{ fill: 'hsl(220 10% 40%)', fontSize: 11 }} />
+                  <Tooltip contentStyle={{ background: 'white', border: '1px solid hsl(220 14% 85%)', borderRadius: 8 }} formatter={(v: number) => [`${v}h`, 'Horímetro']} />
                   <Bar dataKey="horímetro" fill="hsl(38 92% 50%)" radius={[4, 4, 0, 0]}>
                     {hoursByEquipment.map((_, i) => (<Cell key={i} fill={COLORS[i % COLORS.length]} />))}
                   </Bar>
@@ -400,7 +400,7 @@ export default function ReportsPage() {
                   <Pie data={checklistStatus} cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={4} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
                     {checklistStatus.map((_, i) => (<Cell key={i} fill={['hsl(142,71%,45%)', 'hsl(38,92%,50%)', 'hsl(0,72%,51%)'][i]} />))}
                   </Pie>
-                  <Tooltip contentStyle={{ background: 'hsl(220 18% 14%)', border: '1px solid hsl(220 14% 22%)', borderRadius: 8 }} />
+                  <Tooltip contentStyle={{ background: 'white', border: '1px solid hsl(220 14% 85%)', borderRadius: 8 }} />
                 </PieChart>
               </ResponsiveContainer>
             )}
@@ -420,7 +420,7 @@ export default function ReportsPage() {
                   <Pie data={osStatus} cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={4} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
                     {osStatus.map((_, i) => (<Cell key={i} fill={['hsl(220,10%,55%)', 'hsl(210,80%,56%)', 'hsl(142,71%,45%)'][i]} />))}
                   </Pie>
-                  <Tooltip contentStyle={{ background: 'hsl(220 18% 14%)', border: '1px solid hsl(220 14% 22%)', borderRadius: 8 }} />
+                  <Tooltip contentStyle={{ background: 'white', border: '1px solid hsl(220 14% 85%)', borderRadius: 8 }} />
                 </PieChart>
               </ResponsiveContainer>
             )}

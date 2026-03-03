@@ -132,10 +132,10 @@ async function loadLogoAsBase64(): Promise<string | null> {
 function addHeader(pdf: jsPDF, title: string, subtitle: string, logoData?: string | null) {
   // White header band with blue accent
   pdf.setFillColor(255, 255, 255);
-  pdf.rect(0, 0, 210, 38, 'F');
+  pdf.rect(0, 0, pdf.internal.pageSize.getWidth(), 38, 'F');
   // Blue bottom border
   pdf.setFillColor(...COLORS.primary);
-  pdf.rect(0, 36, 210, 2, 'F');
+  pdf.rect(0, 36, pdf.internal.pageSize.getWidth(), 2, 'F');
 
   // Logo
   if (logoData) {
@@ -166,24 +166,25 @@ function addHeader(pdf: jsPDF, title: string, subtitle: string, logoData?: strin
   const dateStr = now.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   pdf.setFontSize(8);
   pdf.setTextColor(...COLORS.textMuted);
-  pdf.text(`Emitido em: ${dateStr}`, 195, 16, { align: 'right' });
+  pdf.text(`Emitido em: ${dateStr}`, pdf.internal.pageSize.getWidth() - 15, 16, { align: 'right' });
 
   // System name
   pdf.setFontSize(7);
   pdf.setTextColor(...COLORS.primary);
-  pdf.text('CSMCONTROLFROTA', 195, 25, { align: 'right' });
+  pdf.text('CSMCONTROLFROTA', pdf.internal.pageSize.getWidth() - 15, 25, { align: 'right' });
 }
 
 function addFooter(pdf: jsPDF, pageNum: number, totalPages: number) {
-  const pageHeight = pdf.internal.pageSize.getHeight();
+  const pw = pdf.internal.pageSize.getWidth();
+  const ph = pdf.internal.pageSize.getHeight();
   pdf.setFillColor(245, 247, 250);
-  pdf.rect(0, pageHeight - 12, 210, 12, 'F');
+  pdf.rect(0, ph - 12, pw, 12, 'F');
   pdf.setFillColor(...COLORS.primary);
-  pdf.rect(0, pageHeight - 12, 210, 0.5, 'F');
+  pdf.rect(0, ph - 12, pw, 0.5, 'F');
   pdf.setFontSize(7);
   pdf.setTextColor(...COLORS.textMuted);
-  pdf.text('CSMCONTROLFROTA — Relatório gerado automaticamente pelo sistema', 15, pageHeight - 5);
-  pdf.text(`Página ${pageNum} de ${totalPages}`, 195, pageHeight - 5, { align: 'right' });
+  pdf.text('CSMCONTROLFROTA — Relatório gerado automaticamente pelo sistema', 15, ph - 5);
+  pdf.text(`Página ${pageNum} de ${totalPages}`, pw - 15, ph - 5, { align: 'right' });
 }
 
 function checkPageBreak(pdf: jsPDF, y: number, needed: number): number {
@@ -191,7 +192,7 @@ function checkPageBreak(pdf: jsPDF, y: number, needed: number): number {
   if (y + needed > pageHeight - 18) {
     pdf.addPage();
     pdf.setFillColor(...COLORS.dark);
-    pdf.rect(0, 0, 210, pdf.internal.pageSize.getHeight(), 'F');
+    pdf.rect(0, 0, pdf.internal.pageSize.getWidth(), pdf.internal.pageSize.getHeight(), 'F');
     return 15;
   }
   return y;
@@ -227,8 +228,8 @@ export async function exportMaintenancePlansPDF(
   filterName: string
 ) {
   const logoData = await loadLogoAsBase64();
-  const pdf = new jsPDF('p', 'mm', 'a4');
-  const pageWidth = 210;
+  const pdf = new jsPDF('l', 'mm', 'a4');
+  const pageWidth = 297;
   const margin = 12;
   const contentWidth = pageWidth - margin * 2;
 
@@ -290,7 +291,7 @@ export async function exportMaintenancePlansPDF(
     y += 10;
 
     // Table header
-    const colWidths = [50, 18, 18, 20, 22, 22, 36];
+    const colWidths = [120, 22, 22, 24, 24, 24, 37];
     const colHeaders = ['Serviço', 'Intervalo', 'Próxima', 'Faltam', 'Status', 'Última (h)', 'Última Execução'];
     const colX = [margin];
     for (let i = 1; i < colWidths.length; i++) colX.push(colX[i - 1] + colWidths[i - 1]);

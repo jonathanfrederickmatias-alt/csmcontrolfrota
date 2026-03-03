@@ -58,6 +58,11 @@ interface PlanRow {
   remaining: number;
   status: 'ok' | 'approaching' | 'overdue';
   lastExecuted?: string;
+  plate?: string;
+  model?: string;
+  brand?: string;
+  costCenter?: string;
+  year?: number;
 }
 
 interface RequestRow {
@@ -291,24 +296,40 @@ export async function exportMaintenancePlansPDF(
 
     // Equipment header
     pdf.setFillColor(...COLORS.headerBg);
-    pdf.roundedRect(margin, y, contentWidth, 8, 1, 1, 'F');
+    pdf.roundedRect(margin, y, contentWidth, 16, 1, 1, 'F');
     pdf.setFillColor(...COLORS.primary);
-    pdf.rect(margin, y, 3, 8, 'F');
+    pdf.rect(margin, y, 3, 16, 'F');
 
     pdf.setTextColor(...COLORS.text);
     pdf.setFontSize(9);
     pdf.setFont('helvetica', 'bold');
     pdf.text(equipName, margin + 6, y + 5.5);
 
-    // Equipment horimiter
-    if (eqPlans.length > 0) {
-      pdf.setTextColor(...COLORS.textMuted);
-      pdf.setFontSize(7);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(`Horímetro atual: ${eqPlans[0].currentHM}h`, margin + contentWidth - 2, y + 5.5, { align: 'right' });
+    // Equipment details line
+    const sample = eqPlans[0];
+    const details: string[] = [];
+    if (sample.costCenter) details.push(`CC: ${sample.costCenter}`);
+    if (sample.plate) details.push(`Placa/Série: ${sample.plate}`);
+    if (sample.model) details.push(`Modelo: ${sample.model}`);
+    if (sample.brand) details.push(`Marca: ${sample.brand}`);
+    if (sample.year) details.push(`Ano: ${sample.year}`);
+    
+    pdf.setFontSize(7);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(...COLORS.textMuted);
+    if (details.length > 0) {
+      pdf.text(details.join('  |  '), margin + 6, y + 11.5);
     }
 
-    y += 10;
+    // Equipment horimeter
+    if (eqPlans.length > 0) {
+      pdf.setFontSize(8);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(...COLORS.primary);
+      pdf.text(`Horímetro: ${eqPlans[0].currentHM}h`, margin + contentWidth - 2, y + 5.5, { align: 'right' });
+    }
+
+    y += 18;
 
     // Table header
     const colWidths = [120, 22, 22, 24, 24, 24, 37];

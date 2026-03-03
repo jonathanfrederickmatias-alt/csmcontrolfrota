@@ -15,6 +15,11 @@ import * as XLSX from 'xlsx';
 import { exportMaintenancePlansPDF, exportMaintenanceRequestsPDF, exportMaintenanceHistoryPDF, exportWorkOrdersPDF } from '@/lib/pdf-export';
 import { calculateMaintenanceStatus } from '@/lib/maintenance-utils';
 
+function eqLabel(eq: DBEquipment): string {
+  const id = eq.cost_center || eq.plate || '';
+  return id ? `${eq.name} (${id})` : eq.name;
+}
+
 const statusConfig = {
   ok: { color: 'text-success', bg: 'bg-success/10', border: 'border-l-success', label: 'OK' },
   approaching: { color: 'text-warning', bg: 'bg-warning/10', border: 'border-l-warning', label: 'Próxima' },
@@ -289,7 +294,7 @@ export default function MaintenancePage() {
                   const eq = equipments.find(e => e.id === o.equipment_id);
                   return {
                     osNumber: o.os_number,
-                    equipment: eq?.name || '—',
+                    equipment: eq ? eqLabel(eq) : '—',
                     description: o.description,
                     priority: priorityConfig[o.priority]?.label || o.priority,
                     status: osStatusConfig[o.status]?.label || o.status,
@@ -417,7 +422,7 @@ export default function MaintenancePage() {
                   const eq = equipments.find(e => e.id === p.equipment_id);
                   const currentHM = eq?.current_hour_meter || 0;
                   return {
-                    equipment: eq?.name || '—',
+                    equipment: eq ? eqLabel(eq) : '—',
                     description: p.description,
                     intervalHours: p.interval_hours,
                     nextDueAt: p.next_due_at,
@@ -551,7 +556,7 @@ export default function MaintenancePage() {
                 const rows = filteredRequests.map(r => {
                   const eq = equipments.find(e => e.id === r.equipment_id);
                   return {
-                    equipment: eq?.name || '—',
+                    equipment: eq ? eqLabel(eq) : '—',
                     description: r.description,
                     priority: priorityConfig[r.priority]?.label || r.priority,
                     status: requestStatusConfig[r.status]?.label || r.status,
@@ -678,7 +683,7 @@ export default function MaintenancePage() {
                   const eq = equipments.find(e => e.id === h.equipment_id);
                   const plan = plans.find(p => p.id === h.plan_id);
                   return {
-                    equipment: eq?.name || '—',
+                    equipment: eq ? eqLabel(eq) : '—',
                     description: h.description,
                     hourMeter: h.hour_meter,
                     executedAt: new Date(h.executed_at).toLocaleDateString('pt-BR'),

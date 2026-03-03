@@ -34,10 +34,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen flex">
       {/* Sidebar desktop */}
       <aside className="hidden lg:flex flex-col w-64 bg-sidebar border-r border-sidebar-border fixed h-full z-30">
-        <Link to="/" className="flex items-center gap-3 p-5 border-b border-sidebar-border hover:bg-background/90 transition-colors bg-background">
-          <img src={csmLogo} alt="CSM Construções" className="w-36 h-24 object-contain" />
+        <Link to="/" className="flex items-center gap-3 p-4 border-b border-sidebar-border hover:bg-background/90 transition-colors bg-background">
+          <img src={csmLogo} alt="CSM Construções" className="w-16 h-12 object-contain" />
           <div>
-            <h1 className="text-lg font-black tracking-tight">
+            <h1 className="text-base font-black tracking-tight leading-tight">
               <span className="text-gradient">CSM</span>
               <span className="text-logo-blue">CONTROLFROTA</span>
             </h1>
@@ -73,7 +73,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Mobile header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-background border-b border-border px-4 py-3 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2 text-lg font-black">
-          <img src={csmLogo} alt="CSM" className="w-24 h-20 object-contain" />
+          <img src={csmLogo} alt="CSM" className="w-12 h-10 object-contain" />
           <span>
             <span className="text-gradient">CSM</span>
             <span className="text-logo-blue">CONTROLFROTA</span>

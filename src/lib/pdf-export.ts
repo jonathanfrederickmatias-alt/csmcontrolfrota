@@ -16,7 +16,7 @@ export async function exportElementToPDF(elementId: string, filename: string) {
       scale: 2,
       useCORS: true,
       logging: false,
-      backgroundColor: '#0f1117',
+      backgroundColor: '#f0f3f8',
       windowWidth: element.scrollWidth,
       windowHeight: element.scrollHeight,
     });
@@ -82,19 +82,19 @@ interface HistoryRow {
 }
 
 const COLORS = {
-  primary: [220, 40, 40] as [number, number, number],     // Red brand
-  primaryDark: [180, 30, 30] as [number, number, number],
-  dark: [15, 17, 23] as [number, number, number],
-  cardBg: [22, 25, 35] as [number, number, number],
-  headerBg: [30, 34, 48] as [number, number, number],
-  rowAlt: [18, 21, 30] as [number, number, number],
-  text: [230, 230, 235] as [number, number, number],
-  textMuted: [140, 145, 160] as [number, number, number],
-  success: [34, 197, 94] as [number, number, number],
-  warning: [245, 158, 11] as [number, number, number],
-  danger: [239, 68, 68] as [number, number, number],
+  primary: [25, 75, 155] as [number, number, number],     // Blue brand (matching logo)
+  primaryDark: [15, 55, 120] as [number, number, number],
+  dark: [240, 243, 248] as [number, number, number],       // Light background
+  cardBg: [255, 255, 255] as [number, number, number],     // White cards
+  headerBg: [230, 235, 245] as [number, number, number],   // Light gray header
+  rowAlt: [245, 247, 250] as [number, number, number],     // Light alternating rows
+  text: [30, 35, 50] as [number, number, number],          // Dark text
+  textMuted: [100, 110, 130] as [number, number, number],  // Muted text
+  success: [34, 160, 80] as [number, number, number],
+  warning: [220, 140, 10] as [number, number, number],
+  danger: [210, 50, 50] as [number, number, number],
   white: [255, 255, 255] as [number, number, number],
-  border: [45, 50, 65] as [number, number, number],
+  border: [210, 215, 225] as [number, number, number],
 };
 
 // Cache for logo image data
@@ -119,22 +119,22 @@ async function loadLogoAsBase64(): Promise<string | null> {
 }
 
 function addHeader(pdf: jsPDF, title: string, subtitle: string, logoData?: string | null) {
-  // Dark background header band
-  pdf.setFillColor(...COLORS.primary);
+  // White header band with blue accent
+  pdf.setFillColor(255, 255, 255);
   pdf.rect(0, 0, 210, 38, 'F');
+  // Blue bottom border
+  pdf.setFillColor(...COLORS.primary);
+  pdf.rect(0, 36, 210, 2, 'F');
 
   // Logo
   if (logoData) {
-    // White bg circle for logo
-    pdf.setFillColor(255, 255, 255);
-    pdf.roundedRect(12, 5, 28, 28, 3, 3, 'F');
-    pdf.addImage(logoData, 'PNG', 14, 7, 24, 24);
+    pdf.addImage(logoData, 'PNG', 12, 5, 26, 26);
   }
 
-  const textX = logoData ? 45 : 15;
+  const textX = logoData ? 42 : 15;
 
-  // Company name
-  pdf.setTextColor(...COLORS.white);
+  // Company name in blue
+  pdf.setTextColor(...COLORS.primary);
   pdf.setFontSize(22);
   pdf.setFont('helvetica', 'bold');
   pdf.text('CSM CONSTRUÇÕES', textX, 16);
@@ -142,33 +142,36 @@ function addHeader(pdf: jsPDF, title: string, subtitle: string, logoData?: strin
   // Title
   pdf.setFontSize(11);
   pdf.setFont('helvetica', 'normal');
+  pdf.setTextColor(...COLORS.text);
   pdf.text(title, textX, 25);
 
   // Subtitle / date
   pdf.setFontSize(8);
-  pdf.setTextColor(255, 220, 220);
+  pdf.setTextColor(...COLORS.textMuted);
   pdf.text(subtitle, textX, 32);
 
   // Right side - generation date
   const now = new Date();
   const dateStr = now.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   pdf.setFontSize(8);
-  pdf.setTextColor(...COLORS.white);
+  pdf.setTextColor(...COLORS.textMuted);
   pdf.text(`Emitido em: ${dateStr}`, 195, 16, { align: 'right' });
 
   // System name
   pdf.setFontSize(7);
-  pdf.setTextColor(255, 200, 200);
-  pdf.text('Sistema de Gestão de Frota', 195, 25, { align: 'right' });
+  pdf.setTextColor(...COLORS.primary);
+  pdf.text('CSMCONTROLFROTA', 195, 25, { align: 'right' });
 }
 
 function addFooter(pdf: jsPDF, pageNum: number, totalPages: number) {
   const pageHeight = pdf.internal.pageSize.getHeight();
-  pdf.setFillColor(...COLORS.headerBg);
+  pdf.setFillColor(245, 247, 250);
   pdf.rect(0, pageHeight - 12, 210, 12, 'F');
+  pdf.setFillColor(...COLORS.primary);
+  pdf.rect(0, pageHeight - 12, 210, 0.5, 'F');
   pdf.setFontSize(7);
   pdf.setTextColor(...COLORS.textMuted);
-  pdf.text('CSM CONTROL — Relatório gerado automaticamente pelo sistema', 15, pageHeight - 5);
+  pdf.text('CSMCONTROLFROTA — Relatório gerado automaticamente pelo sistema', 15, pageHeight - 5);
   pdf.text(`Página ${pageNum} de ${totalPages}`, 195, pageHeight - 5, { align: 'right' });
 }
 
@@ -184,9 +187,11 @@ function checkPageBreak(pdf: jsPDF, y: number, needed: number): number {
 }
 
 function drawSummaryCard(pdf: jsPDF, x: number, y: number, w: number, label: string, value: string, color: [number, number, number]) {
-  // Card background
+  // Card background with border
   pdf.setFillColor(...COLORS.cardBg);
   pdf.roundedRect(x, y, w, 22, 2, 2, 'F');
+  pdf.setDrawColor(...COLORS.border);
+  pdf.roundedRect(x, y, w, 22, 2, 2, 'S');
 
   // Color accent line on top
   pdf.setFillColor(...color);
@@ -279,7 +284,7 @@ export async function exportMaintenancePlansPDF(
     const colX = [margin];
     for (let i = 1; i < colWidths.length; i++) colX.push(colX[i - 1] + colWidths[i - 1]);
 
-    pdf.setFillColor(35, 38, 52);
+    pdf.setFillColor(220, 228, 240);
     pdf.rect(margin, y, contentWidth, 6, 'F');
     pdf.setTextColor(...COLORS.textMuted);
     pdf.setFontSize(6.5);
@@ -390,7 +395,7 @@ export async function exportMaintenanceRequestsPDF(
   const colX = [margin];
   for (let i = 1; i < colWidths.length; i++) colX.push(colX[i - 1] + colWidths[i - 1]);
 
-  pdf.setFillColor(35, 38, 52);
+  pdf.setFillColor(220, 228, 240);
   pdf.rect(margin, y, contentWidth, 6, 'F');
   pdf.setTextColor(...COLORS.textMuted);
   pdf.setFontSize(6.5);
@@ -468,7 +473,7 @@ export async function exportMaintenanceHistoryPDF(
   const colX = [margin];
   for (let i = 1; i < colWidths.length; i++) colX.push(colX[i - 1] + colWidths[i - 1]);
 
-  pdf.setFillColor(35, 38, 52);
+  pdf.setFillColor(220, 228, 240);
   pdf.rect(margin, y, contentWidth, 6, 'F');
   pdf.setTextColor(...COLORS.textMuted);
   pdf.setFontSize(6.5);
@@ -555,7 +560,7 @@ export async function exportWorkOrdersPDF(
   const colX = [margin];
   for (let i = 1; i < colWidths.length; i++) colX.push(colX[i - 1] + colWidths[i - 1]);
 
-  pdf.setFillColor(35, 38, 52);
+  pdf.setFillColor(220, 228, 240);
   pdf.rect(margin, y, contentWidth, 6, 'F');
   pdf.setTextColor(...COLORS.textMuted);
   pdf.setFontSize(6.5);
@@ -664,7 +669,7 @@ export async function exportGeneralReportsPDF(data: GeneralReportData) {
 
     const fColW = [90, 96];
     const fColX = [margin, margin + fColW[0]];
-    pdf.setFillColor(35, 38, 52);
+    pdf.setFillColor(220, 228, 240);
     pdf.rect(margin, y, contentWidth, 6, 'F');
     pdf.setTextColor(...COLORS.textMuted);
     pdf.setFontSize(6.5);
@@ -702,7 +707,7 @@ export async function exportGeneralReportsPDF(data: GeneralReportData) {
 
     const dColW = [90, 96];
     const dColX = [margin, margin + dColW[0]];
-    pdf.setFillColor(35, 38, 52);
+    pdf.setFillColor(220, 228, 240);
     pdf.rect(margin, y, contentWidth, 6, 'F');
     pdf.setTextColor(...COLORS.textMuted);
     pdf.setFontSize(6.5);
@@ -740,7 +745,7 @@ export async function exportGeneralReportsPDF(data: GeneralReportData) {
 
     const hColW = [90, 96];
     const hColX = [margin, margin + hColW[0]];
-    pdf.setFillColor(35, 38, 52);
+    pdf.setFillColor(220, 228, 240);
     pdf.rect(margin, y, contentWidth, 6, 'F');
     pdf.setTextColor(...COLORS.textMuted);
     pdf.setFontSize(6.5);
@@ -831,7 +836,7 @@ export async function exportGeneralReportsPDF(data: GeneralReportData) {
     for (let i = 1; i < rColW.length; i++) rColX.push(rColX[i - 1] + rColW[i - 1]);
     const rHeaders = ['Data', 'Equipamento', 'Comboio', 'Litros', 'Responsável'];
 
-    pdf.setFillColor(35, 38, 52);
+    pdf.setFillColor(220, 228, 240);
     pdf.rect(margin, y, contentWidth, 6, 'F');
     pdf.setTextColor(...COLORS.textMuted);
     pdf.setFontSize(6.5);
@@ -876,7 +881,7 @@ export async function exportGeneralReportsPDF(data: GeneralReportData) {
     for (let i = 1; i < cColW.length; i++) cColX.push(cColX[i - 1] + cColW[i - 1]);
     const cHeaders = ['Data', 'Equipamento', 'Operador', 'Horímetro', 'Status'];
 
-    pdf.setFillColor(35, 38, 52);
+    pdf.setFillColor(220, 228, 240);
     pdf.rect(margin, y, contentWidth, 6, 'F');
     pdf.setTextColor(...COLORS.textMuted);
     pdf.setFontSize(6.5);
@@ -921,7 +926,7 @@ export async function exportGeneralReportsPDF(data: GeneralReportData) {
     for (let i = 1; i < mColW.length; i++) mColX.push(mColX[i - 1] + mColW[i - 1]);
     const mHeaders = ['Equipamento', 'Descrição', 'Intervalo', 'Próxima', 'Status', 'Última Execução'];
 
-    pdf.setFillColor(35, 38, 52);
+    pdf.setFillColor(220, 228, 240);
     pdf.rect(margin, y, contentWidth, 6, 'F');
     pdf.setTextColor(...COLORS.textMuted);
     pdf.setFontSize(6.5);

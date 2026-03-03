@@ -431,6 +431,11 @@ export default function MaintenancePage() {
                     remaining: p.next_due_at - currentHM,
                     status: p.status as 'ok' | 'approaching' | 'overdue',
                     lastExecuted: p.last_executed_at ? new Date(p.last_executed_at).toLocaleDateString('pt-BR') : undefined,
+                    plate: eq?.plate || undefined,
+                    model: eq?.model || undefined,
+                    brand: eq?.brand || undefined,
+                    costCenter: eq?.cost_center || undefined,
+                    year: eq?.year || undefined,
                   };
                 });
                 exportMaintenancePlansPDF(rows, filterName);

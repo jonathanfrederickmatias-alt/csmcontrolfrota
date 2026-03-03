@@ -27,6 +27,12 @@ const osStatusLabels: Record<string, string> = { open: 'Aberta', in_progress: 'E
 const priorityLabels: Record<string, string> = { low: 'Baixa', medium: 'Média', high: 'Alta', urgent: 'Urgente' };
 const checklistStatusLabels: Record<string, string> = { ok: 'OK', attention: 'Atenção', critical: 'Crítico' };
 
+function eqLabel(eq: DBEquipment, maxLen = 30): string {
+  const id = eq.cost_center || eq.plate || '';
+  const full = id ? `${eq.name} (${id})` : eq.name;
+  return full.length > maxLen ? full.slice(0, maxLen) + '…' : full;
+}
+
 export default function ReportsPage() {
   const [period, setPeriod] = useState<Period>('30d');
   const [selectedEquipment, setSelectedEquipment] = useState<string>('all');
@@ -77,7 +83,7 @@ export default function ReportsPage() {
   const fuelByEquipment = filteredEquipments
     .filter(e => e.type !== 'combo')
     .map(eq => ({
-      name: eq.name.length > 12 ? eq.name.slice(0, 12) + '…' : eq.name,
+      name: eqLabel(eq, 20),
       litros: filteredFuel
         .filter(r => r.target_equipment_id === eq.id)
         .reduce((s, r) => s + Number(r.liters), 0),
@@ -111,7 +117,7 @@ export default function ReportsPage() {
         ? eqChecklists[eqChecklists.length - 1].hour_meter - eqChecklists[0].hour_meter
         : 0;
       return {
-        name: eq.name.length > 12 ? eq.name.slice(0, 12) + '…' : eq.name,
+        name: eqLabel(eq, 20),
         horas: Math.max(0, horasRegistradas),
         horímetro: eq.current_hour_meter,
       };
@@ -222,15 +228,15 @@ export default function ReportsPage() {
       fuelRecords: filteredFuel.map(r => {
         const target = equipments.find(e => e.id === r.target_equipment_id);
         const combo = equipments.find(e => e.id === r.combo_equipment_id);
-        return { date: r.date, equipment: target?.name || '—', combo: combo?.name || '—', liters: r.liters, operator: r.operator_name };
+        return { date: r.date, equipment: target ? eqLabel(target) : '—', combo: combo ? eqLabel(combo) : '—', liters: r.liters, operator: r.operator_name };
       }),
       checklistRecords: filteredChecklists.map(c => {
         const eq = equipments.find(e => e.id === c.equipment_id);
-        return { date: c.date, equipment: eq?.name || '—', operator: c.operator_name, hourMeter: c.hour_meter, status: checklistStatusLabels[c.status] || c.status };
+        return { date: c.date, equipment: eq ? eqLabel(eq) : '—', operator: c.operator_name, hourMeter: c.hour_meter, status: checklistStatusLabels[c.status] || c.status };
       }),
       maintenancePlans: filteredPlans.map(p => {
         const eq = equipments.find(e => e.id === p.equipment_id);
-        return { equipment: eq?.name || '—', description: p.description, interval: p.interval_hours, nextDue: p.next_due_at, status: p.status === 'ok' ? 'OK' : p.status === 'approaching' ? 'Próxima' : 'Atrasada', lastExec: p.last_executed_at ? new Date(p.last_executed_at).toLocaleDateString('pt-BR') : '—' };
+        return { equipment: eq ? eqLabel(eq) : '—', description: p.description, interval: p.interval_hours, nextDue: p.next_due_at, status: p.status === 'ok' ? 'OK' : p.status === 'approaching' ? 'Próxima' : 'Atrasada', lastExec: p.last_executed_at ? new Date(p.last_executed_at).toLocaleDateString('pt-BR') : '—' };
       }),
     });
   };

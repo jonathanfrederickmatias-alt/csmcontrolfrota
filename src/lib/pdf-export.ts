@@ -97,6 +97,17 @@ const COLORS = {
   border: [210, 215, 225] as [number, number, number],
 };
 
+/** Truncate text to fit within maxWidth mm at current font size */
+function clipText(pdf: jsPDF, text: string, maxWidth: number): string {
+  if (!text) return '—';
+  if (pdf.getTextWidth(text) <= maxWidth) return text;
+  let t = text;
+  while (t.length > 1 && pdf.getTextWidth(t + '…') > maxWidth) {
+    t = t.slice(0, -1);
+  }
+  return t + '…';
+}
+
 // Cache for logo image data
 let logoCache: string | null = null;
 
@@ -306,7 +317,7 @@ export async function exportMaintenancePlansPDF(
       pdf.setFontSize(7);
       pdf.setFont('helvetica', 'normal');
       pdf.setTextColor(...COLORS.text);
-      pdf.text(plan.description, colX[0] + 2, y + 4.5);
+      pdf.text(clipText(pdf, plan.description, colWidths[0] - 4), colX[0] + 2, y + 4.5);
 
       pdf.setTextColor(...COLORS.textMuted);
       pdf.text(`${plan.intervalHours}h`, colX[1] + 2, y + 4.5);
@@ -414,8 +425,8 @@ export async function exportMaintenanceRequestsPDF(
     pdf.setFontSize(6.5);
     pdf.setFont('helvetica', 'normal');
     pdf.setTextColor(...COLORS.text);
-    pdf.text(r.equipment.substring(0, 24), colX[0] + 2, y + 4.5);
-    pdf.text(r.description.substring(0, 28), colX[1] + 2, y + 4.5);
+    pdf.text(clipText(pdf, r.equipment, colWidths[0] - 4), colX[0] + 2, y + 4.5);
+    pdf.text(clipText(pdf, r.description, colWidths[1] - 4), colX[1] + 2, y + 4.5);
 
     // Priority with color
     const prioColor = r.priority === 'Urgente' ? COLORS.danger : r.priority === 'Alta' ? COLORS.warning : r.priority === 'Média' ? COLORS.primary : COLORS.textMuted;
@@ -429,7 +440,7 @@ export async function exportMaintenanceRequestsPDF(
 
     pdf.setFont('helvetica', 'normal');
     pdf.setTextColor(...COLORS.textMuted);
-    pdf.text(r.operator.substring(0, 16), colX[4] + 2, y + 4.5);
+    pdf.text(clipText(pdf, r.operator, colWidths[4] - 4), colX[4] + 2, y + 4.5);
     pdf.text(r.date, colX[5] + 2, y + 4.5);
     pdf.text(r.resolvedAt || '—', colX[6] + 2, y + 4.5);
 
@@ -492,14 +503,14 @@ export async function exportMaintenanceHistoryPDF(
     pdf.setFontSize(6.5);
     pdf.setFont('helvetica', 'normal');
     pdf.setTextColor(...COLORS.text);
-    pdf.text(r.equipment.substring(0, 22), colX[0] + 2, y + 4.5);
-    pdf.text(r.description.substring(0, 26), colX[1] + 2, y + 4.5);
+    pdf.text(clipText(pdf, r.equipment, colWidths[0] - 4), colX[0] + 2, y + 4.5);
+    pdf.text(clipText(pdf, r.description, colWidths[1] - 4), colX[1] + 2, y + 4.5);
 
     pdf.setTextColor(...COLORS.textMuted);
     pdf.text(`${r.hourMeter}h`, colX[2] + 2, y + 4.5);
     pdf.text(r.executedAt, colX[3] + 2, y + 4.5);
-    pdf.text((r.operator || '—').substring(0, 16), colX[4] + 2, y + 4.5);
-    pdf.text((r.planDescription || '—').substring(0, 28), colX[5] + 2, y + 4.5);
+    pdf.text(clipText(pdf, r.operator || '—', colWidths[4] - 4), colX[4] + 2, y + 4.5);
+    pdf.text(clipText(pdf, r.planDescription || '—', colWidths[5] - 4), colX[5] + 2, y + 4.5);
 
     y += 6.5;
   });
@@ -583,8 +594,8 @@ export async function exportWorkOrdersPDF(
 
     pdf.setFont('helvetica', 'normal');
     pdf.setTextColor(...COLORS.text);
-    pdf.text(o.equipment.substring(0, 16), colX[1] + 2, y + 4.5);
-    pdf.text(o.description.substring(0, 20), colX[2] + 2, y + 4.5);
+    pdf.text(clipText(pdf, o.equipment, colWidths[1] - 4), colX[1] + 2, y + 4.5);
+    pdf.text(clipText(pdf, o.description, colWidths[2] - 4), colX[2] + 2, y + 4.5);
 
     const prioColor = o.priority === 'Urgente' ? COLORS.danger : o.priority === 'Alta' ? COLORS.warning : o.priority === 'Média' ? COLORS.primary : COLORS.textMuted;
     pdf.setTextColor(...prioColor);
@@ -597,8 +608,8 @@ export async function exportWorkOrdersPDF(
 
     pdf.setFont('helvetica', 'normal');
     pdf.setTextColor(...COLORS.textMuted);
-    pdf.text((o.mechanic || '—').substring(0, 12), colX[5] + 2, y + 4.5);
-    pdf.text((o.parts || '—').substring(0, 18), colX[6] + 2, y + 4.5);
+    pdf.text(clipText(pdf, o.mechanic || '—', colWidths[5] - 4), colX[5] + 2, y + 4.5);
+    pdf.text(clipText(pdf, o.parts || '—', colWidths[6] - 4), colX[6] + 2, y + 4.5);
     pdf.text(o.startedAt || '—', colX[7] + 2, y + 4.5);
     pdf.text(o.completedAt || '—', colX[8] + 2, y + 4.5);
 
@@ -850,14 +861,14 @@ export async function exportGeneralReportsPDF(data: GeneralReportData) {
       pdf.setFontSize(6.5); pdf.setFont('helvetica', 'normal');
       pdf.setTextColor(...COLORS.text);
       pdf.text(r.date, rColX[0] + 2, y + 4.5);
-      pdf.text(r.equipment.substring(0, 28), rColX[1] + 2, y + 4.5);
-      pdf.text(r.combo.substring(0, 28), rColX[2] + 2, y + 4.5);
+      pdf.text(clipText(pdf, r.equipment, rColW[1] - 4), rColX[1] + 2, y + 4.5);
+      pdf.text(clipText(pdf, r.combo, rColW[2] - 4), rColX[2] + 2, y + 4.5);
       pdf.setTextColor(...COLORS.primary);
       pdf.setFont('helvetica', 'bold');
       pdf.text(`${r.liters}L`, rColX[3] + 2, y + 4.5);
       pdf.setFont('helvetica', 'normal');
       pdf.setTextColor(...COLORS.textMuted);
-      pdf.text(r.operator.substring(0, 32), rColX[4] + 2, y + 4.5);
+      pdf.text(clipText(pdf, r.operator, rColW[4] - 4), rColX[4] + 2, y + 4.5);
       y += 6.5;
     });
     y += 6;
@@ -895,8 +906,8 @@ export async function exportGeneralReportsPDF(data: GeneralReportData) {
       pdf.setFontSize(6.5); pdf.setFont('helvetica', 'normal');
       pdf.setTextColor(...COLORS.text);
       pdf.text(c.date, cColX[0] + 2, y + 4.5);
-      pdf.text(c.equipment.substring(0, 30), cColX[1] + 2, y + 4.5);
-      pdf.text(c.operator.substring(0, 26), cColX[2] + 2, y + 4.5);
+      pdf.text(clipText(pdf, c.equipment, cColW[1] - 4), cColX[1] + 2, y + 4.5);
+      pdf.text(clipText(pdf, c.operator, cColW[2] - 4), cColX[2] + 2, y + 4.5);
       pdf.setTextColor(...COLORS.textMuted);
       pdf.text(`${c.hourMeter}h`, cColX[3] + 2, y + 4.5);
       const sColor = c.status === 'OK' ? COLORS.success : c.status === 'Atenção' ? COLORS.warning : COLORS.danger;
@@ -939,8 +950,8 @@ export async function exportGeneralReportsPDF(data: GeneralReportData) {
       if (idx % 2 === 1) { pdf.setFillColor(...COLORS.rowAlt); pdf.rect(margin, y, contentWidth, 6.5, 'F'); }
       pdf.setFontSize(6.5); pdf.setFont('helvetica', 'normal');
       pdf.setTextColor(...COLORS.text);
-      pdf.text(p.equipment.substring(0, 24), mColX[0] + 2, y + 4.5);
-      pdf.text(p.description.substring(0, 26), mColX[1] + 2, y + 4.5);
+      pdf.text(clipText(pdf, p.equipment, mColW[0] - 4), mColX[0] + 2, y + 4.5);
+      pdf.text(clipText(pdf, p.description, mColW[1] - 4), mColX[1] + 2, y + 4.5);
       pdf.setTextColor(...COLORS.textMuted);
       pdf.text(`${p.interval}h`, mColX[2] + 2, y + 4.5);
       pdf.text(`${p.nextDue}h`, mColX[3] + 2, y + 4.5);

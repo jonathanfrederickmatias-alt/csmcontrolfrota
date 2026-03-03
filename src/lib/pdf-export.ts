@@ -236,7 +236,7 @@ export async function exportMaintenancePlansPDF(
   const overdueCount = plans.filter(p => p.status === 'overdue').length;
   const cardW = (contentWidth - 9) / 4;
 
-  drawSummaryCard(pdf, margin, y, cardW, 'Total de Planos', String(plans.length), COLORS.white);
+  drawSummaryCard(pdf, margin, y, cardW, 'Total de Planos', String(plans.length), COLORS.primary);
   drawSummaryCard(pdf, margin + cardW + 3, y, cardW, 'Em dia (OK)', String(okCount), COLORS.success);
   drawSummaryCard(pdf, margin + (cardW + 3) * 2, y, cardW, 'Próximas', String(approachingCount), COLORS.warning);
   drawSummaryCard(pdf, margin + (cardW + 3) * 3, y, cardW, 'Atrasadas', String(overdueCount), COLORS.danger);
@@ -263,7 +263,7 @@ export async function exportMaintenancePlansPDF(
     pdf.setFillColor(...COLORS.primary);
     pdf.rect(margin, y, 3, 8, 'F');
 
-    pdf.setTextColor(...COLORS.white);
+    pdf.setTextColor(...COLORS.text);
     pdf.setFontSize(9);
     pdf.setFont('helvetica', 'bold');
     pdf.text(equipName, margin + 6, y + 5.5);
@@ -661,7 +661,7 @@ export async function exportGeneralReportsPDF(data: GeneralReportData) {
     pdf.roundedRect(margin, y, contentWidth, 8, 1, 1, 'F');
     pdf.setFillColor(...COLORS.primary);
     pdf.rect(margin, y, 3, 8, 'F');
-    pdf.setTextColor(...COLORS.white);
+    pdf.setTextColor(...COLORS.text);
     pdf.setFontSize(9);
     pdf.setFont('helvetica', 'bold');
     pdf.text('Consumo de Combustível por Equipamento', margin + 6, y + 5.5);
@@ -699,7 +699,7 @@ export async function exportGeneralReportsPDF(data: GeneralReportData) {
     pdf.roundedRect(margin, y, contentWidth, 8, 1, 1, 'F');
     pdf.setFillColor(...COLORS.primary);
     pdf.rect(margin, y, 3, 8, 'F');
-    pdf.setTextColor(...COLORS.white);
+    pdf.setTextColor(...COLORS.text);
     pdf.setFontSize(9);
     pdf.setFont('helvetica', 'bold');
     pdf.text('Consumo Diário de Combustível', margin + 6, y + 5.5);
@@ -737,7 +737,7 @@ export async function exportGeneralReportsPDF(data: GeneralReportData) {
     pdf.roundedRect(margin, y, contentWidth, 8, 1, 1, 'F');
     pdf.setFillColor(...COLORS.warning);
     pdf.rect(margin, y, 3, 8, 'F');
-    pdf.setTextColor(...COLORS.white);
+    pdf.setTextColor(...COLORS.text);
     pdf.setFontSize(9);
     pdf.setFont('helvetica', 'bold');
     pdf.text('Horímetro Atual por Equipamento', margin + 6, y + 5.5);
@@ -775,7 +775,7 @@ export async function exportGeneralReportsPDF(data: GeneralReportData) {
     pdf.roundedRect(margin, y, contentWidth, 8, 1, 1, 'F');
     pdf.setFillColor(...COLORS.success);
     pdf.rect(margin, y, 3, 8, 'F');
-    pdf.setTextColor(...COLORS.white);
+    pdf.setTextColor(...COLORS.text);
     pdf.setFontSize(9);
     pdf.setFont('helvetica', 'bold');
     pdf.text('Status dos Checklists', margin + 6, y + 5.5);
@@ -800,7 +800,7 @@ export async function exportGeneralReportsPDF(data: GeneralReportData) {
     pdf.roundedRect(margin, y, contentWidth, 8, 1, 1, 'F');
     pdf.setFillColor(...COLORS.warning);
     pdf.rect(margin, y, 3, 8, 'F');
-    pdf.setTextColor(...COLORS.white);
+    pdf.setTextColor(...COLORS.text);
     pdf.setFontSize(9);
     pdf.setFont('helvetica', 'bold');
     pdf.text('Status dos Planos de Manutenção', margin + 6, y + 5.5);
@@ -825,7 +825,7 @@ export async function exportGeneralReportsPDF(data: GeneralReportData) {
     pdf.roundedRect(margin, y, contentWidth, 8, 1, 1, 'F');
     pdf.setFillColor(...COLORS.primary);
     pdf.rect(margin, y, 3, 8, 'F');
-    pdf.setTextColor(...COLORS.white);
+    pdf.setTextColor(...COLORS.text);
     pdf.setFontSize(9);
     pdf.setFont('helvetica', 'bold');
     pdf.text('Detalhamento de Abastecimentos', margin + 6, y + 5.5);
@@ -870,7 +870,7 @@ export async function exportGeneralReportsPDF(data: GeneralReportData) {
     pdf.roundedRect(margin, y, contentWidth, 8, 1, 1, 'F');
     pdf.setFillColor(...COLORS.success);
     pdf.rect(margin, y, 3, 8, 'F');
-    pdf.setTextColor(...COLORS.white);
+    pdf.setTextColor(...COLORS.text);
     pdf.setFontSize(9);
     pdf.setFont('helvetica', 'bold');
     pdf.text('Detalhamento de Checklists', margin + 6, y + 5.5);
@@ -915,7 +915,7 @@ export async function exportGeneralReportsPDF(data: GeneralReportData) {
     pdf.roundedRect(margin, y, contentWidth, 8, 1, 1, 'F');
     pdf.setFillColor(...COLORS.warning);
     pdf.rect(margin, y, 3, 8, 'F');
-    pdf.setTextColor(...COLORS.white);
+    pdf.setTextColor(...COLORS.text);
     pdf.setFontSize(9);
     pdf.setFont('helvetica', 'bold');
     pdf.text('Planos de Manutenção', margin + 6, y + 5.5);

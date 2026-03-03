@@ -108,6 +108,26 @@ function clipText(pdf: jsPDF, text: string, maxWidth: number): string {
   return t + '…';
 }
 
+/** Wrap text into multiple lines that fit within maxWidth mm */
+function wrapText(pdf: jsPDF, text: string, maxWidth: number): string[] {
+  if (!text) return ['—'];
+  const words = text.split(/\s+/);
+  const lines: string[] = [];
+  let currentLine = '';
+  for (const word of words) {
+    const testLine = currentLine ? currentLine + ' ' + word : word;
+    if (pdf.getTextWidth(testLine) <= maxWidth) {
+      currentLine = testLine;
+    } else {
+      if (currentLine) lines.push(currentLine);
+      // If single word is wider than maxWidth, force it
+      currentLine = word;
+    }
+  }
+  if (currentLine) lines.push(currentLine);
+  return lines.length > 0 ? lines : ['—'];
+}
+
 // Cache for logo image data
 let logoCache: string | null = null;
 
@@ -308,35 +328,48 @@ export async function exportMaintenancePlansPDF(
 
     // Rows
     eqPlans.forEach((plan, idx) => {
-      y = checkPageBreak(pdf, y, 7);
+      // Calculate row height based on wrapped description
+      pdf.setFontSize(7);
+      pdf.setFont('helvetica', 'normal');
+      const descLines = wrapText(pdf, plan.description, colWidths[0] - 4);
+      const lineHeight = 3.5;
+      const rowHeight = Math.max(6.5, descLines.length * lineHeight + 3);
+
+      y = checkPageBreak(pdf, y, rowHeight);
 
       if (idx % 2 === 1) {
         pdf.setFillColor(...COLORS.rowAlt);
-        pdf.rect(margin, y, contentWidth, 6.5, 'F');
+        pdf.rect(margin, y, contentWidth, rowHeight, 'F');
       }
 
+      // Description with line wrapping
       pdf.setFontSize(7);
       pdf.setFont('helvetica', 'normal');
       pdf.setTextColor(...COLORS.text);
-      pdf.text(clipText(pdf, plan.description, colWidths[0] - 4), colX[0] + 2, y + 4.5);
+      descLines.forEach((line, li) => {
+        pdf.text(line, colX[0] + 2, y + 4 + li * lineHeight);
+      });
+
+      // Other columns vertically centered
+      const midY = y + rowHeight / 2 + 1.5;
 
       pdf.setTextColor(...COLORS.textMuted);
-      pdf.text(`${plan.intervalHours}h`, colX[1] + 2, y + 4.5);
-      pdf.text(`${plan.nextDueAt}h`, colX[2] + 2, y + 4.5);
+      pdf.text(`${plan.intervalHours}h`, colX[1] + 2, midY);
+      pdf.text(`${plan.nextDueAt}h`, colX[2] + 2, midY);
 
       // Remaining with color
       const remaining = plan.remaining;
       if (remaining <= 0) {
         pdf.setTextColor(...COLORS.danger);
         pdf.setFont('helvetica', 'bold');
-        pdf.text(`${Math.abs(remaining)}h atrás`, colX[3] + 2, y + 4.5);
+        pdf.text(`${Math.abs(remaining)}h atrás`, colX[3] + 2, midY);
       } else if (plan.status === 'approaching') {
         pdf.setTextColor(...COLORS.warning);
         pdf.setFont('helvetica', 'bold');
-        pdf.text(`${remaining}h`, colX[3] + 2, y + 4.5);
+        pdf.text(`${remaining}h`, colX[3] + 2, midY);
       } else {
         pdf.setTextColor(...COLORS.success);
-        pdf.text(`${remaining}h`, colX[3] + 2, y + 4.5);
+        pdf.text(`${remaining}h`, colX[3] + 2, midY);
       }
 
       // Status badge
@@ -344,14 +377,14 @@ export async function exportMaintenancePlansPDF(
       const statusColor = plan.status === 'ok' ? COLORS.success : plan.status === 'approaching' ? COLORS.warning : COLORS.danger;
       pdf.setFont('helvetica', 'bold');
       pdf.setTextColor(...statusColor);
-      pdf.text(statusLabel, colX[4] + 2, y + 4.5);
+      pdf.text(statusLabel, colX[4] + 2, midY);
 
       pdf.setFont('helvetica', 'normal');
       pdf.setTextColor(...COLORS.textMuted);
-      pdf.text(`${plan.lastDoneAt}h`, colX[5] + 2, y + 4.5);
-      pdf.text(plan.lastExecuted || '—', colX[6] + 2, y + 4.5);
+      pdf.text(`${plan.lastDoneAt}h`, colX[5] + 2, midY);
+      pdf.text(plan.lastExecuted || '—', colX[6] + 2, midY);
 
-      y += 6.5;
+      y += rowHeight;
     });
 
     y += 5;

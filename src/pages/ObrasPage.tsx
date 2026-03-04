@@ -11,8 +11,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { exportMaintenancePlansPDF } from "@/lib/pdf-export";
 import { calculateMaintenanceStatus } from "@/lib/maintenance-utils";
+import { useUserRoles } from "@/hooks/useUserRoles";
 
 export default function ObrasPage() {
+  const { isAdmin, isGestor } = useUserRoles();
+  const canEdit = isAdmin || isGestor;
   const [obras, setObras] = useState<DBObra[]>([]);
   const [equipments, setEquipments] = useState<DBEquipment[]>([]);
   const [plans, setPlans] = useState<DBMaintenancePlan[]>([]);
@@ -222,31 +225,33 @@ export default function ObrasPage() {
           <h1 className="text-3xl font-black text-gradient">Obras</h1>
           <p className="text-muted-foreground mt-1">Gerencie canteiros e projetos</p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={openCreate} className="gap-2"><Plus className="w-4 h-4" /> Nova Obra</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{editingObra ? 'Editar Obra' : 'Nova Obra'}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 mt-2">
-              <div><Label>Nome *</Label><Input value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Obra BR-101" /></div>
-              <div><Label>Nº Contrato</Label><Input value={contractNumber} onChange={e => setContractNumber(e.target.value)} placeholder="Ex: CT-2026-001" /></div>
-              <div><Label>Cliente / Contratante</Label><Input value={client} onChange={e => setClient(e.target.value)} placeholder="Ex: Construtora ABC" /></div>
-              <div><Label>CNPJ</Label><Input value={cnpj} onChange={e => setCnpj(e.target.value)} placeholder="Ex: 00.000.000/0001-00" /></div>
-              <div><Label>Localização</Label><Input value={location} onChange={e => setLocation(e.target.value)} placeholder="Ex: São Paulo, SP" /></div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><Label>Data Início</Label><Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} /></div>
-                <div><Label>Previsão Término</Label><Input type="date" value={expectedEndDate} onChange={e => setExpectedEndDate(e.target.value)} /></div>
+        {canEdit && (
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={openCreate} className="gap-2"><Plus className="w-4 h-4" /> Nova Obra</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{editingObra ? 'Editar Obra' : 'Nova Obra'}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 mt-2">
+                <div><Label>Nome *</Label><Input value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Obra BR-101" /></div>
+                <div><Label>Nº Contrato</Label><Input value={contractNumber} onChange={e => setContractNumber(e.target.value)} placeholder="Ex: CT-2026-001" /></div>
+                <div><Label>Cliente / Contratante</Label><Input value={client} onChange={e => setClient(e.target.value)} placeholder="Ex: Construtora ABC" /></div>
+                <div><Label>CNPJ</Label><Input value={cnpj} onChange={e => setCnpj(e.target.value)} placeholder="Ex: 00.000.000/0001-00" /></div>
+                <div><Label>Localização</Label><Input value={location} onChange={e => setLocation(e.target.value)} placeholder="Ex: São Paulo, SP" /></div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>Data Início</Label><Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} /></div>
+                  <div><Label>Previsão Término</Label><Input type="date" value={expectedEndDate} onChange={e => setExpectedEndDate(e.target.value)} /></div>
+                </div>
+                <Button onClick={handleSave} disabled={!name || saving} className="w-full">
+                  {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  {editingObra ? 'Salvar' : 'Criar Obra'}
+                </Button>
               </div>
-              <Button onClick={handleSave} disabled={!name || saving} className="w-full">
-                {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                {editingObra ? 'Salvar' : 'Criar Obra'}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
       {/* Manage equipments dialog */}
@@ -273,21 +278,23 @@ export default function ObrasPage() {
                           {[eq.cost_center && `CC: ${eq.cost_center}`, eq.plate && `Placa: ${eq.plate}`, eq.model].filter(Boolean).join(' • ')}
                         </p>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => removeEquipmentFromObra(eq.id)}
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
+                      {canEdit && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => removeEquipmentFromObra(eq.id)}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      )}
                     </div>
                   ))}
                 </div>
               )}
 
               {/* Add equipment */}
-              {!addingEquipment ? (
+              {canEdit && (!addingEquipment ? (
                 <Button variant="outline" className="w-full gap-2" onClick={() => setAddingEquipment(true)}>
                   <Plus className="w-4 h-4" /> Adicionar Máquina
                 </Button>
@@ -319,7 +326,7 @@ export default function ObrasPage() {
                     Cancelar
                   </Button>
                 </div>
-              )}
+              ))}
             </div>
           )}
         </DialogContent>
@@ -443,7 +450,7 @@ export default function ObrasPage() {
                       )}
                     </div>
                   ) : (
-                    <p className="text-xs text-muted-foreground">Clique para adicionar máquinas</p>
+                    <p className="text-xs text-muted-foreground">{canEdit ? 'Clique para adicionar máquinas' : 'Nenhuma máquina vinculada'}</p>
                   )}
                 </button>
 
@@ -453,29 +460,35 @@ export default function ObrasPage() {
                       <FileText className="w-3 h-3 text-primary" /> Plano Manutenção
                     </Button>
                   )}
-                  <Button variant="outline" size="sm" onClick={() => openEdit(obra)} className="gap-1">
-                    <Pencil className="w-3 h-3" /> Editar
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => handleToggleStatus(obra)} className="gap-1">
-                    {obra.status === 'active' ? 'Desativar' : 'Ativar'}
-                  </Button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="outline" size="sm" className="gap-1 text-destructive border-destructive/30 hover:bg-destructive/10">
-                        <Trash2 className="w-3 h-3" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Excluir obra?</AlertDialogTitle>
-                        <AlertDialogDescription>Essa ação não pode ser desfeita. Equipamentos vinculados ficarão sem obra.</AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleDelete(obra.id)}>Excluir</AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                  {canEdit && (
+                    <Button variant="outline" size="sm" onClick={() => openEdit(obra)} className="gap-1">
+                      <Pencil className="w-3 h-3" /> Editar
+                    </Button>
+                  )}
+                  {canEdit && (
+                    <Button variant="outline" size="sm" onClick={() => handleToggleStatus(obra)} className="gap-1">
+                      {obra.status === 'active' ? 'Desativar' : 'Ativar'}
+                    </Button>
+                  )}
+                  {canEdit && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="outline" size="sm" className="gap-1 text-destructive border-destructive/30 hover:bg-destructive/10">
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Excluir obra?</AlertDialogTitle>
+                          <AlertDialogDescription>Essa ação não pode ser desfeita. Equipamentos vinculados ficarão sem obra.</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDelete(obra.id)}>Excluir</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
                 </div>
               </div>
             );

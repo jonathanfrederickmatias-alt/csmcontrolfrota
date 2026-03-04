@@ -581,6 +581,7 @@ export default function MaintenancePage() {
               }}>
                 <FileText className="w-4 h-4 text-primary" /> PDF
               </Button>
+            {canEdit && (
             <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditPlan(null); setForm({ equipmentId: '', description: '', intervalHours: '', lastDoneAt: '' }); } }}>
               <DialogTrigger asChild>
                 <Button className="gap-2"><Plus className="w-4 h-4" /> Novo Plano</Button>
@@ -603,6 +604,7 @@ export default function MaintenancePage() {
                 </div>
               </DialogContent>
             </Dialog>
+            )}
             </div>
           </div>
 
@@ -901,6 +903,7 @@ export default function MaintenancePage() {
               }}>
                 <FileText className="w-4 h-4 text-primary" /> PDF
               </Button>
+              {canEdit && (
               <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
                 <DialogTrigger asChild>
                   <Button size="sm" className="gap-2"><Plus className="w-4 h-4" /> Registrar Manual</Button>
@@ -924,6 +927,7 @@ export default function MaintenancePage() {
                   </div>
                 </DialogContent>
               </Dialog>
+              )}
             </div>
           </div>
 

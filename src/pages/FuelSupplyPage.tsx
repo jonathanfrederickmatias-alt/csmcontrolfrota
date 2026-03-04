@@ -260,11 +260,23 @@ export default function FuelSupplyPage() {
                              <AlertDialogContent>
                                <AlertDialogHeader>
                                  <AlertDialogTitle>Excluir registro?</AlertDialogTitle>
-                                 <AlertDialogDescription>Essa ação não pode ser desfeita. O registro de reabastecimento será removido permanentemente.</AlertDialogDescription>
+                                 <AlertDialogDescription>O registro será removido. Você poderá desfazer nos próximos segundos.</AlertDialogDescription>
                                </AlertDialogHeader>
                                <AlertDialogFooter>
                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                 <AlertDialogAction onClick={async () => { await supabase.from('fuel_supply_records').delete().eq('id', r.id); toast.success('Registro excluído!'); fetchData(); }}>Excluir</AlertDialogAction>
+                                 <AlertDialogAction onClick={async () => {
+                                   const backup = { ...r };
+                                   await supabase.from('fuel_supply_records').delete().eq('id', r.id);
+                                   fetchData();
+                                   toast.success('Registro excluído!', {
+                                     action: { label: 'Desfazer', onClick: async () => {
+                                       await supabase.from('fuel_supply_records').insert(backup as any);
+                                       fetchData();
+                                       toast.success('Registro restaurado!');
+                                     }},
+                                     duration: 8000,
+                                   });
+                                 }}>Excluir</AlertDialogAction>
                                </AlertDialogFooter>
                              </AlertDialogContent>
                            </AlertDialog>

@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Truck, CheckCircle, Plus, Droplets, Edit2 } from 'lucide-react';
+import { Truck, CheckCircle, Plus, Droplets, Edit2, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Textarea } from '@/components/ui/textarea';
 import PhotoUpload from '@/components/PhotoUpload';
 import { toast } from 'sonner';
@@ -248,6 +249,25 @@ export default function FuelSupplyPage() {
                            <button onClick={() => openEdit(r)} className="text-muted-foreground hover:text-primary p-1 transition-colors">
                              <Edit2 className="w-3.5 h-3.5" />
                            </button>
+                         )}
+                         {canEdit && (
+                           <AlertDialog>
+                             <AlertDialogTrigger asChild>
+                               <button className="text-muted-foreground hover:text-destructive p-1 transition-colors">
+                                 <Trash2 className="w-3.5 h-3.5" />
+                               </button>
+                             </AlertDialogTrigger>
+                             <AlertDialogContent>
+                               <AlertDialogHeader>
+                                 <AlertDialogTitle>Excluir registro?</AlertDialogTitle>
+                                 <AlertDialogDescription>Essa ação não pode ser desfeita. O registro de reabastecimento será removido permanentemente.</AlertDialogDescription>
+                               </AlertDialogHeader>
+                               <AlertDialogFooter>
+                                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                 <AlertDialogAction onClick={async () => { await supabase.from('fuel_supply_records').delete().eq('id', r.id); toast.success('Registro excluído!'); fetchData(); }}>Excluir</AlertDialogAction>
+                               </AlertDialogFooter>
+                             </AlertDialogContent>
+                           </AlertDialog>
                          )}
                        </td>
                      </tr>

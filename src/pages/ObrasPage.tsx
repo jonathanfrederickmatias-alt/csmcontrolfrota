@@ -144,16 +144,31 @@ export default function ObrasPage() {
     }
     const obraEqIds = new Set(obraEqs.map(e => e.id));
     const obraPlans = plans.filter(p => obraEqIds.has(p.equipment_id));
-    if (obraPlans.length === 0) {
-      toast.error('Nenhum plano de manutenção encontrado para as máquinas selecionadas.');
-      return;
-    }
-    const rows = obraPlans.map(p => {
+
+    const rows: Array<{
+      equipment: string;
+      description: string;
+      intervalHours: number;
+      nextDueAt: number;
+      lastDoneAt: number;
+      currentHM: number;
+      remaining: number;
+      status: 'ok' | 'approaching' | 'overdue';
+      lastExecuted?: string;
+      plate?: string;
+      model?: string;
+      brand?: string;
+      costCenter?: string;
+      year?: number;
+    }> = [];
+
+    // Add rows for equipment WITH plans
+    obraPlans.forEach(p => {
       const eq = obraEqs.find(e => e.id === p.equipment_id);
       const currentHM = eq?.current_hour_meter || 0;
       const remaining = p.next_due_at - currentHM;
       const eqType = eq?.type || 'machine';
-      return {
+      rows.push({
         equipment: eq ? eqIdentifier(eq) : '—',
         description: p.description,
         intervalHours: p.interval_hours,
@@ -168,8 +183,29 @@ export default function ObrasPage() {
         brand: eq?.brand || undefined,
         costCenter: eq?.cost_center || undefined,
         year: eq?.year || undefined,
-      };
+      });
     });
+
+    // Add rows for equipment WITHOUT plans
+    const eqsWithPlans = new Set(obraPlans.map(p => p.equipment_id));
+    obraEqs.filter(eq => !eqsWithPlans.has(eq.id)).forEach(eq => {
+      rows.push({
+        equipment: eqIdentifier(eq),
+        description: 'Nenhum plano de manutenção cadastrado',
+        intervalHours: 0,
+        nextDueAt: 0,
+        lastDoneAt: 0,
+        currentHM: eq.current_hour_meter || 0,
+        remaining: 0,
+        status: 'ok',
+        plate: eq.plate || undefined,
+        model: eq.model || undefined,
+        brand: eq.brand || undefined,
+        costCenter: eq.cost_center || undefined,
+        year: eq.year || undefined,
+      });
+    });
+
     exportMaintenancePlansPDF(rows, `Obra_${pdfObra.name}`, {
       client: pdfObra.client || undefined,
       contractNumber: pdfObra.contract_number || undefined,

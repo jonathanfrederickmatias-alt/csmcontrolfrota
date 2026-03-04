@@ -22,6 +22,7 @@ export type Database = {
           hour_meter: number
           id: string
           items: Json
+          observations: string | null
           operator_name: string
           photo_url: string | null
           status: string
@@ -34,6 +35,7 @@ export type Database = {
           hour_meter: number
           id?: string
           items?: Json
+          observations?: string | null
           operator_name: string
           photo_url?: string | null
           status?: string
@@ -46,6 +48,7 @@ export type Database = {
           hour_meter?: number
           id?: string
           items?: Json
+          observations?: string | null
           operator_name?: string
           photo_url?: string | null
           status?: string

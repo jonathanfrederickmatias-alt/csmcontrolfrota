@@ -398,26 +398,41 @@ export type Database = {
       }
       obras: {
         Row: {
+          client: string | null
+          cnpj: string | null
+          contract_number: string | null
           created_at: string
+          expected_end_date: string | null
           id: string
           location: string | null
           name: string
+          start_date: string | null
           status: string
           updated_at: string
         }
         Insert: {
+          client?: string | null
+          cnpj?: string | null
+          contract_number?: string | null
           created_at?: string
+          expected_end_date?: string | null
           id?: string
           location?: string | null
           name: string
+          start_date?: string | null
           status?: string
           updated_at?: string
         }
         Update: {
+          client?: string | null
+          cnpj?: string | null
+          contract_number?: string | null
           created_at?: string
+          expected_end_date?: string | null
           id?: string
           location?: string | null
           name?: string
+          start_date?: string | null
           status?: string
           updated_at?: string
         }

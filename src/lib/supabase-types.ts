@@ -21,6 +21,11 @@ export interface DBObra {
   id: string;
   name: string;
   location?: string;
+  contract_number?: string;
+  client?: string;
+  cnpj?: string;
+  start_date?: string;
+  expected_end_date?: string;
   status: 'active' | 'inactive';
   created_at: string;
   updated_at: string;

@@ -288,16 +288,19 @@ export async function exportMaintenancePlansPDF(
 
   let y = 46;
 
-  // Summary cards
-  const okCount = plans.filter(p => p.status === 'ok').length;
-  const approachingCount = plans.filter(p => p.status === 'approaching').length;
-  const overdueCount = plans.filter(p => p.status === 'overdue').length;
-  const cardW = (contentWidth - 9) / 4;
+  // Summary cards (exclude equipment without plans from counts)
+  const realPlans = plans.filter(p => !(p.intervalHours === 0 && p.description === 'Nenhum plano de manutenção cadastrado'));
+  const noPlanCount = plans.length - realPlans.length;
+  const okCount = realPlans.filter(p => p.status === 'ok').length;
+  const approachingCount = realPlans.filter(p => p.status === 'approaching').length;
+  const overdueCount = realPlans.filter(p => p.status === 'overdue').length;
+  const cardW = (contentWidth - 12) / 5;
 
-  drawSummaryCard(pdf, margin, y, cardW, 'Total de Planos', String(plans.length), COLORS.primary);
+  drawSummaryCard(pdf, margin, y, cardW, 'Total de Planos', String(realPlans.length), COLORS.primary);
   drawSummaryCard(pdf, margin + cardW + 3, y, cardW, 'Em dia (OK)', String(okCount), COLORS.success);
   drawSummaryCard(pdf, margin + (cardW + 3) * 2, y, cardW, 'Próximas', String(approachingCount), COLORS.warning);
   drawSummaryCard(pdf, margin + (cardW + 3) * 3, y, cardW, 'Atrasadas', String(overdueCount), COLORS.danger);
+  drawSummaryCard(pdf, margin + (cardW + 3) * 4, y, cardW, 'Sem Plano', String(noPlanCount), [150, 150, 150]);
 
   y += 30;
 
@@ -352,82 +355,105 @@ export async function exportMaintenancePlansPDF(
 
     y += 18;
 
-    // Table header
-    const colWidths = [120, 22, 22, 24, 24, 24, 37];
-    const colHeaders = ['Serviço', 'Intervalo', 'Próxima', 'Faltam', 'Status', 'Última (h)', 'Última Execução'];
-    const colX = [margin];
-    for (let i = 1; i < colWidths.length; i++) colX.push(colX[i - 1] + colWidths[i - 1]);
+    // Check if this equipment has no maintenance plans (placeholder row)
+    const isNoPlan = eqPlans.length === 1 && eqPlans[0].intervalHours === 0 && eqPlans[0].description === 'Nenhum plano de manutenção cadastrado';
 
-    pdf.setFillColor(220, 228, 240);
-    pdf.rect(margin, y, contentWidth, 6, 'F');
-    pdf.setTextColor(...COLORS.textMuted);
-    pdf.setFontSize(6.5);
-    pdf.setFont('helvetica', 'bold');
-    colHeaders.forEach((h, i) => {
-      pdf.text(h, colX[i] + 2, y + 4);
-    });
-    y += 6;
+    if (isNoPlan) {
+      // Special warning block for equipment without plans
+      y = checkPageBreak(pdf, y, 14);
+      const warningBg: [number, number, number] = [255, 245, 230];
+      const warningBorder: [number, number, number] = [220, 140, 10];
+      pdf.setFillColor(...warningBg);
+      pdf.roundedRect(margin, y, contentWidth, 12, 1, 1, 'F');
+      pdf.setDrawColor(...warningBorder);
+      pdf.roundedRect(margin, y, contentWidth, 12, 1, 1, 'S');
+      pdf.setFillColor(...warningBorder);
+      pdf.rect(margin, y, 3, 12, 'F');
 
-    // Rows
-    eqPlans.forEach((plan, idx) => {
-      // Calculate row height based on wrapped description
-      pdf.setFontSize(7);
-      pdf.setFont('helvetica', 'normal');
-      const descLines = wrapText(pdf, plan.description, colWidths[0] - 4);
-      const lineHeight = 3.5;
-      const rowHeight = Math.max(6.5, descLines.length * lineHeight + 3);
-
-      y = checkPageBreak(pdf, y, rowHeight);
-
-      if (idx % 2 === 1) {
-        pdf.setFillColor(...COLORS.rowAlt);
-        pdf.rect(margin, y, contentWidth, rowHeight, 'F');
-      }
-
-      // Description with line wrapping
-      pdf.setFontSize(7);
-      pdf.setFont('helvetica', 'normal');
-      pdf.setTextColor(...COLORS.text);
-      descLines.forEach((line, li) => {
-        pdf.text(line, colX[0] + 2, y + 4 + li * lineHeight);
-      });
-
-      // Other columns vertically centered
-      const midY = y + rowHeight / 2 + 1.5;
-
-      pdf.setTextColor(...COLORS.textMuted);
-      pdf.text(`${plan.intervalHours}h`, colX[1] + 2, midY);
-      pdf.text(`${plan.nextDueAt}h`, colX[2] + 2, midY);
-
-      // Remaining with color
-      const remaining = plan.remaining;
-      if (remaining <= 0) {
-        pdf.setTextColor(...COLORS.danger);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text(`${Math.abs(remaining)}h atrás`, colX[3] + 2, midY);
-      } else if (plan.status === 'approaching') {
-        pdf.setTextColor(...COLORS.warning);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text(`${remaining}h`, colX[3] + 2, midY);
-      } else {
-        pdf.setTextColor(...COLORS.success);
-        pdf.text(`${remaining}h`, colX[3] + 2, midY);
-      }
-
-      // Status badge
-      const statusLabel = plan.status === 'ok' ? 'OK' : plan.status === 'approaching' ? 'Próxima' : 'Atrasada';
-      const statusColor = plan.status === 'ok' ? COLORS.success : plan.status === 'approaching' ? COLORS.warning : COLORS.danger;
+      pdf.setFontSize(8);
       pdf.setFont('helvetica', 'bold');
-      pdf.setTextColor(...statusColor);
-      pdf.text(statusLabel, colX[4] + 2, midY);
+      pdf.setTextColor(...COLORS.warning);
+      pdf.text('⚠  NENHUM PLANO DE MANUTENÇÃO CADASTRADO', margin + 8, y + 7.5);
 
-      pdf.setFont('helvetica', 'normal');
+      y += 14;
+    } else {
+      // Table header
+      const colWidths = [120, 22, 22, 24, 24, 24, 37];
+      const colHeaders = ['Serviço', 'Intervalo', 'Próxima', 'Faltam', 'Status', 'Última (h)', 'Última Execução'];
+      const colX = [margin];
+      for (let i = 1; i < colWidths.length; i++) colX.push(colX[i - 1] + colWidths[i - 1]);
+
+      pdf.setFillColor(220, 228, 240);
+      pdf.rect(margin, y, contentWidth, 6, 'F');
       pdf.setTextColor(...COLORS.textMuted);
-      pdf.text(`${plan.lastDoneAt}h`, colX[5] + 2, midY);
-      pdf.text(plan.lastExecuted || '—', colX[6] + 2, midY);
+      pdf.setFontSize(6.5);
+      pdf.setFont('helvetica', 'bold');
+      colHeaders.forEach((h, i) => {
+        pdf.text(h, colX[i] + 2, y + 4);
+      });
+      y += 6;
 
-      y += rowHeight;
-    });
+      // Rows
+      eqPlans.forEach((plan, idx) => {
+        // Calculate row height based on wrapped description
+        pdf.setFontSize(7);
+        pdf.setFont('helvetica', 'normal');
+        const descLines = wrapText(pdf, plan.description, colWidths[0] - 4);
+        const lineHeight = 3.5;
+        const rowHeight = Math.max(6.5, descLines.length * lineHeight + 3);
+
+        y = checkPageBreak(pdf, y, rowHeight);
+
+        if (idx % 2 === 1) {
+          pdf.setFillColor(...COLORS.rowAlt);
+          pdf.rect(margin, y, contentWidth, rowHeight, 'F');
+        }
+
+        // Description with line wrapping
+        pdf.setFontSize(7);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(...COLORS.text);
+        descLines.forEach((line, li) => {
+          pdf.text(line, colX[0] + 2, y + 4 + li * lineHeight);
+        });
+
+        // Other columns vertically centered
+        const midY = y + rowHeight / 2 + 1.5;
+
+        pdf.setTextColor(...COLORS.textMuted);
+        pdf.text(`${plan.intervalHours}h`, colX[1] + 2, midY);
+        pdf.text(`${plan.nextDueAt}h`, colX[2] + 2, midY);
+
+        // Remaining with color
+        const remaining = plan.remaining;
+        if (remaining <= 0) {
+          pdf.setTextColor(...COLORS.danger);
+          pdf.setFont('helvetica', 'bold');
+          pdf.text(`${Math.abs(remaining)}h atrás`, colX[3] + 2, midY);
+        } else if (plan.status === 'approaching') {
+          pdf.setTextColor(...COLORS.warning);
+          pdf.setFont('helvetica', 'bold');
+          pdf.text(`${remaining}h`, colX[3] + 2, midY);
+        } else {
+          pdf.setTextColor(...COLORS.success);
+          pdf.text(`${remaining}h`, colX[3] + 2, midY);
+        }
+
+        // Status badge
+        const statusLabel = plan.status === 'ok' ? 'OK' : plan.status === 'approaching' ? 'Próxima' : 'Atrasada';
+        const statusColor = plan.status === 'ok' ? COLORS.success : plan.status === 'approaching' ? COLORS.warning : COLORS.danger;
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(...statusColor);
+        pdf.text(statusLabel, colX[4] + 2, midY);
+
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(...COLORS.textMuted);
+        pdf.text(`${plan.lastDoneAt}h`, colX[5] + 2, midY);
+        pdf.text(plan.lastExecuted || '—', colX[6] + 2, midY);
+
+        y += rowHeight;
+      });
+    }
 
     y += 5;
   }

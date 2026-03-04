@@ -556,6 +556,27 @@ export default function MaintenancePage() {
                     year: eq?.year || undefined,
                   };
                 });
+                // Add equipments without plans
+                const eqsWithPlans = new Set(filteredPlans.map(p => p.equipment_id));
+                const targetEqs = planFilter === 'all' ? equipments : equipments.filter(e => e.id === planFilter);
+                targetEqs.filter(eq => !eqsWithPlans.has(eq.id)).forEach(eq => {
+                  rows.push({
+                    equipment: eqLabel(eq),
+                    description: 'Nenhum plano de manutenção cadastrado',
+                    intervalHours: 0,
+                    nextDueAt: 0,
+                    lastDoneAt: 0,
+                    currentHM: eq.current_hour_meter,
+                    remaining: 0,
+                    status: 'ok' as const,
+                    lastExecuted: undefined,
+                    plate: eq.plate || undefined,
+                    model: eq.model || undefined,
+                    brand: eq.brand || undefined,
+                    costCenter: eq.cost_center || undefined,
+                    year: eq.year || undefined,
+                  });
+                });
                 exportMaintenancePlansPDF(rows, filterName);
               }}>
                 <FileText className="w-4 h-4 text-primary" /> PDF

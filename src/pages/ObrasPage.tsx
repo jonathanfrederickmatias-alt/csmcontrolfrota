@@ -4,7 +4,7 @@ import { DBObra, DBEquipment, DBMaintenancePlan } from "@/lib/supabase-types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Building2, Plus, Loader2, MapPin, Pencil, Trash2, Truck, X, Check, FileText } from "lucide-react";
+import { Building2, Plus, Loader2, MapPin, Pencil, Trash2, Truck, X, Check, FileText, Calendar, User, Hash } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
@@ -20,6 +20,11 @@ export default function ObrasPage() {
   const [editingObra, setEditingObra] = useState<DBObra | null>(null);
   const [name, setName] = useState('');
   const [location, setLocation] = useState('');
+  const [contractNumber, setContractNumber] = useState('');
+  const [client, setClient] = useState('');
+  const [cnpj, setCnpj] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [expectedEndDate, setExpectedEndDate] = useState('');
   const [saving, setSaving] = useState(false);
   const [manageObraId, setManageObraId] = useState<string | null>(null);
   const [addingEquipment, setAddingEquipment] = useState(false);
@@ -41,8 +46,7 @@ export default function ObrasPage() {
 
   const openCreate = () => {
     setEditingObra(null);
-    setName('');
-    setLocation('');
+    setName(''); setLocation(''); setContractNumber(''); setClient(''); setCnpj(''); setStartDate(''); setExpectedEndDate('');
     setDialogOpen(true);
   };
 
@@ -50,15 +54,29 @@ export default function ObrasPage() {
     setEditingObra(obra);
     setName(obra.name);
     setLocation(obra.location || '');
+    setContractNumber(obra.contract_number || '');
+    setClient(obra.client || '');
+    setCnpj(obra.cnpj || '');
+    setStartDate(obra.start_date || '');
+    setExpectedEndDate(obra.expected_end_date || '');
     setDialogOpen(true);
   };
 
   const handleSave = async () => {
     setSaving(true);
+    const payload = {
+      name,
+      location: location || null,
+      contract_number: contractNumber || null,
+      client: client || null,
+      cnpj: cnpj || null,
+      start_date: startDate || null,
+      expected_end_date: expectedEndDate || null,
+    };
     if (editingObra) {
-      await supabase.from('obras').update({ name, location: location || null }).eq('id', editingObra.id);
+      await supabase.from('obras').update(payload).eq('id', editingObra.id);
     } else {
-      await supabase.from('obras').insert({ name, location: location || null });
+      await supabase.from('obras').insert(payload);
     }
     setSaving(false);
     setDialogOpen(false);
@@ -152,7 +170,14 @@ export default function ObrasPage() {
             </DialogHeader>
             <div className="space-y-4 mt-2">
               <div><Label>Nome *</Label><Input value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Obra BR-101" /></div>
+              <div><Label>Nº Contrato</Label><Input value={contractNumber} onChange={e => setContractNumber(e.target.value)} placeholder="Ex: CT-2026-001" /></div>
+              <div><Label>Cliente / Contratante</Label><Input value={client} onChange={e => setClient(e.target.value)} placeholder="Ex: Construtora ABC" /></div>
+              <div><Label>CNPJ</Label><Input value={cnpj} onChange={e => setCnpj(e.target.value)} placeholder="Ex: 00.000.000/0001-00" /></div>
               <div><Label>Localização</Label><Input value={location} onChange={e => setLocation(e.target.value)} placeholder="Ex: São Paulo, SP" /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label>Data Início</Label><Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} /></div>
+                <div><Label>Previsão Término</Label><Input type="date" value={expectedEndDate} onChange={e => setExpectedEndDate(e.target.value)} /></div>
+              </div>
               <Button onClick={handleSave} disabled={!name || saving} className="w-full">
                 {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 {editingObra ? 'Salvar' : 'Criar Obra'}
@@ -264,8 +289,26 @@ export default function ObrasPage() {
                   </span>
                 </div>
                 {obra.location && (
-                  <p className="text-sm text-muted-foreground flex items-center gap-1 mb-2">
+                  <p className="text-sm text-muted-foreground flex items-center gap-1 mb-1">
                     <MapPin className="w-3 h-3" /> {obra.location}
+                  </p>
+                )}
+                {obra.contract_number && (
+                  <p className="text-sm text-muted-foreground flex items-center gap-1 mb-1">
+                    <Hash className="w-3 h-3" /> Contrato: {obra.contract_number}
+                  </p>
+                )}
+                {obra.client && (
+                  <p className="text-sm text-muted-foreground flex items-center gap-1 mb-1">
+                    <User className="w-3 h-3" /> {obra.client} {obra.cnpj && <span className="text-xs">({obra.cnpj})</span>}
+                  </p>
+                )}
+                {(obra.start_date || obra.expected_end_date) && (
+                  <p className="text-sm text-muted-foreground flex items-center gap-1 mb-2">
+                    <Calendar className="w-3 h-3" />
+                    {obra.start_date && new Date(obra.start_date + 'T00:00:00').toLocaleDateString('pt-BR')}
+                    {obra.start_date && obra.expected_end_date && ' → '}
+                    {obra.expected_end_date && new Date(obra.expected_end_date + 'T00:00:00').toLocaleDateString('pt-BR')}
                   </p>
                 )}
 

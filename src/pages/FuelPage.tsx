@@ -5,9 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Fuel, CheckCircle, Droplets, Loader2, Plus } from "lucide-react";
+import { Fuel, CheckCircle, Droplets, Loader2, Plus, Edit2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import PhotoUpload from "@/components/PhotoUpload";
+import { toast } from "sonner";
 
 export default function FuelPage() {
   const navigate = useNavigate();
@@ -20,6 +22,10 @@ export default function FuelPage() {
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [photoUrl, setPhotoUrl] = useState('');
+
+  // Edit state
+  const [editRecord, setEditRecord] = useState<DBFuelRecord | null>(null);
+  const [editForm, setEditForm] = useState({ liters: '', operator_name: '', date: '' });
 
   const fetchData = async () => {
     const [eqRes, frRes] = await Promise.all([
@@ -53,6 +59,23 @@ export default function FuelPage() {
       setSaved(false);
       setComboId(''); setTargetId(''); setLiters(''); setOperatorName(''); setPhotoUrl('');
     }, 2000);
+  };
+
+  const openEdit = (r: DBFuelRecord) => {
+    setEditRecord(r);
+    setEditForm({ liters: String(r.liters), operator_name: r.operator_name, date: r.date });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editRecord) return;
+    await supabase.from('fuel_records').update({
+      liters: Number(editForm.liters),
+      operator_name: editForm.operator_name,
+      date: editForm.date,
+    }).eq('id', editRecord.id);
+    toast.success('Registro atualizado!');
+    setEditRecord(null);
+    fetchData();
   };
 
   const canSave = comboId && targetId && liters && operatorName && Number(liters) > 0 && photoUrl;
@@ -152,13 +175,31 @@ export default function FuelPage() {
                     <p className="text-sm font-medium">{combo?.name} → {target?.name}</p>
                     <p className="text-xs text-muted-foreground">{r.operator_name} — {r.date}</p>
                   </div>
-                  <span className="text-lg font-mono font-bold text-accent">{r.liters}L</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg font-mono font-bold text-accent">{r.liters}L</span>
+                    <button onClick={() => openEdit(r)} className="text-muted-foreground hover:text-primary p-1 transition-colors">
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               );
             })}
           </div>
         )}
       </div>
+
+      {/* Edit fuel record dialog */}
+      <Dialog open={!!editRecord} onOpenChange={v => { if (!v) setEditRecord(null); }}>
+        <DialogContent className="bg-card border-border">
+          <DialogHeader><DialogTitle>Editar Abastecimento</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div><Label>Litros *</Label><Input type="number" value={editForm.liters} onChange={e => setEditForm({...editForm, liters: e.target.value})} /></div>
+            <div><Label>Operador *</Label><Input value={editForm.operator_name} onChange={e => setEditForm({...editForm, operator_name: e.target.value})} /></div>
+            <div><Label>Data</Label><Input type="date" value={editForm.date} onChange={e => setEditForm({...editForm, date: e.target.value})} /></div>
+            <Button onClick={handleSaveEdit} disabled={!editForm.liters || !editForm.operator_name} className="w-full">Salvar Alterações</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

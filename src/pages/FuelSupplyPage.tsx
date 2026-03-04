@@ -5,10 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Truck, CheckCircle, Plus, Droplets } from 'lucide-react';
+import { Truck, CheckCircle, Plus, Droplets, Edit2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import PhotoUpload from '@/components/PhotoUpload';
+import { toast } from 'sonner';
 
 export default function FuelSupplyPage() {
   const [combos, setCombos] = useState<DBEquipment[]>([]);
@@ -27,6 +28,10 @@ export default function FuelSupplyPage() {
     notes: '',
     responsible_name: '',
   });
+
+  // Edit state
+  const [editRecord, setEditRecord] = useState<DBFuelSupplyRecord | null>(null);
+  const [editForm, setEditForm] = useState({ liters: '', invoice_number: '', supplier: '', date: '', notes: '', responsible_name: '' });
 
   const fetchData = async () => {
     const [eqRes, supRes] = await Promise.all([
@@ -63,6 +68,33 @@ export default function FuelSupplyPage() {
       setPhotoUrl('');
       setTimeout(() => setSaved(false), 3000);
     }
+  };
+
+  const openEdit = (r: DBFuelSupplyRecord) => {
+    setEditRecord(r);
+    setEditForm({
+      liters: String(r.liters),
+      invoice_number: r.invoice_number || '',
+      supplier: r.supplier || '',
+      date: r.date,
+      notes: r.notes || '',
+      responsible_name: r.responsible_name,
+    });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editRecord) return;
+    await supabase.from('fuel_supply_records').update({
+      liters: Number(editForm.liters),
+      invoice_number: editForm.invoice_number || null,
+      supplier: editForm.supplier || null,
+      date: editForm.date,
+      notes: editForm.notes || null,
+      responsible_name: editForm.responsible_name,
+    }).eq('id', editRecord.id);
+    toast.success('Registro atualizado!');
+    setEditRecord(null);
+    fetchData();
   };
 
   const canSave = form.combo_equipment_id && form.liters && form.responsible_name && Number(form.liters) > 0 && photoUrl;
@@ -186,7 +218,8 @@ export default function FuelSupplyPage() {
                    <th className="pb-2 pr-4">Litros</th>
                    <th className="pb-2 pr-4">Nota Fiscal</th>
                    <th className="pb-2 pr-4">Fornecedor</th>
-                   <th className="pb-2">Responsável</th>
+                   <th className="pb-2 pr-4">Responsável</th>
+                   <th className="pb-2"></th>
                  </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -206,7 +239,12 @@ export default function FuelSupplyPage() {
                        <td className="py-2 pr-4 font-mono font-bold text-success">+{r.liters}L</td>
                        <td className="py-2 pr-4 text-muted-foreground">{r.invoice_number || '—'}</td>
                        <td className="py-2 pr-4 text-muted-foreground">{r.supplier || '—'}</td>
-                       <td className="py-2 text-muted-foreground">{r.responsible_name}</td>
+                       <td className="py-2 pr-4 text-muted-foreground">{r.responsible_name}</td>
+                       <td className="py-2">
+                         <button onClick={() => openEdit(r)} className="text-muted-foreground hover:text-primary p-1 transition-colors">
+                           <Edit2 className="w-3.5 h-3.5" />
+                         </button>
+                       </td>
                      </tr>
                   );
                 })}
@@ -215,6 +253,24 @@ export default function FuelSupplyPage() {
           </div>
         )}
       </div>
+
+      {/* Edit supply record dialog */}
+      <Dialog open={!!editRecord} onOpenChange={v => { if (!v) setEditRecord(null); }}>
+        <DialogContent className="bg-card border-border">
+          <DialogHeader><DialogTitle>Editar Reabastecimento</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div><Label>Litros *</Label><Input type="number" value={editForm.liters} onChange={e => setEditForm({...editForm, liters: e.target.value})} /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Nº Nota Fiscal</Label><Input value={editForm.invoice_number} onChange={e => setEditForm({...editForm, invoice_number: e.target.value})} /></div>
+              <div><Label>Data</Label><Input type="date" value={editForm.date} onChange={e => setEditForm({...editForm, date: e.target.value})} /></div>
+            </div>
+            <div><Label>Fornecedor</Label><Input value={editForm.supplier} onChange={e => setEditForm({...editForm, supplier: e.target.value})} /></div>
+            <div><Label>Responsável *</Label><Input value={editForm.responsible_name} onChange={e => setEditForm({...editForm, responsible_name: e.target.value})} /></div>
+            <div><Label>Observações</Label><Textarea value={editForm.notes} onChange={e => setEditForm({...editForm, notes: e.target.value})} rows={2} /></div>
+            <Button onClick={handleSaveEdit} disabled={!editForm.liters || !editForm.responsible_name} className="w-full">Salvar Alterações</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

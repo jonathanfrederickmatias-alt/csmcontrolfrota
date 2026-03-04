@@ -71,6 +71,18 @@ export default function MaintenancePage() {
   const [photoUrl, setPhotoUrl] = useState('');
   const [photoSaving, setPhotoSaving] = useState(false);
 
+  // Edit request dialog
+  const [editRequest, setEditRequest] = useState<DBMaintenanceRequest | null>(null);
+  const [reqEditForm, setReqEditForm] = useState({ description: '', priority: '', operator_name: '', notes: '' });
+
+  // Edit OS dialog
+  const [editOS, setEditOS] = useState<DBWorkOrder | null>(null);
+  const [osEditForm, setOsEditForm] = useState({ description: '', priority: '', mechanic_name: '', notes: '' });
+
+  // Edit history dialog
+  const [editHistory, setEditHistory] = useState<DBMaintenanceHistory | null>(null);
+  const [histEditForm, setHistEditForm] = useState({ description: '', hour_meter: '', operator_name: '', notes: '' });
+
   const fetchAll = async () => {
     const [eqRes, plRes, reqRes, histRes, osRes] = await Promise.all([
       supabase.from('equipments').select('*').order('name'),
@@ -239,6 +251,60 @@ export default function MaintenancePage() {
     await supabase.from('work_orders').update({ mechanic_name: mechanic }).eq('id', os.id);
     fetchAll();
   };
+
+  // Edit request handlers
+  const openEditRequest = (r: DBMaintenanceRequest) => {
+    setEditRequest(r);
+    setReqEditForm({ description: r.description, priority: r.priority, operator_name: r.operator_name, notes: r.notes || '' });
+  };
+  const handleSaveEditRequest = async () => {
+    if (!editRequest) return;
+    await supabase.from('maintenance_requests').update({
+      description: reqEditForm.description,
+      priority: reqEditForm.priority,
+      operator_name: reqEditForm.operator_name,
+      notes: reqEditForm.notes || null,
+    }).eq('id', editRequest.id);
+    toast({ title: 'Pedido atualizado!' });
+    setEditRequest(null);
+    fetchAll();
+  };
+
+  // Edit OS handlers
+  const openEditOS = (os: DBWorkOrder) => {
+    setEditOS(os);
+    setOsEditForm({ description: os.description, priority: os.priority, mechanic_name: os.mechanic_name || '', notes: os.notes || '' });
+  };
+  const handleSaveEditOS = async () => {
+    if (!editOS) return;
+    await supabase.from('work_orders').update({
+      description: osEditForm.description,
+      priority: osEditForm.priority,
+      mechanic_name: osEditForm.mechanic_name || null,
+      notes: osEditForm.notes || null,
+    }).eq('id', editOS.id);
+    toast({ title: 'OS atualizada!' });
+    setEditOS(null);
+    fetchAll();
+  };
+
+  // Edit history handlers
+  const openEditHistory = (h: DBMaintenanceHistory) => {
+    setEditHistory(h);
+    setHistEditForm({ description: h.description, hour_meter: String(h.hour_meter), operator_name: h.operator_name || '', notes: h.notes || '' });
+  };
+  const handleSaveEditHistory = async () => {
+    if (!editHistory) return;
+    await supabase.from('maintenance_history').update({
+      description: histEditForm.description,
+      hour_meter: Number(histEditForm.hour_meter),
+      operator_name: histEditForm.operator_name || null,
+      notes: histEditForm.notes || null,
+    }).eq('id', editHistory.id);
+    toast({ title: 'Registro atualizado!' });
+    setEditHistory(null);
+    fetchAll();
+  };
   return (
     <div className="space-y-6">
       <div>
@@ -363,6 +429,9 @@ export default function MaintenancePage() {
                           }}
                         >
                           <Wrench className="w-3.5 h-3.5" /> Tela Mecânico
+                        </Button>
+                        <Button size="sm" variant="outline" className="mt-1 gap-1.5 text-xs" onClick={() => openEditOS(os)}>
+                          <Edit2 className="w-3.5 h-3.5" /> Editar
                         </Button>
                       </div>
                       {os.status !== 'done' && (
@@ -641,8 +710,11 @@ export default function MaintenancePage() {
                           </div>
                         )}
                       </div>
-                      {r.status !== 'done' && (
-                        <div className="shrink-0">
+                      <div className="shrink-0 space-y-2">
+                        <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => openEditRequest(r)}>
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </Button>
+                        {r.status !== 'done' && (
                           <Select value={r.status} onValueChange={v => handleRequestStatusChange(r.id, v)}>
                             <SelectTrigger className="h-8 text-xs w-36">
                               <SelectValue />
@@ -653,13 +725,13 @@ export default function MaintenancePage() {
                               <SelectItem value="done">Concluído</SelectItem>
                             </SelectContent>
                           </Select>
-                        </div>
-                      )}
-                      {r.status === 'done' && r.resolved_at && (
-                        <span className="text-xs text-muted-foreground shrink-0">
-                          Concluído em {new Date(r.resolved_at).toLocaleDateString('pt-BR')}
-                        </span>
-                      )}
+                        )}
+                        {r.status === 'done' && r.resolved_at && (
+                          <span className="text-xs text-muted-foreground">
+                            Concluído em {new Date(r.resolved_at).toLocaleDateString('pt-BR')}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
@@ -779,7 +851,12 @@ export default function MaintenancePage() {
                       {h.notes && <p className="text-xs text-muted-foreground italic mt-0.5">Obs: {h.notes}</p>}
                       {plan && <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary mt-1 inline-block">Plano: {plan.description}</span>}
                     </div>
-                    <span className="text-sm font-mono font-bold text-muted-foreground shrink-0">{h.hour_meter}h</span>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button onClick={() => openEditHistory(h)} className="text-muted-foreground hover:text-primary p-1 transition-colors">
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <span className="text-sm font-mono font-bold text-muted-foreground">{h.hour_meter}h</span>
+                    </div>
                   </div>
                 );
               })}
@@ -817,6 +894,68 @@ export default function MaintenancePage() {
               {photoSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Confirmar e Atualizar Status
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Request Dialog */}
+      <Dialog open={!!editRequest} onOpenChange={v => { if (!v) setEditRequest(null); }}>
+        <DialogContent className="bg-card border-border">
+          <DialogHeader><DialogTitle>Editar Pedido de Manutenção</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div><Label>Descrição *</Label><Textarea value={reqEditForm.description} onChange={e => setReqEditForm({...reqEditForm, description: e.target.value})} rows={3} /></div>
+            <div><Label>Prioridade</Label>
+              <Select value={reqEditForm.priority} onValueChange={v => setReqEditForm({...reqEditForm, priority: v})}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Baixa</SelectItem>
+                  <SelectItem value="medium">Média</SelectItem>
+                  <SelectItem value="high">Alta</SelectItem>
+                  <SelectItem value="urgent">Urgente</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div><Label>Operador</Label><Input value={reqEditForm.operator_name} onChange={e => setReqEditForm({...reqEditForm, operator_name: e.target.value})} /></div>
+            <div><Label>Observações</Label><Textarea value={reqEditForm.notes} onChange={e => setReqEditForm({...reqEditForm, notes: e.target.value})} rows={2} /></div>
+            <Button onClick={handleSaveEditRequest} disabled={!reqEditForm.description} className="w-full">Salvar Alterações</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit OS Dialog */}
+      <Dialog open={!!editOS} onOpenChange={v => { if (!v) setEditOS(null); }}>
+        <DialogContent className="bg-card border-border">
+          <DialogHeader><DialogTitle>Editar Ordem de Serviço</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div><Label>Descrição *</Label><Textarea value={osEditForm.description} onChange={e => setOsEditForm({...osEditForm, description: e.target.value})} rows={3} /></div>
+            <div><Label>Prioridade</Label>
+              <Select value={osEditForm.priority} onValueChange={v => setOsEditForm({...osEditForm, priority: v})}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Baixa</SelectItem>
+                  <SelectItem value="medium">Média</SelectItem>
+                  <SelectItem value="high">Alta</SelectItem>
+                  <SelectItem value="urgent">Urgente</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div><Label>Mecânico</Label><Input value={osEditForm.mechanic_name} onChange={e => setOsEditForm({...osEditForm, mechanic_name: e.target.value})} /></div>
+            <div><Label>Observações</Label><Textarea value={osEditForm.notes} onChange={e => setOsEditForm({...osEditForm, notes: e.target.value})} rows={2} /></div>
+            <Button onClick={handleSaveEditOS} disabled={!osEditForm.description} className="w-full">Salvar Alterações</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit History Dialog */}
+      <Dialog open={!!editHistory} onOpenChange={v => { if (!v) setEditHistory(null); }}>
+        <DialogContent className="bg-card border-border">
+          <DialogHeader><DialogTitle>Editar Registro de Manutenção</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div><Label>Descrição *</Label><Input value={histEditForm.description} onChange={e => setHistEditForm({...histEditForm, description: e.target.value})} /></div>
+            <div><Label>Horímetro *</Label><Input type="number" value={histEditForm.hour_meter} onChange={e => setHistEditForm({...histEditForm, hour_meter: e.target.value})} /></div>
+            <div><Label>Responsável</Label><Input value={histEditForm.operator_name} onChange={e => setHistEditForm({...histEditForm, operator_name: e.target.value})} /></div>
+            <div><Label>Observações</Label><Textarea value={histEditForm.notes} onChange={e => setHistEditForm({...histEditForm, notes: e.target.value})} rows={2} /></div>
+            <Button onClick={handleSaveEditHistory} disabled={!histEditForm.description || !histEditForm.hour_meter} className="w-full">Salvar Alterações</Button>
           </div>
         </DialogContent>
       </Dialog>

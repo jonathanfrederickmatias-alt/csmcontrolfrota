@@ -166,7 +166,7 @@ export default function QRFuel() {
           )}
         </div>
         <div><Label>Responsável *</Label><Input value={operatorName} onChange={e => setOperatorName(e.target.value)} placeholder="Nome do responsável" /></div>
-        <PhotoUpload label="Foto do Abastecimento" required onUploaded={setPhotoUrl} />
+        <PhotoUpload label="Foto do Abastecimento" required onUploaded={setPhotoUrl} acceptFiles />
         <Button onClick={handleSave} disabled={!canSave || saving} className="w-full h-12 text-base font-bold">
           {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Registrar Abastecimento
         </Button>

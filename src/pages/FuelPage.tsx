@@ -129,7 +129,7 @@ export default function FuelPage() {
             <div><Label>Operador *</Label><Input value={operatorName} onChange={e => setOperatorName(e.target.value)} placeholder="Nome" /></div>
           </div>
           <div className="mt-4">
-            <PhotoUpload label="Foto do Abastecimento" required onUploaded={setPhotoUrl} />
+            <PhotoUpload label="Foto do Abastecimento" required onUploaded={setPhotoUrl} acceptFiles />
           </div>
           <Button onClick={handleSave} disabled={!canSave || saving} className="w-full mt-4 h-12 text-base font-bold">
             {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Registrar Abastecimento

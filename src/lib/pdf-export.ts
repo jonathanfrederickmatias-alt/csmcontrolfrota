@@ -696,12 +696,13 @@ interface GeneralReportData {
   fuelRecords: { date: string; equipment: string; combo: string; liters: number; operator: string }[];
   checklistRecords: { date: string; equipment: string; operator: string; hourMeter: number; status: string }[];
   maintenancePlans: { equipment: string; description: string; interval: number; nextDue: number; status: string; lastExec: string }[];
+  equipmentDetails?: { name: string; plate?: string; model?: string; brand?: string; costCenter?: string; year?: number; currentHourMeter?: number };
 }
 
 export async function exportGeneralReportsPDF(data: GeneralReportData) {
   const logoData = await loadLogoAsBase64();
-  const pdf = new jsPDF('p', 'mm', 'a4');
-  const pageWidth = 210;
+  const pdf = new jsPDF('l', 'mm', 'a4');
+  const pageWidth = 297;
   const margin = 12;
   const contentWidth = pageWidth - margin * 2;
 
@@ -711,6 +712,36 @@ export async function exportGeneralReportsPDF(data: GeneralReportData) {
   addHeader(pdf, 'Relatório Geral de Frota e Operações', `Período: ${data.period} | Equipamento: ${data.filterName}`, logoData);
 
   let y = 46;
+
+  // Equipment details section (when filtered by specific equipment)
+  if (data.equipmentDetails) {
+    const ed = data.equipmentDetails;
+    pdf.setFillColor(...COLORS.headerBg);
+    pdf.roundedRect(margin, y, contentWidth, 14, 1, 1, 'F');
+    pdf.setFillColor(...COLORS.primary);
+    pdf.rect(margin, y, 3, 14, 'F');
+
+    pdf.setTextColor(...COLORS.text);
+    pdf.setFontSize(9);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text(`Equipamento: ${ed.name}`, margin + 6, y + 5.5);
+
+    const details: string[] = [];
+    if (ed.costCenter) details.push(`CC: ${ed.costCenter}`);
+    if (ed.plate) details.push(`Placa/Série: ${ed.plate}`);
+    if (ed.model) details.push(`Modelo: ${ed.model}`);
+    if (ed.brand) details.push(`Marca: ${ed.brand}`);
+    if (ed.year) details.push(`Ano: ${ed.year}`);
+    if (ed.currentHourMeter !== undefined) details.push(`Horímetro: ${ed.currentHourMeter}h`);
+
+    pdf.setFontSize(7);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(...COLORS.textMuted);
+    if (details.length > 0) {
+      pdf.text(details.join('  |  '), margin + 6, y + 11);
+    }
+    y += 18;
+  }
 
   // KPI Summary Cards
   const cardW = (contentWidth - 9) / 4;
@@ -733,7 +764,7 @@ export async function exportGeneralReportsPDF(data: GeneralReportData) {
     pdf.text('Consumo de Combustível por Equipamento', margin + 6, y + 5.5);
     y += 10;
 
-    const fColW = [90, 96];
+    const fColW = [140, contentWidth - 140];
     const fColX = [margin, margin + fColW[0]];
     pdf.setFillColor(220, 228, 240);
     pdf.rect(margin, y, contentWidth, 6, 'F');
@@ -771,7 +802,7 @@ export async function exportGeneralReportsPDF(data: GeneralReportData) {
     pdf.text('Consumo Diário de Combustível', margin + 6, y + 5.5);
     y += 10;
 
-    const dColW = [90, 96];
+    const dColW = [140, contentWidth - 140];
     const dColX = [margin, margin + dColW[0]];
     pdf.setFillColor(220, 228, 240);
     pdf.rect(margin, y, contentWidth, 6, 'F');
@@ -809,7 +840,7 @@ export async function exportGeneralReportsPDF(data: GeneralReportData) {
     pdf.text('Horímetro Atual por Equipamento', margin + 6, y + 5.5);
     y += 10;
 
-    const hColW = [90, 96];
+    const hColW = [140, contentWidth - 140];
     const hColX = [margin, margin + hColW[0]];
     pdf.setFillColor(220, 228, 240);
     pdf.rect(margin, y, contentWidth, 6, 'F');
@@ -897,7 +928,7 @@ export async function exportGeneralReportsPDF(data: GeneralReportData) {
     pdf.text('Detalhamento de Abastecimentos', margin + 6, y + 5.5);
     y += 10;
 
-    const rColW = [22, 45, 45, 22, 52];
+    const rColW = [28, 70, 70, 28, contentWidth - 196];
     const rColX = [margin];
     for (let i = 1; i < rColW.length; i++) rColX.push(rColX[i - 1] + rColW[i - 1]);
     const rHeaders = ['Data', 'Equipamento', 'Comboio', 'Litros', 'Responsável'];
@@ -942,7 +973,7 @@ export async function exportGeneralReportsPDF(data: GeneralReportData) {
     pdf.text('Detalhamento de Checklists', margin + 6, y + 5.5);
     y += 10;
 
-    const cColW = [22, 50, 42, 28, 44];
+    const cColW = [28, 70, 70, 40, contentWidth - 208];
     const cColX = [margin];
     for (let i = 1; i < cColW.length; i++) cColX.push(cColX[i - 1] + cColW[i - 1]);
     const cHeaders = ['Data', 'Equipamento', 'Operador', 'Horímetro', 'Status'];
@@ -987,7 +1018,7 @@ export async function exportGeneralReportsPDF(data: GeneralReportData) {
     pdf.text('Planos de Manutenção', margin + 6, y + 5.5);
     y += 10;
 
-    const mColW = [40, 42, 22, 22, 22, 38];
+    const mColW = [55, 80, 28, 28, 28, 54];
     const mColX = [margin];
     for (let i = 1; i < mColW.length; i++) mColX.push(mColX[i - 1] + mColW[i - 1]);
     const mHeaders = ['Equipamento', 'Descrição', 'Intervalo', 'Próxima', 'Status', 'Última Execução'];
@@ -1001,23 +1032,36 @@ export async function exportGeneralReportsPDF(data: GeneralReportData) {
     y += 6;
 
     data.maintenancePlans.forEach((p, idx) => {
-      y = checkPageBreak(pdf, y, 7);
-      if (idx % 2 === 1) { pdf.setFillColor(...COLORS.rowAlt); pdf.rect(margin, y, contentWidth, 6.5, 'F'); }
+      // Calculate row height based on wrapped description
+      pdf.setFontSize(6.5);
+      pdf.setFont('helvetica', 'normal');
+      const descLines = wrapText(pdf, p.description, mColW[1] - 4);
+      const lineHeight = 3.5;
+      const rowHeight = Math.max(6.5, descLines.length * lineHeight + 3);
+
+      y = checkPageBreak(pdf, y, rowHeight);
+      if (idx % 2 === 1) { pdf.setFillColor(...COLORS.rowAlt); pdf.rect(margin, y, contentWidth, rowHeight, 'F'); }
       pdf.setFontSize(6.5); pdf.setFont('helvetica', 'normal');
       pdf.setTextColor(...COLORS.text);
       pdf.text(clipText(pdf, p.equipment, mColW[0] - 4), mColX[0] + 2, y + 4.5);
-      pdf.text(clipText(pdf, p.description, mColW[1] - 4), mColX[1] + 2, y + 4.5);
+
+      // Description with wrapping
+      descLines.forEach((line, li) => {
+        pdf.text(line, mColX[1] + 2, y + 4.5 + li * lineHeight);
+      });
+
+      const midY = y + rowHeight / 2 + 1.5;
       pdf.setTextColor(...COLORS.textMuted);
-      pdf.text(`${p.interval}h`, mColX[2] + 2, y + 4.5);
-      pdf.text(`${p.nextDue}h`, mColX[3] + 2, y + 4.5);
+      pdf.text(`${p.interval}h`, mColX[2] + 2, midY);
+      pdf.text(`${p.nextDue}h`, mColX[3] + 2, midY);
       const sColor = p.status === 'OK' ? COLORS.success : p.status === 'Próxima' ? COLORS.warning : COLORS.danger;
       pdf.setTextColor(...sColor);
       pdf.setFont('helvetica', 'bold');
-      pdf.text(p.status, mColX[4] + 2, y + 4.5);
+      pdf.text(p.status, mColX[4] + 2, midY);
       pdf.setFont('helvetica', 'normal');
       pdf.setTextColor(...COLORS.textMuted);
-      pdf.text(p.lastExec, mColX[5] + 2, y + 4.5);
-      y += 6.5;
+      pdf.text(p.lastExec, mColX[5] + 2, midY);
+      y += rowHeight;
     });
   }
 

@@ -1,17 +1,20 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { DBObra, DBEquipment } from "@/lib/supabase-types";
+import { DBObra, DBEquipment, DBMaintenancePlan } from "@/lib/supabase-types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Building2, Plus, Loader2, MapPin, Pencil, Trash2, Truck, X, Check } from "lucide-react";
+import { Building2, Plus, Loader2, MapPin, Pencil, Trash2, Truck, X, Check, FileText } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { exportMaintenancePlansPDF } from "@/lib/pdf-export";
+import { calculateMaintenanceStatus } from "@/lib/maintenance-utils";
 
 export default function ObrasPage() {
   const [obras, setObras] = useState<DBObra[]>([]);
   const [equipments, setEquipments] = useState<DBEquipment[]>([]);
+  const [plans, setPlans] = useState<DBMaintenancePlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingObra, setEditingObra] = useState<DBObra | null>(null);
@@ -23,12 +26,14 @@ export default function ObrasPage() {
 
   const fetchData = async () => {
     setLoading(true);
-    const [obrasRes, eqRes] = await Promise.all([
+    const [obrasRes, eqRes, plansRes] = await Promise.all([
       supabase.from('obras').select('*').order('name'),
       supabase.from('equipments').select('*').order('name'),
+      supabase.from('maintenance_plans').select('*'),
     ]);
     setObras((obrasRes.data || []) as DBObra[]);
     setEquipments((eqRes.data || []) as DBEquipment[]);
+    setPlans((plansRes.data || []) as DBMaintenancePlan[]);
     setLoading(false);
   };
 
@@ -90,6 +95,44 @@ export default function ObrasPage() {
   const eqIdentifier = (eq: DBEquipment) => {
     const id = eq.cost_center || eq.plate || '';
     return id ? `${eq.name} (${id})` : eq.name;
+  };
+
+  const exportObraMaintenancePDF = (obra: DBObra) => {
+    const obraEqs = getObraEquipments(obra.id);
+    if (obraEqs.length === 0) {
+      toast.error('Nenhuma máquina vinculada a esta obra.');
+      return;
+    }
+    const obraEqIds = new Set(obraEqs.map(e => e.id));
+    const obraPlans = plans.filter(p => obraEqIds.has(p.equipment_id));
+    if (obraPlans.length === 0) {
+      toast.error('Nenhum plano de manutenção encontrado para as máquinas desta obra.');
+      return;
+    }
+    const rows = obraPlans.map(p => {
+      const eq = obraEqs.find(e => e.id === p.equipment_id);
+      const currentHM = eq?.current_hour_meter || 0;
+      const remaining = p.next_due_at - currentHM;
+      const eqType = eq?.type || 'machine';
+      return {
+        equipment: eq ? eqIdentifier(eq) : '—',
+        description: p.description,
+        intervalHours: p.interval_hours,
+        nextDueAt: p.next_due_at,
+        lastDoneAt: p.last_done_at,
+        currentHM,
+        remaining,
+        status: calculateMaintenanceStatus(remaining, eqType),
+        lastExecuted: p.last_executed_at ? new Date(p.last_executed_at).toLocaleDateString('pt-BR') : undefined,
+        plate: eq?.plate || undefined,
+        model: eq?.model || undefined,
+        brand: eq?.brand || undefined,
+        costCenter: eq?.cost_center || undefined,
+        year: eq?.year || undefined,
+      };
+    });
+    exportMaintenancePlansPDF(rows, `Obra_${obra.name}`);
+    toast.success('PDF gerado com sucesso!');
   };
 
   return (
@@ -249,7 +292,12 @@ export default function ObrasPage() {
                   )}
                 </button>
 
-                <div className="flex gap-2 mt-auto">
+                <div className="flex flex-wrap gap-2 mt-auto">
+                  {obraEquipments.length > 0 && (
+                    <Button variant="outline" size="sm" onClick={() => exportObraMaintenancePDF(obra)} className="gap-1">
+                      <FileText className="w-3 h-3 text-primary" /> Plano Manutenção
+                    </Button>
+                  )}
                   <Button variant="outline" size="sm" onClick={() => openEdit(obra)} className="gap-1">
                     <Pencil className="w-3 h-3" /> Editar
                   </Button>

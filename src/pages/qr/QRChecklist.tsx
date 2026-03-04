@@ -33,6 +33,7 @@ export default function QRChecklist() {
   );
   const [newItemLabel, setNewItemLabel] = useState('');
   const [photoUrl, setPhotoUrl] = useState('');
+  const [generalObservations, setGeneralObservations] = useState('');
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showMaintenanceForm, setShowMaintenanceForm] = useState(false);
@@ -84,6 +85,7 @@ export default function QRChecklist() {
       status,
       type: checklistType,
       photo_url: photoUrl || null,
+      observations: generalObservations || null,
     });
 
     setSaving(false);
@@ -267,10 +269,25 @@ export default function QRChecklist() {
           </div>
         )}
 
-        {hasNC && (
-          <div className="glass-card rounded-xl p-5">
-            <PhotoUpload label="Foto de Evidência (opcional)" onUploaded={setPhotoUrl} />
-          </div>
+        {/* General observations */}
+        <div className="glass-card rounded-xl p-5">
+          <Label>Observações Gerais</Label>
+          <Textarea
+            value={generalObservations}
+            onChange={e => setGeneralObservations(e.target.value)}
+            placeholder="Observações do operador (opcional)..."
+            rows={3}
+            className="mt-1"
+          />
+        </div>
+
+        {/* Optional photo */}
+        <div className="glass-card rounded-xl p-5">
+          <PhotoUpload label="Foto (opcional)" onUploaded={setPhotoUrl} value={photoUrl} />
+        </div>
+
+        {hasNC && !photoUrl && (
+          <p className="text-xs text-warning text-center">⚠️ Recomendado: tire uma foto de evidência quando há itens não conformes</p>
         )}
 
         <div>

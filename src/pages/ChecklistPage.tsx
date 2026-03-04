@@ -38,6 +38,7 @@ export default function ChecklistPage() {
   );
   const [newItemLabel, setNewItemLabel] = useState('');
   const [photoUrl, setPhotoUrl] = useState('');
+  const [generalObservations, setGeneralObservations] = useState('');
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showMaintenanceForm, setShowMaintenanceForm] = useState(false);
@@ -79,6 +80,7 @@ export default function ChecklistPage() {
     setItems(defaultItems.map((label, i) => ({ id: String(i), label, checked: null as unknown as boolean, observation: '' })));
     setNewItemLabel('');
     setPhotoUrl('');
+    setGeneralObservations('');
     setShowMaintenanceForm(false);
     setMaintenanceDesc('');
     setMaintenancePriority('medium');
@@ -86,12 +88,6 @@ export default function ChecklistPage() {
   };
 
   const handleSaveChecklist = async () => {
-    const hasNC = items.some(i => i.checked === false);
-    if (hasNC && !photoUrl) {
-      toast.error('Foto obrigatória quando há itens não conformes.');
-      return;
-    }
-
     setSaving(true);
     const unchecked = items.filter(i => i.checked === false).length;
     const isConforme = unchecked === 0;
@@ -106,6 +102,7 @@ export default function ChecklistPage() {
       status,
       type: checklistType,
       photo_url: photoUrl || null,
+      observations: generalObservations || null,
     });
 
     setSaving(false);
@@ -145,7 +142,7 @@ export default function ChecklistPage() {
 
   const allAnswered = items.length > 0 && items.every(i => i.checked === true || i.checked === false);
   const hasNC = items.some(i => i.checked === false);
-  const canSave = selectedEquipment && operatorName && hourMeter && allAnswered && (hasNC ? !!photoUrl : true);
+  const canSave = selectedEquipment && operatorName && hourMeter && allAnswered;
 
   return (
     <div>
@@ -296,11 +293,26 @@ export default function ChecklistPage() {
             </div>
           )}
 
+          {/* General observations */}
+          <div className="glass-card rounded-xl p-6">
+            <Label>Observações Gerais</Label>
+            <Textarea
+              value={generalObservations}
+              onChange={e => setGeneralObservations(e.target.value)}
+              placeholder="Observações do operador (opcional)..."
+              rows={3}
+              className="mt-1"
+            />
+          </div>
+
+          {/* Optional photo */}
+          <div className="glass-card rounded-xl p-6">
+            <PhotoUpload label="Foto (opcional)" onUploaded={setPhotoUrl} value={photoUrl} />
+          </div>
+
           {/* Photo required when NC exists */}
-          {hasNC && (
-            <div className="glass-card rounded-xl p-6">
-              <PhotoUpload label="Foto de Evidência (obrigatório)" required onUploaded={setPhotoUrl} />
-            </div>
+          {hasNC && !photoUrl && (
+            <p className="text-xs text-warning text-center">⚠️ Recomendado: tire uma foto de evidência quando há itens não conformes</p>
           )}
 
           <div>

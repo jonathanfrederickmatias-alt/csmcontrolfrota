@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Building2, Plus, Loader2, MapPin, Pencil, Trash2, Truck, X, Check, FileText, Calendar, User, Hash } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { exportMaintenancePlansPDF } from "@/lib/pdf-export";
 import { calculateMaintenanceStatus } from "@/lib/maintenance-utils";
@@ -28,7 +29,8 @@ export default function ObrasPage() {
   const [saving, setSaving] = useState(false);
   const [manageObraId, setManageObraId] = useState<string | null>(null);
   const [addingEquipment, setAddingEquipment] = useState(false);
-
+  const [pdfObra, setPdfObra] = useState<DBObra | null>(null);
+  const [selectedEqIds, setSelectedEqIds] = useState<Set<string>>(new Set());
   const fetchData = async () => {
     setLoading(true);
     const [obrasRes, eqRes, plansRes] = await Promise.all([
@@ -115,16 +117,35 @@ export default function ObrasPage() {
     return id ? `${eq.name} (${id})` : eq.name;
   };
 
-  const exportObraMaintenancePDF = (obra: DBObra) => {
+  const openPdfDialog = (obra: DBObra) => {
     const obraEqs = getObraEquipments(obra.id);
     if (obraEqs.length === 0) {
       toast.error('Nenhuma máquina vinculada a esta obra.');
       return;
     }
+    setPdfObra(obra);
+    setSelectedEqIds(new Set(obraEqs.map(e => e.id)));
+  };
+
+  const toggleEqSelection = (eqId: string) => {
+    setSelectedEqIds(prev => {
+      const next = new Set(prev);
+      if (next.has(eqId)) next.delete(eqId); else next.add(eqId);
+      return next;
+    });
+  };
+
+  const exportObraMaintenancePDF = () => {
+    if (!pdfObra) return;
+    const obraEqs = getObraEquipments(pdfObra.id).filter(e => selectedEqIds.has(e.id));
+    if (obraEqs.length === 0) {
+      toast.error('Selecione pelo menos uma máquina.');
+      return;
+    }
     const obraEqIds = new Set(obraEqs.map(e => e.id));
     const obraPlans = plans.filter(p => obraEqIds.has(p.equipment_id));
     if (obraPlans.length === 0) {
-      toast.error('Nenhum plano de manutenção encontrado para as máquinas desta obra.');
+      toast.error('Nenhum plano de manutenção encontrado para as máquinas selecionadas.');
       return;
     }
     const rows = obraPlans.map(p => {
@@ -149,12 +170,13 @@ export default function ObrasPage() {
         year: eq?.year || undefined,
       };
     });
-    exportMaintenancePlansPDF(rows, `Obra_${obra.name}`, {
-      client: obra.client || undefined,
-      contractNumber: obra.contract_number || undefined,
-      cnpj: obra.cnpj || undefined,
+    exportMaintenancePlansPDF(rows, `Obra_${pdfObra.name}`, {
+      client: pdfObra.client || undefined,
+      contractNumber: pdfObra.contract_number || undefined,
+      cnpj: pdfObra.cnpj || undefined,
     });
     toast.success('PDF gerado com sucesso!');
+    setPdfObra(null);
   };
 
   return (
@@ -267,6 +289,56 @@ export default function ObrasPage() {
         </DialogContent>
       </Dialog>
 
+      {/* PDF filter dialog */}
+      <Dialog open={!!pdfObra} onOpenChange={open => { if (!open) setPdfObra(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-primary" />
+              Relatório de Manutenção
+            </DialogTitle>
+          </DialogHeader>
+          {pdfObra && (() => {
+            const obraEqs = getObraEquipments(pdfObra.id);
+            const allSelected = obraEqs.every(e => selectedEqIds.has(e.id));
+            return (
+              <div className="space-y-4 mt-2">
+                <p className="text-sm text-muted-foreground">Selecione as máquinas para incluir no relatório:</p>
+                <div className="flex items-center gap-2 pb-2 border-b border-border">
+                  <Checkbox
+                    checked={allSelected}
+                    onCheckedChange={() => {
+                      if (allSelected) setSelectedEqIds(new Set());
+                      else setSelectedEqIds(new Set(obraEqs.map(e => e.id)));
+                    }}
+                  />
+                  <span className="text-sm font-semibold">Selecionar todas ({obraEqs.length})</span>
+                </div>
+                <div className="max-h-60 overflow-y-auto space-y-2">
+                  {obraEqs.map(eq => (
+                    <label key={eq.id} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-secondary/50 cursor-pointer">
+                      <Checkbox
+                        checked={selectedEqIds.has(eq.id)}
+                        onCheckedChange={() => toggleEqSelection(eq.id)}
+                      />
+                      <div>
+                        <p className="text-sm font-medium">{eq.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {[eq.cost_center && `CC: ${eq.cost_center}`, eq.plate && `Placa: ${eq.plate}`, eq.model].filter(Boolean).join(' • ')}
+                        </p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+                <Button onClick={exportObraMaintenancePDF} disabled={selectedEqIds.size === 0} className="w-full gap-2">
+                  <FileText className="w-4 h-4" /> Gerar PDF ({selectedEqIds.size} máquina{selectedEqIds.size !== 1 ? 's' : ''})
+                </Button>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
+
       {loading ? (
         <div className="glass-card rounded-xl p-12 text-center">
           <Loader2 className="w-8 h-8 animate-spin mx-auto text-muted-foreground" />
@@ -341,7 +413,7 @@ export default function ObrasPage() {
 
                 <div className="flex flex-wrap gap-2 mt-auto">
                   {obraEquipments.length > 0 && (
-                    <Button variant="outline" size="sm" onClick={() => exportObraMaintenancePDF(obra)} className="gap-1">
+                    <Button variant="outline" size="sm" onClick={() => openPdfDialog(obra)} className="gap-1">
                       <FileText className="w-3 h-3 text-primary" /> Plano Manutenção
                     </Button>
                   )}

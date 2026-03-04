@@ -290,6 +290,16 @@ export default function MaintenancePage() {
               </Button>
               <Button size="sm" variant="outline" className="gap-1.5" onClick={() => {
                 const filterName = osFilter === 'all' ? 'Todos' : equipments.find(e => e.id === osFilter)?.name || 'Filtrado';
+                const selectedEq = osFilter !== 'all' ? equipments.find(e => e.id === osFilter) : undefined;
+                const eqDetails = selectedEq ? {
+                  name: selectedEq.name,
+                  plate: selectedEq.plate || undefined,
+                  model: selectedEq.model || undefined,
+                  brand: selectedEq.brand || undefined,
+                  costCenter: selectedEq.cost_center || undefined,
+                  year: selectedEq.year || undefined,
+                  currentHourMeter: selectedEq.current_hour_meter,
+                } : undefined;
                 const rows = filteredOrders.map(o => {
                   const eq = equipments.find(e => e.id === o.equipment_id);
                   return {
@@ -309,7 +319,7 @@ export default function MaintenancePage() {
                     completedAt: o.completed_at ? new Date(o.completed_at).toLocaleDateString('pt-BR') : undefined,
                   };
                 });
-                exportWorkOrdersPDF(rows, filterName);
+                exportWorkOrdersPDF(rows, filterName, eqDetails);
               }}>
                 <FileText className="w-4 h-4 text-primary" /> PDF
               </Button>
@@ -558,6 +568,16 @@ export default function MaintenancePage() {
               </Button>
               <Button size="sm" variant="outline" className="gap-1.5" onClick={() => {
                 const filterName = requestFilter === 'all' ? 'Todos' : equipments.find(e => e.id === requestFilter)?.name || 'Filtrado';
+                const selectedEq = requestFilter !== 'all' ? equipments.find(e => e.id === requestFilter) : undefined;
+                const eqDetails = selectedEq ? {
+                  name: selectedEq.name,
+                  plate: selectedEq.plate || undefined,
+                  model: selectedEq.model || undefined,
+                  brand: selectedEq.brand || undefined,
+                  costCenter: selectedEq.cost_center || undefined,
+                  year: selectedEq.year || undefined,
+                  currentHourMeter: selectedEq.current_hour_meter,
+                } : undefined;
                 const rows = filteredRequests.map(r => {
                   const eq = equipments.find(e => e.id === r.equipment_id);
                   return {
@@ -571,7 +591,7 @@ export default function MaintenancePage() {
                     notes: r.notes || undefined,
                   };
                 });
-                exportMaintenanceRequestsPDF(rows, filterName);
+                exportMaintenanceRequestsPDF(rows, filterName, eqDetails);
               }}>
                 <FileText className="w-4 h-4 text-primary" /> PDF
               </Button>
@@ -684,6 +704,16 @@ export default function MaintenancePage() {
               </Button>
               <Button size="sm" variant="outline" className="gap-1.5" onClick={() => {
                 const filterName = historyFilter === 'all' ? 'Todos' : equipments.find(e => e.id === historyFilter)?.name || 'Filtrado';
+                const selectedEq = historyFilter !== 'all' ? equipments.find(e => e.id === historyFilter) : undefined;
+                const eqDetails = selectedEq ? {
+                  name: selectedEq.name,
+                  plate: selectedEq.plate || undefined,
+                  model: selectedEq.model || undefined,
+                  brand: selectedEq.brand || undefined,
+                  costCenter: selectedEq.cost_center || undefined,
+                  year: selectedEq.year || undefined,
+                  currentHourMeter: selectedEq.current_hour_meter,
+                } : undefined;
                 const rows = filteredHistory.map(h => {
                   const eq = equipments.find(e => e.id === h.equipment_id);
                   const plan = plans.find(p => p.id === h.plan_id);
@@ -697,7 +727,7 @@ export default function MaintenancePage() {
                     planDescription: plan?.description || undefined,
                   };
                 });
-                exportMaintenanceHistoryPDF(rows, filterName);
+                exportMaintenanceHistoryPDF(rows, filterName, eqDetails);
               }}>
                 <FileText className="w-4 h-4 text-primary" /> PDF
               </Button>

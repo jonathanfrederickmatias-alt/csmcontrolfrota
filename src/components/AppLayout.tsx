@@ -7,15 +7,15 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 
 const allNavItems = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard, roles: ['admin', 'gestor'] },
+  { to: "/", label: "Dashboard", icon: LayoutDashboard, roles: ['admin', 'gestor', 'abastecedor'] },
   { to: "/equipamentos", label: "Equipamentos", icon: Truck, roles: ['admin', 'gestor'] },
   { to: "/checklist", label: "Checklist", icon: ClipboardCheck, roles: ['admin', 'gestor'] },
-  { to: "/checklists", label: "Checklists Realizados", icon: ClipboardList, roles: ['admin', 'gestor'] },
-  { to: "/manutencao", label: "Manutenção", icon: Wrench, roles: ['admin', 'gestor', 'mecanico'] },
+  { to: "/checklists", label: "Checklists Realizados", icon: ClipboardList, roles: ['admin', 'gestor', 'abastecedor'] },
+  { to: "/manutencao", label: "Manutenção", icon: Wrench, roles: ['admin', 'gestor', 'mecanico', 'abastecedor'] },
   { to: "/abastecimento", label: "Abastecimento", icon: Fuel, roles: ['admin', 'gestor', 'abastecedor'] },
   { to: "/reabastecimento", label: "Reabastecimento", icon: Droplets, roles: ['admin', 'gestor'] },
   { to: "/relatorios", label: "Relatórios", icon: BarChart2, roles: ['admin', 'gestor'] },
-  { to: "/obras", label: "Obras", icon: Building2, roles: ['admin', 'gestor'] },
+  { to: "/obras", label: "Obras", icon: Building2, roles: ['admin', 'gestor', 'abastecedor'] },
   { to: "/qrcode", label: "QR Code", icon: QrCode, roles: ['admin', 'gestor'] },
   { to: "/usuarios", label: "Usuários", icon: Users, roles: ['admin', 'gestor'] },
 ];

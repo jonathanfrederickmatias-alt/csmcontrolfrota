@@ -213,6 +213,7 @@ export default function ReportsPage() {
   };
 
   const exportPDF = () => {
+    const selectedEq = selectedEquipment !== 'all' ? equipments.find(e => e.id === selectedEquipment) : undefined;
     exportGeneralReportsPDF({
       period: periodLabels[period],
       filterName: selectedEqName,
@@ -238,6 +239,15 @@ export default function ReportsPage() {
         const eq = equipments.find(e => e.id === p.equipment_id);
         return { equipment: eq ? eqLabel(eq) : '—', description: p.description, interval: p.interval_hours, nextDue: p.next_due_at, status: p.status === 'ok' ? 'OK' : p.status === 'approaching' ? 'Próxima' : 'Atrasada', lastExec: p.last_executed_at ? new Date(p.last_executed_at).toLocaleDateString('pt-BR') : '—' };
       }),
+      equipmentDetails: selectedEq ? {
+        name: selectedEq.name,
+        plate: selectedEq.plate || undefined,
+        model: selectedEq.model || undefined,
+        brand: selectedEq.brand || undefined,
+        costCenter: selectedEq.cost_center || undefined,
+        year: selectedEq.year || undefined,
+        currentHourMeter: selectedEq.current_hour_meter,
+      } : undefined,
     });
   };
 
@@ -276,9 +286,11 @@ export default function ReportsPage() {
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent position="popper">
               <SelectItem value="all">Todos os Equipamentos</SelectItem>
-              {equipments.map(eq => (
-                <SelectItem key={eq.id} value={eq.id}>{eq.name}</SelectItem>
-              ))}
+              {equipments.map(eq => {
+                const id = eq.cost_center || eq.plate || '';
+                const label = id ? `${eq.name} (${id})` : eq.name;
+                return <SelectItem key={eq.id} value={eq.id}>{label}</SelectItem>;
+              })}
             </SelectContent>
           </Select>
         </div>

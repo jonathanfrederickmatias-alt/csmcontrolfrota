@@ -132,10 +132,13 @@ export default function ReportsPage() {
   ].filter(d => d.value > 0);
 
   // Maintenance status
+  const eqsWithPlans = new Set(filteredPlans.map(p => p.equipment_id));
+  const eqsWithoutPlans = filteredEquipments.filter(e => !eqsWithPlans.has(e.id));
   const maintenanceStatus = [
     { name: 'OK', value: filteredPlans.filter(p => p.status === 'ok').length, color: 'hsl(142,71%,45%)' },
     { name: 'Próxima', value: filteredPlans.filter(p => p.status === 'approaching').length, color: 'hsl(38,92%,50%)' },
     { name: 'Atrasada', value: filteredPlans.filter(p => p.status === 'overdue').length, color: 'hsl(0,72%,51%)' },
+    { name: 'Sem Plano', value: eqsWithoutPlans.length, color: 'hsl(220,10%,60%)' },
   ];
 
   // OS status pie
@@ -235,10 +238,15 @@ export default function ReportsPage() {
         const eq = equipments.find(e => e.id === c.equipment_id);
         return { date: c.date, equipment: eq ? eqLabel(eq) : '—', operator: c.operator_name, hourMeter: c.hour_meter, status: checklistStatusLabels[c.status] || c.status };
       }),
-      maintenancePlans: filteredPlans.map(p => {
-        const eq = equipments.find(e => e.id === p.equipment_id);
-        return { equipment: eq ? eqLabel(eq) : '—', description: p.description, interval: p.interval_hours, nextDue: p.next_due_at, status: p.status === 'ok' ? 'OK' : p.status === 'approaching' ? 'Próxima' : 'Atrasada', lastExec: p.last_executed_at ? new Date(p.last_executed_at).toLocaleDateString('pt-BR') : '—' };
-      }),
+      maintenancePlans: [
+        ...filteredPlans.map(p => {
+          const eq = equipments.find(e => e.id === p.equipment_id);
+          return { equipment: eq ? eqLabel(eq) : '—', description: p.description, interval: p.interval_hours, nextDue: p.next_due_at, status: p.status === 'ok' ? 'OK' : p.status === 'approaching' ? 'Próxima' : 'Atrasada', lastExec: p.last_executed_at ? new Date(p.last_executed_at).toLocaleDateString('pt-BR') : '—' };
+        }),
+        ...eqsWithoutPlans.map(eq => ({
+          equipment: eqLabel(eq), description: 'Nenhum plano cadastrado', interval: 0, nextDue: 0, status: 'Sem Plano', lastExec: '—',
+        })),
+      ],
       equipmentDetails: selectedEq ? {
         name: selectedEq.name,
         plate: selectedEq.plate || undefined,
@@ -460,12 +468,12 @@ export default function ReportsPage() {
                       <span className="font-mono text-muted-foreground">{s.value}</span>
                     </div>
                     <div className="w-full bg-secondary rounded-full h-2">
-                      <div className="h-2 rounded-full transition-all" style={{ width: filteredPlans.length ? `${(s.value / filteredPlans.length) * 100}%` : '0%', background: s.color }} />
+                      <div className="h-2 rounded-full transition-all" style={{ width: maintenanceStatus.reduce((a, b) => a + b.value, 0) ? `${(s.value / maintenanceStatus.reduce((a, b) => a + b.value, 0)) * 100}%` : '0%', background: s.color }} />
                     </div>
                   </div>
                 </div>
               ))}
-              {filteredPlans.length === 0 && <p className="text-muted-foreground text-sm">Nenhum plano cadastrado.</p>}
+              {filteredPlans.length === 0 && eqsWithoutPlans.length === 0 && <p className="text-muted-foreground text-sm">Nenhum plano cadastrado.</p>}
             </div>
           </div>
 
@@ -616,7 +624,7 @@ export default function ReportsPage() {
               <Wrench className="w-5 h-5 text-primary" />
               Planos de Manutenção Preventiva
             </h2>
-            {filteredPlans.length === 0 ? (
+            {filteredPlans.length === 0 && eqsWithoutPlans.length === 0 ? (
               <p className="text-muted-foreground text-sm">Nenhum plano cadastrado.</p>
             ) : (
               <div className="overflow-x-auto">
@@ -636,7 +644,7 @@ export default function ReportsPage() {
                       const eq = equipments.find(e => e.id === p.equipment_id);
                       return (
                         <tr key={p.id} className="hover:bg-secondary/30 transition-colors">
-                          <td className="py-2 pr-4 font-medium">{eq?.name || '—'}</td>
+                          <td className="py-2 pr-4 font-medium">{eq ? eqLabel(eq) : '—'}</td>
                           <td className="py-2 pr-4 text-muted-foreground">{p.description}</td>
                           <td className="py-2 pr-4 font-mono">{p.interval_hours}h</td>
                           <td className="py-2 pr-4 font-mono">{p.next_due_at}h</td>
@@ -651,6 +659,15 @@ export default function ReportsPage() {
                         </tr>
                       );
                     })}
+                    {eqsWithoutPlans.map(eq => (
+                      <tr key={`no-plan-${eq.id}`} className="hover:bg-secondary/30 transition-colors opacity-60">
+                        <td className="py-2 pr-4 font-medium">{eqLabel(eq)}</td>
+                        <td className="py-2 pr-4 text-muted-foreground italic" colSpan={4}>Nenhum plano de manutenção cadastrado</td>
+                        <td className="py-2">
+                          <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-secondary text-muted-foreground">Sem Plano</span>
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>

@@ -816,7 +816,7 @@ export default function MaintenancePage() {
                             </AlertDialogContent>
                           </AlertDialog>
                         )}
-                        {r.status !== 'done' && (
+                        {canEdit && r.status !== 'done' && (
                           <Select value={r.status} onValueChange={v => handleRequestStatusChange(r.id, v)}>
                             <SelectTrigger className="h-8 text-xs w-36">
                               <SelectValue />

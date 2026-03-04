@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { ClipboardList, Loader2, Edit2, Trash2, ShieldCheck, ShieldX, AlertTriangle, Search } from "lucide-react";
+import { ClipboardList, Loader2, Edit2, Trash2, ShieldCheck, ShieldX, AlertTriangle, Search, ChevronDown, ChevronUp, CheckCircle, XCircle, Camera } from "lucide-react";
 import { toast } from "sonner";
 import { useUserRoles } from "@/hooks/useUserRoles";
 
@@ -29,6 +29,7 @@ export default function ChecklistListPage() {
   const [search, setSearch] = useState('');
   const [filterEquipment, setFilterEquipment] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Edit state
   const [editChecklist, setEditChecklist] = useState<DBChecklist | null>(null);
@@ -173,7 +174,11 @@ export default function ChecklistListPage() {
             const StatusIcon = sc.icon;
             const summary = getItemsSummary(cl.items || []);
             return (
-              <div key={cl.id} className="glass-card rounded-xl p-4">
+              <div key={cl.id} className="glass-card rounded-xl overflow-hidden">
+                <div
+                  className="p-4 cursor-pointer hover:bg-secondary/30 transition-colors"
+                  onClick={() => setExpandedId(expandedId === cl.id ? null : cl.id)}
+                >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-1">
@@ -185,6 +190,7 @@ export default function ChecklistListPage() {
                       <span className="text-[10px] px-2 py-0.5 rounded-full bg-secondary text-muted-foreground font-medium">
                         {typeLabels[cl.type] || cl.type}
                       </span>
+                      {expandedId === cl.id ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
                     </div>
                     <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
                       <span>Operador: {cl.operator_name}</span>
@@ -197,7 +203,7 @@ export default function ChecklistListPage() {
                     )}
                   </div>
                   {canEdit && (
-                    <div className="flex items-center gap-1 shrink-0">
+                    <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
                       <button onClick={() => openEdit(cl)} className="text-muted-foreground hover:text-primary p-1.5 transition-colors">
                         <Edit2 className="w-4 h-4" />
                       </button>
@@ -233,6 +239,37 @@ export default function ChecklistListPage() {
                     </div>
                   )}
                 </div>
+                </div>
+
+                {/* Expanded detail */}
+                {expandedId === cl.id && (
+                  <div className="border-t border-border px-4 py-3 bg-secondary/20">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                      {(cl.items || []).map((item: any) => (
+                        <div key={item.id} className="flex items-start gap-2 text-xs py-1">
+                          {item.checked ? (
+                            <CheckCircle className="w-3.5 h-3.5 text-success shrink-0 mt-0.5" />
+                          ) : (
+                            <XCircle className="w-3.5 h-3.5 text-destructive shrink-0 mt-0.5" />
+                          )}
+                          <div>
+                            <span className={item.checked ? 'text-foreground' : 'text-destructive font-medium'}>{item.label}</span>
+                            {item.observation && (
+                              <p className="text-muted-foreground italic mt-0.5">"{item.observation}"</p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {cl.photo_url && (
+                      <div className="mt-3 pt-2 border-t border-border">
+                        <a href={cl.photo_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline">
+                          <Camera className="w-3.5 h-3.5" /> Ver foto anexada
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}

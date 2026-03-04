@@ -934,6 +934,37 @@ export default function MaintenancePage() {
                           <Edit2 className="w-3.5 h-3.5" />
                         </button>
                       )}
+                      {canEdit && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <button className="text-muted-foreground hover:text-destructive p-1 transition-colors">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Excluir registro do histórico?</AlertDialogTitle>
+                              <AlertDialogDescription>O registro será removido. Você poderá desfazer nos próximos segundos.</AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction onClick={async () => {
+                                const backup = { ...h };
+                                await supabase.from('maintenance_history').delete().eq('id', h.id);
+                                fetchAll();
+                                sonnerToast.success('Registro excluído!', {
+                                  action: { label: 'Desfazer', onClick: async () => {
+                                    await supabase.from('maintenance_history').insert(backup as any);
+                                    fetchAll();
+                                    sonnerToast.success('Registro restaurado!');
+                                  }},
+                                  duration: 8000,
+                                });
+                              }}>Excluir</AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
                       <span className="text-sm font-mono font-bold text-muted-foreground">{h.hour_meter}h</span>
                     </div>
                   </div>

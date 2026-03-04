@@ -987,7 +987,7 @@ export async function exportGeneralReportsPDF(data: GeneralReportData) {
     pdf.text('Status dos Planos de Manutenção', margin + 6, y + 5.5);
     y += 12;
 
-    const mStatusColors: Record<string, [number, number, number]> = { 'OK': COLORS.success, 'Próxima': COLORS.warning, 'Atrasada': COLORS.danger };
+    const mStatusColors: Record<string, [number, number, number]> = { 'OK': COLORS.success, 'Próxima': COLORS.warning, 'Atrasada': COLORS.danger, 'Sem Plano': [150, 150, 150] };
     data.maintenanceStatus.forEach(item => {
       if (item.value > 0) {
         pdf.setFontSize(8); pdf.setFont('helvetica', 'bold');
@@ -1136,12 +1136,19 @@ export async function exportGeneralReportsPDF(data: GeneralReportData) {
 
       const midY = y + rowHeight / 2 + 1.5;
       pdf.setTextColor(...COLORS.textMuted);
-      pdf.text(`${p.interval}h`, mColX[2] + 2, midY);
-      pdf.text(`${p.nextDue}h`, mColX[3] + 2, midY);
-      const sColor = p.status === 'OK' ? COLORS.success : p.status === 'Próxima' ? COLORS.warning : COLORS.danger;
-      pdf.setTextColor(...sColor);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text(p.status, mColX[4] + 2, midY);
+      if (p.status === 'Sem Plano') {
+        pdf.text('—', mColX[2] + 2, midY);
+        pdf.text('—', mColX[3] + 2, midY);
+        pdf.setFont('helvetica', 'italic');
+        pdf.text(p.status, mColX[4] + 2, midY);
+      } else {
+        pdf.text(`${p.interval}h`, mColX[2] + 2, midY);
+        pdf.text(`${p.nextDue}h`, mColX[3] + 2, midY);
+        const sColor = p.status === 'OK' ? COLORS.success : p.status === 'Próxima' ? COLORS.warning : COLORS.danger;
+        pdf.setTextColor(...sColor);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(p.status, mColX[4] + 2, midY);
+      }
       pdf.setFont('helvetica', 'normal');
       pdf.setTextColor(...COLORS.textMuted);
       pdf.text(p.lastExec, mColX[5] + 2, midY);

@@ -149,7 +149,11 @@ export default function ObrasPage() {
         year: eq?.year || undefined,
       };
     });
-    exportMaintenancePlansPDF(rows, `Obra_${obra.name}`);
+    exportMaintenancePlansPDF(rows, `Obra_${obra.name}`, {
+      client: obra.client || undefined,
+      contractNumber: obra.contract_number || undefined,
+      cnpj: obra.cnpj || undefined,
+    });
     toast.success('PDF gerado com sucesso!');
   };
 

@@ -258,9 +258,16 @@ function drawSummaryCard(pdf: jsPDF, x: number, y: number, w: number, label: str
 }
 
 // ===== PLANS REPORT =====
+export interface ObraInfo {
+  client?: string;
+  contractNumber?: string;
+  cnpj?: string;
+}
+
 export async function exportMaintenancePlansPDF(
   plans: PlanRow[],
-  filterName: string
+  filterName: string,
+  obraInfo?: ObraInfo
 ) {
   const logoData = await loadLogoAsBase64();
   const pdf = new jsPDF('l', 'mm', 'a4');
@@ -273,6 +280,9 @@ export async function exportMaintenancePlansPDF(
   pdf.rect(0, 0, pageWidth, pdf.internal.pageSize.getHeight(), 'F');
 
   const subtitleParts = [`Filtro: ${filterName}`];
+  if (obraInfo?.contractNumber) subtitleParts.push(`Contrato: ${obraInfo.contractNumber}`);
+  if (obraInfo?.client) subtitleParts.push(`Cliente: ${obraInfo.client}`);
+  if (obraInfo?.cnpj) subtitleParts.push(`CNPJ: ${obraInfo.cnpj}`);
   addHeader(pdf, 'Relatório de Planos de Manutenção Preventiva', subtitleParts.join(' | '), logoData);
 
   let y = 46;

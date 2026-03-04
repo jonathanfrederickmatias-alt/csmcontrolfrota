@@ -65,6 +65,16 @@ interface PlanRow {
   year?: number;
 }
 
+interface EquipmentDetails {
+  name: string;
+  plate?: string;
+  model?: string;
+  brand?: string;
+  costCenter?: string;
+  year?: number;
+  currentHourMeter?: number;
+}
+
 interface RequestRow {
   equipment: string;
   description: string;
@@ -428,11 +438,12 @@ export async function exportMaintenancePlansPDF(
 // ===== REQUESTS REPORT =====
 export async function exportMaintenanceRequestsPDF(
   requests: RequestRow[],
-  filterName: string
+  filterName: string,
+  equipmentDetails?: EquipmentDetails
 ) {
   const logoData = await loadLogoAsBase64();
-  const pdf = new jsPDF('p', 'mm', 'a4');
-  const pageWidth = 210;
+  const pdf = new jsPDF('l', 'mm', 'a4');
+  const pageWidth = 297;
   const margin = 12;
   const contentWidth = pageWidth - margin * 2;
 
@@ -442,6 +453,11 @@ export async function exportMaintenanceRequestsPDF(
   addHeader(pdf, 'Relatório de Pedidos de Manutenção', `Filtro: ${filterName}`, logoData);
 
   let y = 46;
+
+  // Equipment details
+  if (equipmentDetails) {
+    y = drawEquipmentDetailsBlock(pdf, margin, y, contentWidth, equipmentDetails);
+  }
 
   // Summary
   const openCount = requests.filter(r => r.status === 'Aberto').length;
@@ -456,8 +472,8 @@ export async function exportMaintenanceRequestsPDF(
   y += 30;
 
   // Table header
-  const colWidths = [40, 42, 20, 22, 25, 22, 15];
-  const colHeaders = ['Equipamento', 'Descrição', 'Prioridade', 'Status', 'Operador', 'Data', 'Concl.'];
+  const colWidths = [55, 65, 25, 28, 35, 28, 37];
+  const colHeaders = ['Equipamento', 'Descrição', 'Prioridade', 'Status', 'Operador', 'Data', 'Concluído'];
   const colX = [margin];
   for (let i = 1; i < colWidths.length; i++) colX.push(colX[i - 1] + colWidths[i - 1]);
 
@@ -470,36 +486,44 @@ export async function exportMaintenanceRequestsPDF(
   y += 6;
 
   requests.forEach((r, idx) => {
-    y = checkPageBreak(pdf, y, 7);
+    pdf.setFontSize(6.5);
+    pdf.setFont('helvetica', 'normal');
+    const descLines = wrapText(pdf, r.description, colWidths[1] - 4);
+    const lineHeight = 3.5;
+    const rowHeight = Math.max(6.5, descLines.length * lineHeight + 3);
+
+    y = checkPageBreak(pdf, y, rowHeight);
 
     if (idx % 2 === 1) {
       pdf.setFillColor(...COLORS.rowAlt);
-      pdf.rect(margin, y, contentWidth, 6.5, 'F');
+      pdf.rect(margin, y, contentWidth, rowHeight, 'F');
     }
 
-    pdf.setFontSize(6.5);
-    pdf.setFont('helvetica', 'normal');
     pdf.setTextColor(...COLORS.text);
     pdf.text(clipText(pdf, r.equipment, colWidths[0] - 4), colX[0] + 2, y + 4.5);
-    pdf.text(clipText(pdf, r.description, colWidths[1] - 4), colX[1] + 2, y + 4.5);
 
-    // Priority with color
+    descLines.forEach((line, li) => {
+      pdf.text(line, colX[1] + 2, y + 4.5 + li * lineHeight);
+    });
+
+    const midY = y + rowHeight / 2 + 1.5;
+
     const prioColor = r.priority === 'Urgente' ? COLORS.danger : r.priority === 'Alta' ? COLORS.warning : r.priority === 'Média' ? COLORS.primary : COLORS.textMuted;
     pdf.setTextColor(...prioColor);
     pdf.setFont('helvetica', 'bold');
-    pdf.text(r.priority, colX[2] + 2, y + 4.5);
+    pdf.text(r.priority, colX[2] + 2, midY);
 
     const statusColor = r.status === 'Concluído' ? COLORS.success : r.status === 'Em andamento' ? COLORS.primary : COLORS.textMuted;
     pdf.setTextColor(...statusColor);
-    pdf.text(r.status, colX[3] + 2, y + 4.5);
+    pdf.text(r.status, colX[3] + 2, midY);
 
     pdf.setFont('helvetica', 'normal');
     pdf.setTextColor(...COLORS.textMuted);
-    pdf.text(clipText(pdf, r.operator, colWidths[4] - 4), colX[4] + 2, y + 4.5);
-    pdf.text(r.date, colX[5] + 2, y + 4.5);
-    pdf.text(r.resolvedAt || '—', colX[6] + 2, y + 4.5);
+    pdf.text(clipText(pdf, r.operator, colWidths[4] - 4), colX[4] + 2, midY);
+    pdf.text(r.date, colX[5] + 2, midY);
+    pdf.text(r.resolvedAt || '—', colX[6] + 2, midY);
 
-    y += 6.5;
+    y += rowHeight;
   });
 
   const totalPages = pdf.getNumberOfPages();
@@ -514,11 +538,12 @@ export async function exportMaintenanceRequestsPDF(
 // ===== HISTORY REPORT =====
 export async function exportMaintenanceHistoryPDF(
   records: HistoryRow[],
-  filterName: string
+  filterName: string,
+  equipmentDetails?: EquipmentDetails
 ) {
   const logoData = await loadLogoAsBase64();
-  const pdf = new jsPDF('p', 'mm', 'a4');
-  const pageWidth = 210;
+  const pdf = new jsPDF('l', 'mm', 'a4');
+  const pageWidth = 297;
   const margin = 12;
   const contentWidth = pageWidth - margin * 2;
 
@@ -529,12 +554,17 @@ export async function exportMaintenanceHistoryPDF(
 
   let y = 46;
 
+  // Equipment details
+  if (equipmentDetails) {
+    y = drawEquipmentDetailsBlock(pdf, margin, y, contentWidth, equipmentDetails);
+  }
+
   // Summary card
   drawSummaryCard(pdf, margin, y, contentWidth, 'Total de Manutenções Registradas', String(records.length), COLORS.primary);
   y += 30;
 
   // Table
-  const colWidths = [35, 40, 18, 25, 25, 43];
+  const colWidths = [55, 65, 25, 35, 40, 53];
   const colHeaders = ['Equipamento', 'Descrição', 'Horímetro', 'Data', 'Responsável', 'Plano Vinculado'];
   const colX = [margin];
   for (let i = 1; i < colWidths.length; i++) colX.push(colX[i - 1] + colWidths[i - 1]);
@@ -548,26 +578,34 @@ export async function exportMaintenanceHistoryPDF(
   y += 6;
 
   records.forEach((r, idx) => {
-    y = checkPageBreak(pdf, y, 7);
+    pdf.setFontSize(6.5);
+    pdf.setFont('helvetica', 'normal');
+    const descLines = wrapText(pdf, r.description, colWidths[1] - 4);
+    const lineHeight = 3.5;
+    const rowHeight = Math.max(6.5, descLines.length * lineHeight + 3);
+
+    y = checkPageBreak(pdf, y, rowHeight);
 
     if (idx % 2 === 1) {
       pdf.setFillColor(...COLORS.rowAlt);
-      pdf.rect(margin, y, contentWidth, 6.5, 'F');
+      pdf.rect(margin, y, contentWidth, rowHeight, 'F');
     }
 
-    pdf.setFontSize(6.5);
-    pdf.setFont('helvetica', 'normal');
     pdf.setTextColor(...COLORS.text);
     pdf.text(clipText(pdf, r.equipment, colWidths[0] - 4), colX[0] + 2, y + 4.5);
-    pdf.text(clipText(pdf, r.description, colWidths[1] - 4), colX[1] + 2, y + 4.5);
 
+    descLines.forEach((line, li) => {
+      pdf.text(line, colX[1] + 2, y + 4.5 + li * lineHeight);
+    });
+
+    const midY = y + rowHeight / 2 + 1.5;
     pdf.setTextColor(...COLORS.textMuted);
-    pdf.text(`${r.hourMeter}h`, colX[2] + 2, y + 4.5);
-    pdf.text(r.executedAt, colX[3] + 2, y + 4.5);
-    pdf.text(clipText(pdf, r.operator || '—', colWidths[4] - 4), colX[4] + 2, y + 4.5);
-    pdf.text(clipText(pdf, r.planDescription || '—', colWidths[5] - 4), colX[5] + 2, y + 4.5);
+    pdf.text(`${r.hourMeter}h`, colX[2] + 2, midY);
+    pdf.text(r.executedAt, colX[3] + 2, midY);
+    pdf.text(clipText(pdf, r.operator || '—', colWidths[4] - 4), colX[4] + 2, midY);
+    pdf.text(clipText(pdf, r.planDescription || '—', colWidths[5] - 4), colX[5] + 2, midY);
 
-    y += 6.5;
+    y += rowHeight;
   });
 
   const totalPages = pdf.getNumberOfPages();
@@ -593,13 +631,42 @@ interface WorkOrderRow {
   completedAt?: string;
 }
 
+function drawEquipmentDetailsBlock(pdf: jsPDF, margin: number, y: number, contentWidth: number, ed: EquipmentDetails): number {
+  pdf.setFillColor(...COLORS.headerBg);
+  pdf.roundedRect(margin, y, contentWidth, 14, 1, 1, 'F');
+  pdf.setFillColor(...COLORS.primary);
+  pdf.rect(margin, y, 3, 14, 'F');
+
+  pdf.setTextColor(...COLORS.text);
+  pdf.setFontSize(9);
+  pdf.setFont('helvetica', 'bold');
+  pdf.text(`Equipamento: ${ed.name}`, margin + 6, y + 5.5);
+
+  const details: string[] = [];
+  if (ed.costCenter) details.push(`CC: ${ed.costCenter}`);
+  if (ed.plate) details.push(`Placa/Série: ${ed.plate}`);
+  if (ed.model) details.push(`Modelo: ${ed.model}`);
+  if (ed.brand) details.push(`Marca: ${ed.brand}`);
+  if (ed.year) details.push(`Ano: ${ed.year}`);
+  if (ed.currentHourMeter !== undefined) details.push(`Horímetro: ${ed.currentHourMeter}h`);
+
+  pdf.setFontSize(7);
+  pdf.setFont('helvetica', 'normal');
+  pdf.setTextColor(...COLORS.textMuted);
+  if (details.length > 0) {
+    pdf.text(details.join('  |  '), margin + 6, y + 11);
+  }
+  return y + 18;
+}
+
 export async function exportWorkOrdersPDF(
   orders: WorkOrderRow[],
-  filterName: string
+  filterName: string,
+  equipmentDetails?: EquipmentDetails
 ) {
   const logoData = await loadLogoAsBase64();
-  const pdf = new jsPDF('p', 'mm', 'a4');
-  const pageWidth = 210;
+  const pdf = new jsPDF('l', 'mm', 'a4');
+  const pageWidth = 297;
   const margin = 12;
   const contentWidth = pageWidth - margin * 2;
 
@@ -609,6 +676,11 @@ export async function exportWorkOrdersPDF(
   addHeader(pdf, 'Relatório de Ordens de Serviço', `Filtro: ${filterName} | Total: ${orders.length} OS`, logoData);
 
   let y = 46;
+
+  // Equipment details
+  if (equipmentDetails) {
+    y = drawEquipmentDetailsBlock(pdf, margin, y, contentWidth, equipmentDetails);
+  }
 
   const openCount = orders.filter(o => o.status === 'Aberta').length;
   const progressCount = orders.filter(o => o.status === 'Em andamento').length;
@@ -621,8 +693,8 @@ export async function exportWorkOrdersPDF(
 
   y += 30;
 
-  const colWidths = [10, 26, 30, 16, 18, 20, 26, 18, 22];
-  const colHeaders = ['OS #', 'Equipamento', 'Descrição', 'Prioridade', 'Status', 'Mecânico', 'Peças', 'Início', 'Concl.'];
+  const colWidths = [14, 40, 55, 22, 24, 30, 40, 24, 24];
+  const colHeaders = ['OS #', 'Equipamento', 'Descrição', 'Prioridade', 'Status', 'Mecânico', 'Peças', 'Início', 'Conclusão'];
   const colX = [margin];
   for (let i = 1; i < colWidths.length; i++) colX.push(colX[i - 1] + colWidths[i - 1]);
 
@@ -635,14 +707,19 @@ export async function exportWorkOrdersPDF(
   y += 6;
 
   orders.forEach((o, idx) => {
-    y = checkPageBreak(pdf, y, 7);
+    pdf.setFontSize(6.5);
+    pdf.setFont('helvetica', 'normal');
+    const descLines = wrapText(pdf, o.description, colWidths[2] - 4);
+    const lineHeight = 3.5;
+    const rowHeight = Math.max(6.5, descLines.length * lineHeight + 3);
+
+    y = checkPageBreak(pdf, y, rowHeight);
 
     if (idx % 2 === 1) {
       pdf.setFillColor(...COLORS.rowAlt);
-      pdf.rect(margin, y, contentWidth, 6.5, 'F');
+      pdf.rect(margin, y, contentWidth, rowHeight, 'F');
     }
 
-    pdf.setFontSize(6.5);
     pdf.setFont('helvetica', 'bold');
     pdf.setTextColor(...COLORS.primary);
     pdf.text(String(o.osNumber), colX[0] + 2, y + 4.5);
@@ -650,25 +727,30 @@ export async function exportWorkOrdersPDF(
     pdf.setFont('helvetica', 'normal');
     pdf.setTextColor(...COLORS.text);
     pdf.text(clipText(pdf, o.equipment, colWidths[1] - 4), colX[1] + 2, y + 4.5);
-    pdf.text(clipText(pdf, o.description, colWidths[2] - 4), colX[2] + 2, y + 4.5);
+
+    descLines.forEach((line, li) => {
+      pdf.text(line, colX[2] + 2, y + 4.5 + li * lineHeight);
+    });
+
+    const midY = y + rowHeight / 2 + 1.5;
 
     const prioColor = o.priority === 'Urgente' ? COLORS.danger : o.priority === 'Alta' ? COLORS.warning : o.priority === 'Média' ? COLORS.primary : COLORS.textMuted;
     pdf.setTextColor(...prioColor);
     pdf.setFont('helvetica', 'bold');
-    pdf.text(o.priority, colX[3] + 2, y + 4.5);
+    pdf.text(o.priority, colX[3] + 2, midY);
 
     const statusColor = o.status === 'Concluída' ? COLORS.success : o.status === 'Em andamento' ? COLORS.primary : COLORS.textMuted;
     pdf.setTextColor(...statusColor);
-    pdf.text(o.status, colX[4] + 2, y + 4.5);
+    pdf.text(o.status, colX[4] + 2, midY);
 
     pdf.setFont('helvetica', 'normal');
     pdf.setTextColor(...COLORS.textMuted);
-    pdf.text(clipText(pdf, o.mechanic || '—', colWidths[5] - 4), colX[5] + 2, y + 4.5);
-    pdf.text(clipText(pdf, o.parts || '—', colWidths[6] - 4), colX[6] + 2, y + 4.5);
-    pdf.text(o.startedAt || '—', colX[7] + 2, y + 4.5);
-    pdf.text(o.completedAt || '—', colX[8] + 2, y + 4.5);
+    pdf.text(clipText(pdf, o.mechanic || '—', colWidths[5] - 4), colX[5] + 2, midY);
+    pdf.text(clipText(pdf, o.parts || '—', colWidths[6] - 4), colX[6] + 2, midY);
+    pdf.text(o.startedAt || '—', colX[7] + 2, midY);
+    pdf.text(o.completedAt || '—', colX[8] + 2, midY);
 
-    y += 6.5;
+    y += rowHeight;
   });
 
   const totalPages = pdf.getNumberOfPages();
@@ -715,32 +797,7 @@ export async function exportGeneralReportsPDF(data: GeneralReportData) {
 
   // Equipment details section (when filtered by specific equipment)
   if (data.equipmentDetails) {
-    const ed = data.equipmentDetails;
-    pdf.setFillColor(...COLORS.headerBg);
-    pdf.roundedRect(margin, y, contentWidth, 14, 1, 1, 'F');
-    pdf.setFillColor(...COLORS.primary);
-    pdf.rect(margin, y, 3, 14, 'F');
-
-    pdf.setTextColor(...COLORS.text);
-    pdf.setFontSize(9);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text(`Equipamento: ${ed.name}`, margin + 6, y + 5.5);
-
-    const details: string[] = [];
-    if (ed.costCenter) details.push(`CC: ${ed.costCenter}`);
-    if (ed.plate) details.push(`Placa/Série: ${ed.plate}`);
-    if (ed.model) details.push(`Modelo: ${ed.model}`);
-    if (ed.brand) details.push(`Marca: ${ed.brand}`);
-    if (ed.year) details.push(`Ano: ${ed.year}`);
-    if (ed.currentHourMeter !== undefined) details.push(`Horímetro: ${ed.currentHourMeter}h`);
-
-    pdf.setFontSize(7);
-    pdf.setFont('helvetica', 'normal');
-    pdf.setTextColor(...COLORS.textMuted);
-    if (details.length > 0) {
-      pdf.text(details.join('  |  '), margin + 6, y + 11);
-    }
-    y += 18;
+    y = drawEquipmentDetailsBlock(pdf, margin, y, contentWidth, data.equipmentDetails);
   }
 
   // KPI Summary Cards

@@ -14,6 +14,7 @@ import PhotoUpload from "@/components/PhotoUpload";
 import * as XLSX from 'xlsx';
 import { exportMaintenancePlansPDF, exportMaintenanceRequestsPDF, exportMaintenanceHistoryPDF, exportWorkOrdersPDF } from '@/lib/pdf-export';
 import { calculateMaintenanceStatus } from '@/lib/maintenance-utils';
+import { useUserRoles } from '@/hooks/useUserRoles';
 
 function eqLabel(eq: DBEquipment): string {
   const id = eq.cost_center || eq.plate || '';
@@ -45,6 +46,8 @@ const osStatusConfig = {
 };
 
 export default function MaintenancePage() {
+  const { isAdmin, isGestor } = useUserRoles();
+  const canEdit = isAdmin || isGestor;
   const [plans, setPlans] = useState<DBMaintenancePlan[]>([]);
   const [requests, setRequests] = useState<DBMaintenanceRequest[]>([]);
   const [equipments, setEquipments] = useState<DBEquipment[]>([]);
@@ -430,9 +433,11 @@ export default function MaintenancePage() {
                         >
                           <Wrench className="w-3.5 h-3.5" /> Tela Mecânico
                         </Button>
-                        <Button size="sm" variant="outline" className="mt-1 gap-1.5 text-xs" onClick={() => openEditOS(os)}>
-                          <Edit2 className="w-3.5 h-3.5" /> Editar
-                        </Button>
+                        {canEdit && (
+                          <Button size="sm" variant="outline" className="mt-1 gap-1.5 text-xs" onClick={() => openEditOS(os)}>
+                            <Edit2 className="w-3.5 h-3.5" /> Editar
+                          </Button>
+                        )}
                       </div>
                       {os.status !== 'done' && (
                         <div className="shrink-0 space-y-2">
@@ -711,9 +716,11 @@ export default function MaintenancePage() {
                         )}
                       </div>
                       <div className="shrink-0 space-y-2">
-                        <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => openEditRequest(r)}>
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </Button>
+                        {canEdit && (
+                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => openEditRequest(r)}>
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
                         {r.status !== 'done' && (
                           <Select value={r.status} onValueChange={v => handleRequestStatusChange(r.id, v)}>
                             <SelectTrigger className="h-8 text-xs w-36">
@@ -852,9 +859,11 @@ export default function MaintenancePage() {
                       {plan && <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary mt-1 inline-block">Plano: {plan.description}</span>}
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <button onClick={() => openEditHistory(h)} className="text-muted-foreground hover:text-primary p-1 transition-colors">
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </button>
+                      {canEdit && (
+                        <button onClick={() => openEditHistory(h)} className="text-muted-foreground hover:text-primary p-1 transition-colors">
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                       <span className="text-sm font-mono font-bold text-muted-foreground">{h.hour_meter}h</span>
                     </div>
                   </div>

@@ -359,23 +359,13 @@ export async function exportMaintenancePlansPDF(
     const isNoPlan = eqPlans.length === 1 && eqPlans[0].intervalHours === 0 && eqPlans[0].description === 'Nenhum plano de manutenção cadastrado';
 
     if (isNoPlan) {
-      // Special warning block for equipment without plans
-      y = checkPageBreak(pdf, y, 14);
-      const warningBg: [number, number, number] = [255, 245, 230];
-      const warningBorder: [number, number, number] = [220, 140, 10];
-      pdf.setFillColor(...warningBg);
-      pdf.roundedRect(margin, y, contentWidth, 12, 1, 1, 'F');
-      pdf.setDrawColor(...warningBorder);
-      pdf.roundedRect(margin, y, contentWidth, 12, 1, 1, 'S');
-      pdf.setFillColor(...warningBorder);
-      pdf.rect(margin, y, 3, 12, 'F');
+      // Subtle note for equipment without plans
+      pdf.setFontSize(7);
+      pdf.setFont('helvetica', 'italic');
+      pdf.setTextColor(...COLORS.textMuted);
+      pdf.text('Nenhum plano de manutenção cadastrado para este equipamento.', margin + 6, y + 4);
 
-      pdf.setFontSize(8);
-      pdf.setFont('helvetica', 'bold');
-      pdf.setTextColor(...COLORS.warning);
-      pdf.text('⚠  NENHUM PLANO DE MANUTENÇÃO CADASTRADO', margin + 8, y + 7.5);
-
-      y += 14;
+      y += 8;
     } else {
       // Table header
       const colWidths = [120, 22, 22, 24, 24, 24, 37];

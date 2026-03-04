@@ -10,9 +10,12 @@ import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import PhotoUpload from "@/components/PhotoUpload";
 import { toast } from "sonner";
+import { useUserRoles } from '@/hooks/useUserRoles';
 
 export default function FuelPage() {
   const navigate = useNavigate();
+  const { isAdmin, isGestor } = useUserRoles();
+  const canEdit = isAdmin || isGestor;
   const [equipments, setEquipments] = useState<DBEquipment[]>([]);
   const [records, setRecords] = useState<DBFuelRecord[]>([]);
   const [comboId, setComboId] = useState('');
@@ -177,9 +180,11 @@ export default function FuelPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-lg font-mono font-bold text-accent">{r.liters}L</span>
-                    <button onClick={() => openEdit(r)} className="text-muted-foreground hover:text-primary p-1 transition-colors">
-                      <Edit2 className="w-3.5 h-3.5" />
-                    </button>
+                    {canEdit && (
+                      <button onClick={() => openEdit(r)} className="text-muted-foreground hover:text-primary p-1 transition-colors">
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
                 </div>
               );

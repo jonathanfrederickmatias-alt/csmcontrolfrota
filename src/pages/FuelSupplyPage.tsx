@@ -10,8 +10,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Textarea } from '@/components/ui/textarea';
 import PhotoUpload from '@/components/PhotoUpload';
 import { toast } from 'sonner';
+import { useUserRoles } from '@/hooks/useUserRoles';
 
 export default function FuelSupplyPage() {
+  const { isAdmin, isGestor } = useUserRoles();
+  const canEdit = isAdmin || isGestor;
   const [combos, setCombos] = useState<DBEquipment[]>([]);
   const [records, setRecords] = useState<DBFuelSupplyRecord[]>([]);
   const [loading, setLoading] = useState(false);
@@ -241,9 +244,11 @@ export default function FuelSupplyPage() {
                        <td className="py-2 pr-4 text-muted-foreground">{r.supplier || '—'}</td>
                        <td className="py-2 pr-4 text-muted-foreground">{r.responsible_name}</td>
                        <td className="py-2">
-                         <button onClick={() => openEdit(r)} className="text-muted-foreground hover:text-primary p-1 transition-colors">
-                           <Edit2 className="w-3.5 h-3.5" />
-                         </button>
+                         {canEdit && (
+                           <button onClick={() => openEdit(r)} className="text-muted-foreground hover:text-primary p-1 transition-colors">
+                             <Edit2 className="w-3.5 h-3.5" />
+                           </button>
+                         )}
                        </td>
                      </tr>
                   );

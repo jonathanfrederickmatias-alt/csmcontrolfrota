@@ -279,9 +279,10 @@ export async function exportMaintenancePlansPDF(
   pdf.setFillColor(...COLORS.dark);
   pdf.rect(0, 0, pageWidth, pdf.internal.pageSize.getHeight(), 'F');
 
-  const subtitleParts = [`Filtro: ${filterName}`];
-  if (obraInfo?.contractNumber) subtitleParts.push(`Contrato: ${obraInfo.contractNumber}`);
+  const subtitleParts: string[] = [];
   if (obraInfo?.client) subtitleParts.push(`Cliente: ${obraInfo.client}`);
+  subtitleParts.push(`Obra: ${filterName}`);
+  if (obraInfo?.contractNumber) subtitleParts.push(`Contrato: ${obraInfo.contractNumber}`);
   if (obraInfo?.cnpj) subtitleParts.push(`CNPJ: ${obraInfo.cnpj}`);
   addHeader(pdf, 'Relatório de Planos de Manutenção Preventiva', subtitleParts.join(' | '), logoData);
 

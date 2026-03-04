@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Wrench, AlertTriangle, CheckCircle, Trash2, Edit2, Loader2, Camera, ClipboardList, History, FileSpreadsheet, FileText, Clipboard } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { toast as sonnerToast } from "sonner";
 import PhotoUpload from "@/components/PhotoUpload";
 import * as XLSX from 'xlsx';
 import { exportMaintenancePlansPDF, exportMaintenanceRequestsPDF, exportMaintenanceHistoryPDF, exportWorkOrdersPDF } from '@/lib/pdf-export';
@@ -449,11 +450,24 @@ export default function MaintenancePage() {
                             <AlertDialogContent>
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Excluir OS #{os.os_number}?</AlertDialogTitle>
-                                <AlertDialogDescription>Essa ação não pode ser desfeita. A ordem de serviço será removida permanentemente.</AlertDialogDescription>
+                                <AlertDialogDescription>A ordem de serviço será removida. Você poderá desfazer nos próximos segundos.</AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
                                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                <AlertDialogAction onClick={async () => { await supabase.from('work_orders').delete().eq('id', os.id); toast({ title: 'OS excluída!' }); fetchAll(); }}>Excluir</AlertDialogAction>
+                                <AlertDialogAction onClick={async () => {
+                                  const backup = { ...os };
+                                  await supabase.from('work_orders').delete().eq('id', os.id);
+                                  fetchAll();
+                                  sonnerToast.success('OS excluída!', {
+                                    action: { label: 'Desfazer', onClick: async () => {
+                                      const { id, os_number, ...rest } = backup;
+                                      await supabase.from('work_orders').insert({ ...rest, id, os_number } as any);
+                                      fetchAll();
+                                      sonnerToast.success('OS restaurada!');
+                                    }},
+                                    duration: 8000,
+                                  });
+                                }}>Excluir</AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
                           </AlertDialog>
@@ -751,15 +765,27 @@ export default function MaintenancePage() {
                             <AlertDialogContent>
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Excluir pedido?</AlertDialogTitle>
-                                <AlertDialogDescription>Essa ação não pode ser desfeita. O pedido de manutenção e a OS vinculada serão removidos.</AlertDialogDescription>
+                                <AlertDialogDescription>O pedido e a OS vinculada serão removidos. Você poderá desfazer nos próximos segundos.</AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
                                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
                                 <AlertDialogAction onClick={async () => {
+                                  const backupReq = { ...r };
+                                  const { data: linkedOS } = await supabase.from('work_orders').select('*').eq('maintenance_request_id', r.id);
                                   await supabase.from('work_orders').delete().eq('maintenance_request_id', r.id);
                                   await supabase.from('maintenance_requests').delete().eq('id', r.id);
-                                  toast({ title: 'Pedido excluído!' });
                                   fetchAll();
+                                  sonnerToast.success('Pedido excluído!', {
+                                    action: { label: 'Desfazer', onClick: async () => {
+                                      await supabase.from('maintenance_requests').insert(backupReq as any);
+                                      if (linkedOS && linkedOS.length > 0) {
+                                        await supabase.from('work_orders').insert(linkedOS as any);
+                                      }
+                                      fetchAll();
+                                      sonnerToast.success('Pedido restaurado!');
+                                    }},
+                                    duration: 8000,
+                                  });
                                 }}>Excluir</AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>

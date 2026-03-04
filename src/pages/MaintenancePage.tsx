@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Wrench, AlertTriangle, CheckCircle, Trash2, Edit2, Loader2, Camera, ClipboardList, History, FileSpreadsheet, FileText, Clipboard } from "lucide-react";
@@ -438,6 +439,25 @@ export default function MaintenancePage() {
                             <Edit2 className="w-3.5 h-3.5" /> Editar
                           </Button>
                         )}
+                        {canEdit && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button size="sm" variant="outline" className="mt-1 gap-1.5 text-xs text-destructive border-destructive/30 hover:bg-destructive/10">
+                                <Trash2 className="w-3.5 h-3.5" /> Excluir
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Excluir OS #{os.os_number}?</AlertDialogTitle>
+                                <AlertDialogDescription>Essa ação não pode ser desfeita. A ordem de serviço será removida permanentemente.</AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction onClick={async () => { await supabase.from('work_orders').delete().eq('id', os.id); toast({ title: 'OS excluída!' }); fetchAll(); }}>Excluir</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
                       </div>
                       {os.status !== 'done' && (
                         <div className="shrink-0 space-y-2">
@@ -720,6 +740,30 @@ export default function MaintenancePage() {
                           <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => openEditRequest(r)}>
                             <Edit2 className="w-3.5 h-3.5" />
                           </Button>
+                        )}
+                        {canEdit && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Excluir pedido?</AlertDialogTitle>
+                                <AlertDialogDescription>Essa ação não pode ser desfeita. O pedido de manutenção e a OS vinculada serão removidos.</AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction onClick={async () => {
+                                  await supabase.from('work_orders').delete().eq('maintenance_request_id', r.id);
+                                  await supabase.from('maintenance_requests').delete().eq('id', r.id);
+                                  toast({ title: 'Pedido excluído!' });
+                                  fetchAll();
+                                }}>Excluir</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         )}
                         {r.status !== 'done' && (
                           <Select value={r.status} onValueChange={v => handleRequestStatusChange(r.id, v)}>

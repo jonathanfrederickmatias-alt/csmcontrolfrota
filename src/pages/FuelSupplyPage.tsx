@@ -118,7 +118,7 @@ export default function FuelSupplyPage() {
                 <Label>Observações</Label>
                 <Textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Observações opcionais..." rows={2} />
               </div>
-              <PhotoUpload label="Foto do Comprovante" required onUploaded={setPhotoUrl} />
+              <PhotoUpload label="Foto do Comprovante" required onUploaded={setPhotoUrl} acceptFiles />
               <Button onClick={handleSave} disabled={!canSave || loading} className="w-full font-bold">
                 {loading ? 'Salvando...' : 'Registrar Entrada'}
               </Button>

@@ -378,7 +378,134 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Combo fuel + Alerts */}
+      {/* Today's Checklists List */}
+      {stats.todayChecklists.length > 0 && (
+        <div className="glass-card rounded-xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-bold flex items-center gap-2">
+              <ClipboardCheck className="w-4 h-4 text-success" /> Checklists de Hoje ({stats.todayChecklists.length})
+            </h3>
+            <button onClick={() => navigate('/checklist')} className="text-xs text-primary hover:underline">Ver todos →</button>
+          </div>
+          <div className="space-y-2 max-h-[320px] overflow-y-auto">
+            {stats.todayChecklists.map((cl: any) => {
+              const eq = data.equipments.find((e: any) => e.id === cl.equipment_id);
+              const items = Array.isArray(cl.items) ? cl.items : [];
+              const ncCount = items.filter((i: any) => i.checked === false).length;
+              const statusColor = cl.status === 'ok' ? 'text-success' : cl.status === 'attention' ? 'text-warning' : 'text-destructive';
+              const statusBg = cl.status === 'ok' ? 'bg-success/10 border-success/20' : cl.status === 'attention' ? 'bg-warning/10 border-warning/20' : 'bg-destructive/10 border-destructive/20';
+              const typeLabel = cl.type === 'corrective' ? 'Corretivo' : cl.type === 'preventive' ? 'Preventivo' : 'Diário';
+              const time = new Date(cl.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+              return (
+                <button
+                  key={cl.id}
+                  onClick={() => setSelectedChecklist(cl)}
+                  className={`flex items-center gap-3 p-3 rounded-lg w-full text-left border hover:opacity-80 transition-all ${statusBg}`}
+                >
+                  <Eye className={`w-4 h-4 ${statusColor} shrink-0`} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold truncate">{eq?.name || 'Equipamento'}</p>
+                    <p className="text-xs text-muted-foreground">{cl.operator_name} · {typeLabel} · {time}</p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {ncCount > 0 && <span className="text-xs font-mono font-bold text-destructive">{ncCount} NC</span>}
+                    <span className={`text-xs font-bold ${statusColor}`}>{cl.status === 'ok' ? 'OK' : cl.status === 'attention' ? 'Atenção' : 'Crítico'}</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Checklist Detail Dialog */}
+      <Dialog open={!!selectedChecklist} onOpenChange={() => setSelectedChecklist(null)}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          {selectedChecklist && (() => {
+            const eq = data.equipments.find((e: any) => e.id === selectedChecklist.equipment_id);
+            const items = Array.isArray(selectedChecklist.items) ? selectedChecklist.items : [];
+            const typeLabel = selectedChecklist.type === 'corrective' ? 'Corretivo' : selectedChecklist.type === 'preventive' ? 'Preventivo' : 'Diário';
+            const statusColor = selectedChecklist.status === 'ok' ? 'text-success' : selectedChecklist.status === 'attention' ? 'text-warning' : 'text-destructive';
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <ClipboardCheck className="w-5 h-5 text-primary" />
+                    Checklist — {eq?.name || 'Equipamento'}
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  {/* Info */}
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="rounded-lg bg-secondary/40 p-2.5">
+                      <p className="text-xs text-muted-foreground">Operador</p>
+                      <p className="font-semibold">{selectedChecklist.operator_name}</p>
+                    </div>
+                    <div className="rounded-lg bg-secondary/40 p-2.5">
+                      <p className="text-xs text-muted-foreground">Horímetro</p>
+                      <p className="font-semibold font-mono">{selectedChecklist.hour_meter}h</p>
+                    </div>
+                    <div className="rounded-lg bg-secondary/40 p-2.5">
+                      <p className="text-xs text-muted-foreground">Tipo</p>
+                      <p className="font-semibold">{typeLabel}</p>
+                    </div>
+                    <div className="rounded-lg bg-secondary/40 p-2.5">
+                      <p className="text-xs text-muted-foreground">Status</p>
+                      <p className={`font-semibold ${statusColor}`}>{selectedChecklist.status === 'ok' ? 'Conforme' : selectedChecklist.status === 'attention' ? 'Atenção' : 'Crítico'}</p>
+                    </div>
+                  </div>
+
+                  {/* Items */}
+                  {items.length > 0 && (
+                    <div>
+                      <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Itens de Verificação</h4>
+                      <div className="space-y-1.5">
+                        {items.map((item: any, idx: number) => (
+                          <div key={item.id || idx} className={`flex items-start gap-2 p-2.5 rounded-lg text-sm ${item.checked === true ? 'bg-success/5' : item.checked === false ? 'bg-destructive/5' : 'bg-secondary/30'}`}>
+                            {item.checked === true ? (
+                              <ShieldCheck className="w-4 h-4 text-success shrink-0 mt-0.5" />
+                            ) : item.checked === false ? (
+                              <ShieldX className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                            ) : (
+                              <div className="w-4 h-4 rounded-full border border-muted-foreground shrink-0 mt-0.5" />
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <p className={`font-medium ${item.checked === true ? 'text-success' : item.checked === false ? 'text-destructive' : ''}`}>{item.label}</p>
+                              {item.observation && <p className="text-xs text-muted-foreground mt-0.5">📝 {item.observation}</p>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Observations */}
+                  {selectedChecklist.observations && (
+                    <div className="rounded-lg bg-secondary/40 p-3">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <MessageSquare className="w-3.5 h-3.5 text-muted-foreground" />
+                        <p className="text-xs font-bold text-muted-foreground uppercase">Observações Gerais</p>
+                      </div>
+                      <p className="text-sm">{selectedChecklist.observations}</p>
+                    </div>
+                  )}
+
+                  {/* Photo */}
+                  {selectedChecklist.photo_url && (
+                    <div>
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <Camera className="w-3.5 h-3.5 text-muted-foreground" />
+                        <p className="text-xs font-bold text-muted-foreground uppercase">Foto</p>
+                      </div>
+                      <img src={selectedChecklist.photo_url} alt="Foto do checklist" className="rounded-lg w-full max-h-[300px] object-cover" />
+                    </div>
+                  )}
+                </div>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Combo fuel levels */}
         {data.combos.length > 0 && (

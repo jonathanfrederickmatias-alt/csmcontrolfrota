@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 
 export default function QRCodePage() {
   const [equipments, setEquipments] = useState<DBEquipment[]>([]);
+  const [search, setSearch] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {

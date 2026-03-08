@@ -90,13 +90,25 @@ export default function QRChecklist() {
 
     setSaving(false);
 
-    if (!isConforme) {
-      const failedItems = items.filter(i => i.checked === false).map(i => {
-        const obs = i.observation ? ` (${i.observation})` : '';
-        return `- ${i.label}${obs}`;
-      }).join('\n');
+    const hasObservations = generalObservations.trim().length > 0;
+
+    if (!isConforme || hasObservations) {
+      const parts: string[] = [];
       const typeLabel = checklistType === 'corrective' ? 'Corretivo' : checklistType === 'preventive' ? 'Preventivo' : 'Diário';
-      setMaintenanceDesc(`Itens não conformes do checklist ${typeLabel}:\n${failedItems}`);
+
+      if (!isConforme) {
+        const failedItems = items.filter(i => i.checked === false).map(i => {
+          const obs = i.observation ? ` (${i.observation})` : '';
+          return `- ${i.label}${obs}`;
+        }).join('\n');
+        parts.push(`Itens não conformes do checklist ${typeLabel}:\n${failedItems}`);
+      }
+
+      if (hasObservations) {
+        parts.push(`Observações Gerais:\n${generalObservations.trim()}`);
+      }
+
+      setMaintenanceDesc(parts.join('\n\n'));
       setShowMaintenanceForm(true);
     } else {
       setSaved(true);

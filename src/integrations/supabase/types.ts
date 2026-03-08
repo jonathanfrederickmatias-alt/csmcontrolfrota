@@ -76,6 +76,7 @@ export type Database = {
           model: string | null
           name: string
           obra_id: string | null
+          ownership: string
           plate: string | null
           status: string
           type: string
@@ -93,6 +94,7 @@ export type Database = {
           model?: string | null
           name: string
           obra_id?: string | null
+          ownership?: string
           plate?: string | null
           status?: string
           type: string
@@ -110,6 +112,7 @@ export type Database = {
           model?: string | null
           name?: string
           obra_id?: string | null
+          ownership?: string
           plate?: string | null
           status?: string
           type?: string

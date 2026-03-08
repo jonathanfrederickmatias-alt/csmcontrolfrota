@@ -1,0 +1,1 @@
+ALTER TABLE public.equipments ADD COLUMN ownership text NOT NULL DEFAULT 'own';

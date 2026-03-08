@@ -158,9 +158,10 @@ export default function QRChecklist() {
     }
   };
 
+  const hourMeterTooLow = lastHourMeter !== null && hourMeter !== '' && Number(hourMeter) < lastHourMeter;
   const allAnswered = items.length > 0 && items.every(i => i.checked === true || i.checked === false);
   const hasNC = items.some(i => i.checked === false);
-  const canSave = selectedEquipment && operatorName && hourMeter && allAnswered;
+  const canSave = selectedEquipment && operatorName && hourMeter && allAnswered && !hourMeterTooLow;
 
   if (maintenanceSaved) {
     return (

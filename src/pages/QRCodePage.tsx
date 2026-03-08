@@ -3,8 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { DBEquipment } from "@/lib/supabase-types";
 import { QRCodeSVG } from "qrcode.react";
-import { QrCode, Download, ExternalLink, ClipboardCheck, Fuel, Wrench, Printer } from "lucide-react";
+import { QrCode, Download, ExternalLink, ClipboardCheck, Fuel, Wrench, Printer, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 export default function QRCodePage() {
   const [equipments, setEquipments] = useState<DBEquipment[]>([]);

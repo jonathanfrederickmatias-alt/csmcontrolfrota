@@ -1,15 +1,17 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { DBEquipment } from "@/lib/supabase-types";
-import { Plus, Trash2, Truck, Loader2, Pencil, X, Save } from "lucide-react";
+import { Plus, Trash2, Truck, Loader2, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 
 type EqType = 'machine' | 'truck' | 'combo';
+type OwnershipType = 'own' | 'third_party';
 
 const emptyForm = { name: '', type: 'machine' as EqType, plate: '', model: '', brand: '', costCenter: '', fuelCapacity: '', currentFuel: '', hourMeter: '', year: '' };
 
@@ -21,6 +23,7 @@ export default function EquipmentPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [selectedEq, setSelectedEq] = useState<DBEquipment | null>(null);
+  const [activeTab, setActiveTab] = useState<OwnershipType>('own');
 
   const fetchData = async () => {
     const { data } = await supabase.from('equipments').select('*').order('created_at');
@@ -29,6 +32,8 @@ export default function EquipmentPage() {
   };
 
   useEffect(() => { fetchData(); }, []);
+
+  const filteredEquipments = equipments.filter(eq => (eq.ownership || 'own') === activeTab);
 
   const openNew = () => {
     setEditingId(null);
@@ -84,6 +89,7 @@ export default function EquipmentPage() {
         current_fuel: form.currentFuel ? Number(form.currentFuel) : 0,
         year: form.year ? Number(form.year) : null,
         status: 'active',
+        ownership: activeTab,
       });
       if (error) toast.error("Erro ao criar");
       else toast.success("Equipamento criado!");
@@ -107,6 +113,53 @@ export default function EquipmentPage() {
   const statusLabels: Record<string, string> = { active: 'Ativo', maintenance: 'Em Manutenção', inactive: 'Inativo' };
   const statusColors: Record<string, string> = { active: 'bg-green-500/10 text-green-500', maintenance: 'bg-yellow-500/10 text-yellow-500', inactive: 'bg-red-500/10 text-red-500' };
 
+  const tabLabel = activeTab === 'own' ? 'Equipamento' : 'Equipamento Terceiro';
+
+  const renderEquipmentGrid = (eqs: DBEquipment[]) => (
+    eqs.length === 0 ? (
+      <div className="glass-card rounded-xl p-12 text-center">
+        <Truck className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+        <p className="text-muted-foreground">Nenhum equipamento cadastrado.</p>
+      </div>
+    ) : (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {eqs.map(eq => (
+          <div
+            key={eq.id}
+            onClick={() => setSelectedEq(eq)}
+            className="glass-card rounded-xl p-5 hover:border-primary/30 transition-all group cursor-pointer"
+          >
+            <div className="flex items-start justify-between mb-3">
+              <div>
+                <h3 className="font-bold text-foreground">{eq.name}</h3>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">{typeLabels[eq.type]}</span>
+              </div>
+              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[eq.status] || ''}`}>
+                {statusLabels[eq.status] || eq.status}
+              </span>
+            </div>
+            {eq.plate && <p className="text-xs text-muted-foreground">Placa/Série: {eq.plate}</p>}
+            {eq.model && <p className="text-xs text-muted-foreground">Modelo: {eq.model}</p>}
+            {eq.brand && <p className="text-xs text-muted-foreground">Marca: {eq.brand}</p>}
+            {eq.year && <p className="text-xs text-muted-foreground">Ano: {eq.year}</p>}
+            <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
+              <div>
+                <p className="text-xs text-muted-foreground">Horímetro</p>
+                <p className="text-lg font-mono font-bold text-primary">{eq.current_hour_meter}h</p>
+              </div>
+              {eq.type === 'combo' && eq.fuel_capacity && (
+                <div className="text-right">
+                  <p className="text-xs text-muted-foreground">Combustível</p>
+                  <p className="text-lg font-mono font-bold text-accent">{eq.current_fuel || 0}L / {eq.fuel_capacity}L</p>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  );
+
   return (
     <div>
       <div className="flex items-center justify-between mb-8">
@@ -119,7 +172,7 @@ export default function EquipmentPage() {
             <Button className="gap-2" onClick={openNew}><Plus className="w-4 h-4" /> Novo</Button>
           </DialogTrigger>
           <DialogContent className="bg-card border-border">
-            <DialogHeader><DialogTitle>{editingId ? 'Editar Equipamento' : 'Novo Equipamento'}</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{editingId ? `Editar ${tabLabel}` : `Novo ${tabLabel}`}</DialogTitle></DialogHeader>
             <div className="space-y-4">
               <div><Label>Nome *</Label><Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="Ex: Fresadora CAT" /></div>
               <div><Label>Tipo *</Label>
@@ -231,47 +284,19 @@ export default function EquipmentPage() {
 
       {loading ? (
         <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
-      ) : equipments.length === 0 ? (
-        <div className="glass-card rounded-xl p-12 text-center">
-          <Truck className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-          <p className="text-muted-foreground">Nenhum equipamento cadastrado.</p>
-        </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {equipments.map(eq => (
-            <div
-              key={eq.id}
-              onClick={() => setSelectedEq(eq)}
-              className="glass-card rounded-xl p-5 hover:border-primary/30 transition-all group cursor-pointer"
-            >
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <h3 className="font-bold text-foreground">{eq.name}</h3>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">{typeLabels[eq.type]}</span>
-                </div>
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[eq.status] || ''}`}>
-                  {statusLabels[eq.status] || eq.status}
-                </span>
-              </div>
-              {eq.plate && <p className="text-xs text-muted-foreground">Placa/Série: {eq.plate}</p>}
-              {eq.model && <p className="text-xs text-muted-foreground">Modelo: {eq.model}</p>}
-              {eq.brand && <p className="text-xs text-muted-foreground">Marca: {eq.brand}</p>}
-              {eq.year && <p className="text-xs text-muted-foreground">Ano: {eq.year}</p>}
-              <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground">Horímetro</p>
-                  <p className="text-lg font-mono font-bold text-primary">{eq.current_hour_meter}h</p>
-                </div>
-                {eq.type === 'combo' && eq.fuel_capacity && (
-                  <div className="text-right">
-                    <p className="text-xs text-muted-foreground">Combustível</p>
-                    <p className="text-lg font-mono font-bold text-accent">{eq.current_fuel || 0}L / {eq.fuel_capacity}L</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as OwnershipType)}>
+          <TabsList className="mb-6">
+            <TabsTrigger value="own">Próprios</TabsTrigger>
+            <TabsTrigger value="third_party">Terceiros</TabsTrigger>
+          </TabsList>
+          <TabsContent value="own">
+            {renderEquipmentGrid(filteredEquipments)}
+          </TabsContent>
+          <TabsContent value="third_party">
+            {renderEquipmentGrid(filteredEquipments)}
+          </TabsContent>
+        </Tabs>
       )}
     </div>
   );

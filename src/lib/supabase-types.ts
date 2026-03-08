@@ -13,6 +13,7 @@ export interface DBEquipment {
   status: 'active' | 'maintenance' | 'inactive';
   obra_id?: string;
   year?: number;
+  ownership: 'own' | 'third_party';
   created_at: string;
   updated_at: string;
 }

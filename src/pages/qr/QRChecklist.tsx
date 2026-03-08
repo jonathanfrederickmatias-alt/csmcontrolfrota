@@ -42,12 +42,31 @@ export default function QRChecklist() {
   const [savingMaintenance, setSavingMaintenance] = useState(false);
   const [maintenanceSaved, setMaintenanceSaved] = useState(false);
   const [maintenancePhotoUrl, setMaintenancePhotoUrl] = useState('');
+  const [lastHourMeter, setLastHourMeter] = useState<number | null>(null);
 
   useEffect(() => {
     supabase.from('equipments').select('*').order('name').then(({ data }) => {
       setEquipments((data || []) as DBEquipment[]);
     });
   }, []);
+
+  // Fetch the last recorded hour meter for the selected equipment
+  useEffect(() => {
+    if (!selectedEquipment) { setLastHourMeter(null); return; }
+    // Get the equipment's current_hour_meter as baseline
+    const eq = equipments.find(e => e.id === selectedEquipment);
+    const eqHour = eq?.current_hour_meter || 0;
+    // Also check the latest checklist
+    supabase.from('checklists')
+      .select('hour_meter')
+      .eq('equipment_id', selectedEquipment)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .then(({ data }) => {
+        const lastChecklist = data?.[0]?.hour_meter || 0;
+        setLastHourMeter(Math.max(Number(eqHour), Number(lastChecklist)));
+      });
+  }, [selectedEquipment, equipments]);
 
   useEffect(() => {
     if (checklistType === 'daily') {
@@ -139,9 +158,10 @@ export default function QRChecklist() {
     }
   };
 
+  const hourMeterTooLow = lastHourMeter !== null && hourMeter !== '' && Number(hourMeter) < lastHourMeter;
   const allAnswered = items.length > 0 && items.every(i => i.checked === true || i.checked === false);
   const hasNC = items.some(i => i.checked === false);
-  const canSave = selectedEquipment && operatorName && hourMeter && allAnswered;
+  const canSave = selectedEquipment && operatorName && hourMeter && allAnswered && !hourMeterTooLow;
 
   if (maintenanceSaved) {
     return (
@@ -234,7 +254,13 @@ export default function QRChecklist() {
             </div>
           )}
           <div><Label>Seu Nome *</Label><Input value={operatorName} onChange={e => setOperatorName(e.target.value)} placeholder="Nome do operador" /></div>
-          <div><Label>Horímetro Atual *</Label><Input type="number" inputMode="decimal" value={hourMeter} onChange={e => setHourMeter(e.target.value)} placeholder="Ex: 1250" /></div>
+          <div>
+            <Label>Horímetro Atual *</Label>
+            <Input type="number" inputMode="decimal" value={hourMeter} onChange={e => setHourMeter(e.target.value)} placeholder={lastHourMeter ? `Mínimo: ${lastHourMeter}` : 'Ex: 1250'} className={hourMeterTooLow ? 'border-destructive' : ''} />
+            {hourMeterTooLow && (
+              <p className="text-xs text-destructive mt-1">⚠️ Horímetro não pode ser menor que o último registrado ({lastHourMeter}h)</p>
+            )}
+          </div>
         </div>
 
         {checklistType !== 'daily' && (

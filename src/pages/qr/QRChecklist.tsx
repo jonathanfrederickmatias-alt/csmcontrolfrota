@@ -254,7 +254,13 @@ export default function QRChecklist() {
             </div>
           )}
           <div><Label>Seu Nome *</Label><Input value={operatorName} onChange={e => setOperatorName(e.target.value)} placeholder="Nome do operador" /></div>
-          <div><Label>Horímetro Atual *</Label><Input type="number" inputMode="decimal" value={hourMeter} onChange={e => setHourMeter(e.target.value)} placeholder="Ex: 1250" /></div>
+          <div>
+            <Label>Horímetro Atual *</Label>
+            <Input type="number" inputMode="decimal" value={hourMeter} onChange={e => setHourMeter(e.target.value)} placeholder={lastHourMeter ? `Mínimo: ${lastHourMeter}` : 'Ex: 1250'} className={hourMeterTooLow ? 'border-destructive' : ''} />
+            {hourMeterTooLow && (
+              <p className="text-xs text-destructive mt-1">⚠️ Horímetro não pode ser menor que o último registrado ({lastHourMeter}h)</p>
+            )}
+          </div>
         </div>
 
         {checklistType !== 'daily' && (

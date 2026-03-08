@@ -2,8 +2,9 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Truck, ClipboardCheck, Wrench, AlertTriangle, Fuel, Activity,
-  RefreshCw, TrendingUp, CheckCircle2, XCircle, Droplets
+  RefreshCw, TrendingUp, CheckCircle2, XCircle, Droplets, ShieldCheck, ShieldX, Eye, Camera, MessageSquare
 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";

@@ -27,6 +27,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const { signOut } = useAuth();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [selectedChecklist, setSelectedChecklist] = useState<any>(null);
   const [data, setData] = useState({
     equipments: [] as any[],
     checklists: [] as any[],

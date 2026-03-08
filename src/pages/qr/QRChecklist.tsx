@@ -42,12 +42,31 @@ export default function QRChecklist() {
   const [savingMaintenance, setSavingMaintenance] = useState(false);
   const [maintenanceSaved, setMaintenanceSaved] = useState(false);
   const [maintenancePhotoUrl, setMaintenancePhotoUrl] = useState('');
+  const [lastHourMeter, setLastHourMeter] = useState<number | null>(null);
 
   useEffect(() => {
     supabase.from('equipments').select('*').order('name').then(({ data }) => {
       setEquipments((data || []) as DBEquipment[]);
     });
   }, []);
+
+  // Fetch the last recorded hour meter for the selected equipment
+  useEffect(() => {
+    if (!selectedEquipment) { setLastHourMeter(null); return; }
+    // Get the equipment's current_hour_meter as baseline
+    const eq = equipments.find(e => e.id === selectedEquipment);
+    const eqHour = eq?.current_hour_meter || 0;
+    // Also check the latest checklist
+    supabase.from('checklists')
+      .select('hour_meter')
+      .eq('equipment_id', selectedEquipment)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .then(({ data }) => {
+        const lastChecklist = data?.[0]?.hour_meter || 0;
+        setLastHourMeter(Math.max(Number(eqHour), Number(lastChecklist)));
+      });
+  }, [selectedEquipment, equipments]);
 
   useEffect(() => {
     if (checklistType === 'daily') {

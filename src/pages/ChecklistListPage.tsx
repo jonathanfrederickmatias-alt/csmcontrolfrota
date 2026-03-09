@@ -203,42 +203,69 @@ export default function ChecklistListPage() {
                       <p className="text-xs text-muted-foreground italic mt-1">Obs: {(cl as any).observations}</p>
                     )}
                   </div>
-                  {canEdit && (
-                    <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
-                      <button onClick={() => openEdit(cl)} className="text-muted-foreground hover:text-primary p-1.5 transition-colors">
-                        <Edit2 className="w-4 h-4" />
+                  <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
+                      <button
+                        onClick={() => {
+                          const eq = equipments.find(e => e.id === cl.equipment_id);
+                          exportChecklistPDF({
+                            equipmentName: eq ? eqLabel(eq) : '—',
+                            plate: eq?.plate || undefined,
+                            model: eq?.model || undefined,
+                            brand: eq?.brand || undefined,
+                            costCenter: eq?.cost_center || undefined,
+                            year: eq?.year || undefined,
+                            operatorName: cl.operator_name,
+                            hourMeter: cl.hour_meter,
+                            date: cl.date,
+                            type: cl.type,
+                            status: cl.status,
+                            observations: (cl as any).observations || undefined,
+                            photoUrl: cl.photo_url || undefined,
+                            items: (cl.items || []).map((i: any) => ({ label: i.label, checked: i.checked, observation: i.observation })),
+                          });
+                        }}
+                        className="text-muted-foreground hover:text-primary p-1.5 transition-colors"
+                        title="Baixar PDF"
+                      >
+                        <Download className="w-4 h-4" />
                       </button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <button className="text-muted-foreground hover:text-destructive p-1.5 transition-colors">
-                            <Trash2 className="w-4 h-4" />
+                      {canEdit && (
+                        <>
+                          <button onClick={() => openEdit(cl)} className="text-muted-foreground hover:text-primary p-1.5 transition-colors">
+                            <Edit2 className="w-4 h-4" />
                           </button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Excluir checklist?</AlertDialogTitle>
-                            <AlertDialogDescription>O registro será removido. Você poderá desfazer nos próximos segundos.</AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction onClick={async () => {
-                              const backup = { ...cl };
-                              await supabase.from('checklists').delete().eq('id', cl.id);
-                              fetchData();
-                              toast.success('Checklist excluído!', {
-                                action: { label: 'Desfazer', onClick: async () => {
-                                  await supabase.from('checklists').insert(backup as any);
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <button className="text-muted-foreground hover:text-destructive p-1.5 transition-colors">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Excluir checklist?</AlertDialogTitle>
+                                <AlertDialogDescription>O registro será removido. Você poderá desfazer nos próximos segundos.</AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction onClick={async () => {
+                                  const backup = { ...cl };
+                                  await supabase.from('checklists').delete().eq('id', cl.id);
                                   fetchData();
-                                  toast.success('Checklist restaurado!');
-                                }},
-                                duration: 8000,
-                              });
-                            }}>Excluir</AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                                  toast.success('Checklist excluído!', {
+                                    action: { label: 'Desfazer', onClick: async () => {
+                                      await supabase.from('checklists').insert(backup as any);
+                                      fetchData();
+                                      toast.success('Checklist restaurado!');
+                                    }},
+                                    duration: 8000,
+                                  });
+                                }}>Excluir</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </>
+                      )}
                     </div>
-                  )}
                 </div>
                 </div>
 

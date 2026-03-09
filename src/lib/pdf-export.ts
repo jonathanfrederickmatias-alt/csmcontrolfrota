@@ -874,7 +874,7 @@ interface GeneralReportData {
   checklistStatus: { name: string; value: number }[];
   maintenanceStatus: { name: string; value: number; color: string }[];
   fuelRecords: { date: string; equipment: string; combo: string; liters: number; operator: string }[];
-  checklistRecords: { date: string; equipment: string; operator: string; hourMeter: number; status: string }[];
+  checklistRecords: { date: string; equipment: string; operator: string; hourMeter: number; status: string; ncItems?: string }[];
   maintenancePlans: { equipment: string; description: string; interval: number; nextDue: number; status: string; lastExec: string }[];
   osRecords?: { osNumber: number; equipment: string; description: string; priority: string; status: string; mechanic: string; parts: string; date: string; startedAt: string; completedAt: string; laborCost: number; partsCost: number }[];
   equipmentDetails?: { name: string; plate?: string; model?: string; brand?: string; costCenter?: string; year?: number; currentHourMeter?: number };

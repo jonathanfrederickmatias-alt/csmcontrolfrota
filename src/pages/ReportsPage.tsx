@@ -49,7 +49,7 @@ export default function ReportsPage() {
       setLoading(true);
       const cutoff = period === 'all' ? null : new Date(Date.now() - parseInt(period) * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-      const [eqRes, frRes, clRes, mpRes, osRes] = await Promise.all([
+      const [eqRes, frRes, clRes, mpRes, osRes, mhRes] = await Promise.all([
         supabase.from('equipments').select('*'),
         cutoff
           ? supabase.from('fuel_records').select('*').gte('date', cutoff).order('date')
@@ -61,6 +61,9 @@ export default function ReportsPage() {
         cutoff
           ? supabase.from('work_orders').select('*').gte('created_at', cutoff + 'T00:00:00').order('created_at', { ascending: false })
           : supabase.from('work_orders').select('*').order('created_at', { ascending: false }),
+        cutoff
+          ? supabase.from('maintenance_history').select('*').gte('executed_at', cutoff + 'T00:00:00').order('executed_at', { ascending: false })
+          : supabase.from('maintenance_history').select('*').order('executed_at', { ascending: false }),
       ]);
 
       setEquipments((eqRes.data || []) as DBEquipment[]);

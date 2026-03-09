@@ -1100,7 +1100,11 @@ export default function MaintenancePage() {
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       {canEdit && (() => {
-                        const linkedOS = workOrders.find(o => o.equipment_id === h.equipment_id && o.status === 'done' && o.maintenance_request_id);
+                        // Match by OS number in description (format: "OS #XX - ...")
+                        const osMatch = h.description.match(/^OS #(\d+)/);
+                        const linkedOS = osMatch
+                          ? workOrders.find(o => o.os_number === Number(osMatch[1]))
+                          : workOrders.find(o => o.equipment_id === h.equipment_id && o.status === 'done');
                         return linkedOS ? (
                           <AlertDialog>
                             <AlertDialogTrigger asChild>

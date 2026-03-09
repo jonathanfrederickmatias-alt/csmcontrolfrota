@@ -358,6 +358,7 @@ export type Database = {
           description: string
           equipment_id: string
           id: string
+          items: Json
           notes: string | null
           operator_name: string
           photo_end_url: string | null
@@ -372,6 +373,7 @@ export type Database = {
           description: string
           equipment_id: string
           id?: string
+          items?: Json
           notes?: string | null
           operator_name: string
           photo_end_url?: string | null
@@ -386,6 +388,7 @@ export type Database = {
           description?: string
           equipment_id?: string
           id?: string
+          items?: Json
           notes?: string | null
           operator_name?: string
           photo_end_url?: string | null

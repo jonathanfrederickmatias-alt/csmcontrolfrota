@@ -59,6 +59,12 @@ export interface DBMaintenancePlan {
   updated_at: string;
 }
 
+export interface MaintenanceRequestItem {
+  id: string;
+  description: string;
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+}
+
 export interface DBMaintenanceRequest {
   id: string;
   equipment_id: string;
@@ -68,6 +74,7 @@ export interface DBMaintenanceRequest {
   operator_name: string;
   notes?: string;
   resolved_at?: string;
+  items: MaintenanceRequestItem[];
   created_at: string;
   updated_at: string;
 }

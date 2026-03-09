@@ -251,11 +251,36 @@ export default function MaintenancePage() {
   const filteredOrders = osFilter === 'all' ? workOrders : workOrders.filter(o => o.equipment_id === osFilter);
 
   const handleOsStatusChange = async (os: DBWorkOrder, newStatus: string) => {
+    if (newStatus === 'done') {
+      setClosureOS(os);
+      setClosureForm({
+        invoice_number: (os as any).invoice_number || '',
+        service_executed: (os as any).service_executed || '',
+        mechanic_name: os.mechanic_name || '',
+        notes: os.notes || '',
+      });
+      return;
+    }
     const update: any = { status: newStatus };
     if (newStatus === 'in_progress') update.started_at = new Date().toISOString();
-    if (newStatus === 'done') update.completed_at = new Date().toISOString();
     await supabase.from('work_orders').update(update).eq('id', os.id);
     toast({ title: 'Status da OS atualizado!' });
+    fetchAll();
+  };
+
+  const handleClosureConfirm = async () => {
+    if (!closureOS) return;
+    const update: any = {
+      status: 'done',
+      completed_at: new Date().toISOString(),
+      invoice_number: closureForm.invoice_number || null,
+      service_executed: closureForm.service_executed || null,
+      mechanic_name: closureForm.mechanic_name || null,
+      notes: closureForm.notes || null,
+    };
+    await supabase.from('work_orders').update(update).eq('id', closureOS.id);
+    toast({ title: 'OS concluída com sucesso!' });
+    setClosureOS(null);
     fetchAll();
   };
 

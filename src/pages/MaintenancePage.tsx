@@ -470,7 +470,7 @@ export default function MaintenancePage() {
                           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${sc.bg}`}>{sc.label}</span>
                         </div>
                         <p className="font-semibold mt-1">{os.description}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{eq?.name || '—'} — {new Date(os.created_at).toLocaleDateString('pt-BR')}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{eq ? eqLabel(eq) : '—'} — {new Date(os.created_at).toLocaleDateString('pt-BR')}</p>
                         {os.mechanic_name && <p className="text-xs text-muted-foreground">Mecânico: {os.mechanic_name}</p>}
                         {os.started_at && <p className="text-xs text-muted-foreground">Início: {new Date(os.started_at).toLocaleDateString('pt-BR')}</p>}
                         {os.completed_at && <p className="text-xs text-success">Concluída: {new Date(os.completed_at).toLocaleDateString('pt-BR')}</p>}

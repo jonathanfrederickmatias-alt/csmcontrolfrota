@@ -256,8 +256,10 @@ export type Database = {
           executed_at: string
           hour_meter: number
           id: string
+          labor_cost: number | null
           notes: string | null
           operator_name: string | null
+          parts_cost: number | null
           plan_id: string | null
         }
         Insert: {
@@ -267,8 +269,10 @@ export type Database = {
           executed_at?: string
           hour_meter?: number
           id?: string
+          labor_cost?: number | null
           notes?: string | null
           operator_name?: string | null
+          parts_cost?: number | null
           plan_id?: string | null
         }
         Update: {
@@ -278,8 +282,10 @@ export type Database = {
           executed_at?: string
           hour_meter?: number
           id?: string
+          labor_cost?: number | null
           notes?: string | null
           operator_name?: string | null
+          parts_cost?: number | null
           plan_id?: string | null
         }
         Relationships: [
@@ -488,12 +494,14 @@ export type Database = {
           equipment_id: string
           id: string
           invoice_number: string | null
+          labor_cost: number | null
           maintenance_request_id: string
           mechanic_name: string | null
           notes: string | null
           os_number: number
           part_code: string | null
           parts: Json
+          parts_cost: number | null
           photo_end_url: string | null
           photo_start_url: string | null
           priority: string
@@ -509,12 +517,14 @@ export type Database = {
           equipment_id: string
           id?: string
           invoice_number?: string | null
+          labor_cost?: number | null
           maintenance_request_id: string
           mechanic_name?: string | null
           notes?: string | null
           os_number?: number
           part_code?: string | null
           parts?: Json
+          parts_cost?: number | null
           photo_end_url?: string | null
           photo_start_url?: string | null
           priority?: string
@@ -530,12 +540,14 @@ export type Database = {
           equipment_id?: string
           id?: string
           invoice_number?: string | null
+          labor_cost?: number | null
           maintenance_request_id?: string
           mechanic_name?: string | null
           notes?: string | null
           os_number?: number
           part_code?: string | null
           parts?: Json
+          parts_cost?: number | null
           photo_end_url?: string | null
           photo_start_url?: string | null
           priority?: string

@@ -1347,3 +1347,200 @@ export async function exportGeneralReportsPDF(data: GeneralReportData) {
 
   pdf.save(`CSM_Relatorio_Geral_${data.period}_${data.filterName.replace(/\s/g, '_')}.pdf`);
 }
+
+// ===== CHECKLIST INDIVIDUAL PDF =====
+export interface ChecklistPDFData {
+  equipmentName: string;
+  plate?: string;
+  model?: string;
+  brand?: string;
+  costCenter?: string;
+  year?: number;
+  operatorName: string;
+  hourMeter: number;
+  date: string;
+  type: string;
+  status: string;
+  observations?: string;
+  photoUrl?: string;
+  items: { label: string; checked: boolean; observation?: string }[];
+}
+
+export async function exportChecklistPDF(data: ChecklistPDFData) {
+  const logoData = await loadLogoAsBase64();
+  const pdf = new jsPDF('p', 'mm', 'a4');
+  const pageWidth = 210;
+  const margin = 12;
+  const contentWidth = pageWidth - margin * 2;
+
+  // Background
+  pdf.setFillColor(...COLORS.dark);
+  pdf.rect(0, 0, pageWidth, pdf.internal.pageSize.getHeight(), 'F');
+
+  const typeLabels: Record<string, string> = { daily: 'Diário', corrective: 'Corretivo', preventive: 'Preventivo' };
+  const statusLabels: Record<string, string> = { ok: 'OK', attention: 'Atenção', critical: 'Crítico' };
+
+  addHeader(pdf, 'Checklist de Equipamento', `${data.equipmentName} — ${new Date(data.date + 'T12:00:00').toLocaleDateString('pt-BR')}`, logoData);
+
+  let y = 46;
+
+  // Equipment info card
+  pdf.setFillColor(...COLORS.cardBg);
+  pdf.roundedRect(margin, y, contentWidth, 30, 2, 2, 'F');
+  pdf.setDrawColor(...COLORS.border);
+  pdf.roundedRect(margin, y, contentWidth, 30, 2, 2, 'S');
+  pdf.setFillColor(...COLORS.primary);
+  pdf.rect(margin, y, contentWidth, 2, 'F');
+
+  pdf.setFontSize(10);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(...COLORS.text);
+  pdf.text(data.equipmentName, margin + 5, y + 9);
+
+  pdf.setFontSize(7.5);
+  pdf.setFont('helvetica', 'normal');
+  pdf.setTextColor(...COLORS.textMuted);
+  const details: string[] = [];
+  if (data.costCenter) details.push(`CC: ${data.costCenter}`);
+  if (data.plate) details.push(`Placa: ${data.plate}`);
+  if (data.model) details.push(`Modelo: ${data.model}`);
+  if (data.brand) details.push(`Marca: ${data.brand}`);
+  if (data.year) details.push(`Ano: ${data.year}`);
+  if (details.length > 0) pdf.text(details.join('  |  '), margin + 5, y + 15);
+
+  // Second row: operator, date, type, status, hour meter
+  const infoY = y + 22;
+  pdf.setFontSize(7.5);
+  pdf.setTextColor(...COLORS.text);
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('Operador:', margin + 5, infoY);
+  pdf.setFont('helvetica', 'normal');
+  pdf.text(data.operatorName, margin + 25, infoY);
+
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('Data:', margin + 75, infoY);
+  pdf.setFont('helvetica', 'normal');
+  pdf.text(new Date(data.date + 'T12:00:00').toLocaleDateString('pt-BR'), margin + 86, infoY);
+
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('Tipo:', margin + 110, infoY);
+  pdf.setFont('helvetica', 'normal');
+  pdf.text(typeLabels[data.type] || data.type, margin + 121, infoY);
+
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('Horímetro:', margin + 145, infoY);
+  pdf.setFont('helvetica', 'normal');
+  pdf.text(`${data.hourMeter}h`, margin + 166, infoY);
+
+  y += 35;
+
+  // Status badge
+  const statusColor = data.status === 'ok' ? COLORS.success : data.status === 'attention' ? COLORS.warning : COLORS.danger;
+  const statusText = statusLabels[data.status] || data.status;
+  pdf.setFillColor(...statusColor);
+  pdf.roundedRect(margin, y, 30, 7, 2, 2, 'F');
+  pdf.setTextColor(...COLORS.white);
+  pdf.setFontSize(8);
+  pdf.setFont('helvetica', 'bold');
+  pdf.text(statusText, margin + 15, y + 5, { align: 'center' });
+
+  const okCount = data.items.filter(i => i.checked).length;
+  const ncCount = data.items.length - okCount;
+  pdf.setTextColor(...COLORS.textMuted);
+  pdf.setFontSize(8);
+  pdf.setFont('helvetica', 'normal');
+  pdf.text(`${okCount} conformes  |  ${ncCount} não conformes  |  ${data.items.length} itens total`, margin + 35, y + 5);
+
+  y += 12;
+
+  // Items table header
+  const colWidths = [90, 20, 76];
+  const colHeaders = ['Item', 'Status', 'Observação'];
+  const colX = [margin];
+  for (let i = 1; i < colWidths.length; i++) colX.push(colX[i - 1] + colWidths[i - 1]);
+
+  pdf.setFillColor(220, 228, 240);
+  pdf.rect(margin, y, contentWidth, 7, 'F');
+  pdf.setTextColor(...COLORS.textMuted);
+  pdf.setFontSize(7);
+  pdf.setFont('helvetica', 'bold');
+  colHeaders.forEach((h, i) => pdf.text(h, colX[i] + 2, y + 5));
+  y += 7;
+
+  // Items rows
+  data.items.forEach((item, idx) => {
+    pdf.setFontSize(7);
+    pdf.setFont('helvetica', 'normal');
+    const labelLines = wrapText(pdf, item.label, colWidths[0] - 4);
+    const obsLines = item.observation ? wrapText(pdf, item.observation, colWidths[2] - 4) : ['—'];
+    const lineHeight = 3.5;
+    const rowHeight = Math.max(7, Math.max(labelLines.length, obsLines.length) * lineHeight + 3);
+
+    y = checkPageBreak(pdf, y, rowHeight);
+
+    if (idx % 2 === 1) {
+      pdf.setFillColor(...COLORS.rowAlt);
+      pdf.rect(margin, y, contentWidth, rowHeight, 'F');
+    }
+
+    // Non-conformity highlight
+    if (!item.checked) {
+      pdf.setFillColor(255, 240, 240);
+      pdf.rect(margin, y, contentWidth, rowHeight, 'F');
+    }
+
+    // Label
+    pdf.setTextColor(...COLORS.text);
+    labelLines.forEach((line, li) => {
+      pdf.text(line, colX[0] + 2, y + 4.5 + li * lineHeight);
+    });
+
+    // Status
+    const midY = y + rowHeight / 2 + 1.5;
+    if (item.checked) {
+      pdf.setTextColor(...COLORS.success);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('✓ OK', colX[1] + 2, midY);
+    } else {
+      pdf.setTextColor(...COLORS.danger);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('✗ NC', colX[1] + 2, midY);
+    }
+
+    // Observation
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(...COLORS.textMuted);
+    obsLines.forEach((line, li) => {
+      pdf.text(line, colX[2] + 2, y + 4.5 + li * lineHeight);
+    });
+
+    y += rowHeight;
+  });
+
+  // Observations
+  if (data.observations) {
+    y += 5;
+    y = checkPageBreak(pdf, y, 15);
+    pdf.setFillColor(...COLORS.cardBg);
+    pdf.roundedRect(margin, y, contentWidth, 12, 2, 2, 'F');
+    pdf.setDrawColor(...COLORS.border);
+    pdf.roundedRect(margin, y, contentWidth, 12, 2, 2, 'S');
+    pdf.setFontSize(7.5);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(...COLORS.text);
+    pdf.text('Observações Gerais:', margin + 4, y + 5);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(...COLORS.textMuted);
+    pdf.text(data.observations, margin + 40, y + 5);
+  }
+
+  // Page numbers
+  const totalPages = pdf.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    pdf.setPage(i);
+    addFooter(pdf, i, totalPages);
+  }
+
+  const dateStr = data.date.replace(/-/g, '');
+  pdf.save(`Checklist_${data.equipmentName.replace(/\s/g, '_')}_${dateStr}.pdf`);
+}

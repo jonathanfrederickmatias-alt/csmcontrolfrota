@@ -603,7 +603,7 @@ export default function MaintenancePage() {
                   <div><Label>Equipamento *</Label>
                     <Select value={form.equipmentId} onValueChange={v => setForm({...form, equipmentId: v})}>
                       <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
-                      <SelectContent>{equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eq.name}</SelectItem>)}</SelectContent>
+                      <SelectContent>{equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eqLabel(eq)}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
                   <div><Label>Descrição *</Label><Input value={form.description} onChange={e => setForm({...form, description: e.target.value})} placeholder="Ex: Troca de óleo" /></div>

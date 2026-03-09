@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { DBEquipment, DBFuelRecord, DBChecklist, DBMaintenancePlan, DBWorkOrder } from '@/lib/supabase-types';
+import { DBEquipment, DBFuelRecord, DBChecklist, DBMaintenancePlan, DBWorkOrder, DBMaintenanceHistory } from '@/lib/supabase-types';
 
 interface Part { code: string; description: string; }
 function formatParts(o: any): string {

@@ -876,6 +876,7 @@ interface GeneralReportData {
   fuelRecords: { date: string; equipment: string; combo: string; liters: number; operator: string }[];
   checklistRecords: { date: string; equipment: string; operator: string; hourMeter: number; status: string }[];
   maintenancePlans: { equipment: string; description: string; interval: number; nextDue: number; status: string; lastExec: string }[];
+  osRecords?: { osNumber: number; equipment: string; description: string; priority: string; status: string; mechanic: string; parts: string; date: string; startedAt: string; completedAt: string; laborCost: number; partsCost: number }[];
   equipmentDetails?: { name: string; plate?: string; model?: string; brand?: string; costCenter?: string; year?: number; currentHourMeter?: number };
 }
 
@@ -1225,6 +1226,99 @@ export async function exportGeneralReportsPDF(data: GeneralReportData) {
       pdf.text(p.lastExec, mColX[5] + 2, midY);
       y += rowHeight;
     });
+  }
+
+  // === ORDENS DE SERVIÇO ===
+  if (data.osRecords && data.osRecords.length > 0) {
+    y = checkPageBreak(pdf, y, 20);
+    pdf.setFillColor(...COLORS.headerBg);
+    pdf.roundedRect(margin, y, contentWidth, 8, 1, 1, 'F');
+    pdf.setFillColor(...COLORS.primary);
+    pdf.rect(margin, y, 3, 8, 'F');
+    pdf.setTextColor(...COLORS.text);
+    pdf.setFontSize(9);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('Ordens de Serviço', margin + 6, y + 5.5);
+    y += 10;
+
+    const oColW = [14, 45, 55, 22, 24, 28, 35, 22, 22, 14];
+    const oColX = [margin];
+    for (let i = 1; i < oColW.length; i++) oColX.push(oColX[i - 1] + oColW[i - 1]);
+    const oHeaders = ['OS #', 'Equipamento', 'Descrição', 'Prioridade', 'Status', 'Mecânico', 'Peças', 'M.Obra R$', 'Peças R$', 'Total R$'];
+
+    pdf.setFillColor(220, 228, 240);
+    pdf.rect(margin, y, contentWidth, 6, 'F');
+    pdf.setTextColor(...COLORS.textMuted);
+    pdf.setFontSize(6);
+    pdf.setFont('helvetica', 'bold');
+    oHeaders.forEach((h, i) => pdf.text(h, oColX[i] + 2, y + 4));
+    y += 6;
+
+    let totalLabor = 0;
+    let totalParts = 0;
+
+    data.osRecords.forEach((o, idx) => {
+      pdf.setFontSize(6.5);
+      pdf.setFont('helvetica', 'normal');
+      const descLines = wrapText(pdf, o.description, oColW[2] - 4);
+      const lineHeight = 3.5;
+      const rowHeight = Math.max(6.5, descLines.length * lineHeight + 3);
+
+      y = checkPageBreak(pdf, y, rowHeight);
+      if (idx % 2 === 1) { pdf.setFillColor(...COLORS.rowAlt); pdf.rect(margin, y, contentWidth, rowHeight, 'F'); }
+
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(...COLORS.primary);
+      pdf.text(String(o.osNumber), oColX[0] + 2, y + 4.5);
+
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(...COLORS.text);
+      pdf.text(clipText(pdf, o.equipment, oColW[1] - 4), oColX[1] + 2, y + 4.5);
+      descLines.forEach((line, li) => pdf.text(line, oColX[2] + 2, y + 4.5 + li * lineHeight));
+
+      const midY = y + rowHeight / 2 + 1.5;
+      const prioColor = o.priority === 'Urgente' ? COLORS.danger : o.priority === 'Alta' ? COLORS.warning : o.priority === 'Média' ? COLORS.primary : COLORS.textMuted;
+      pdf.setTextColor(...prioColor);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(o.priority, oColX[3] + 2, midY);
+
+      const statusColor = o.status === 'Concluída' ? COLORS.success : o.status === 'Em andamento' ? COLORS.primary : COLORS.textMuted;
+      pdf.setTextColor(...statusColor);
+      pdf.text(o.status, oColX[4] + 2, midY);
+
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(...COLORS.textMuted);
+      pdf.text(clipText(pdf, o.mechanic || '—', oColW[5] - 4), oColX[5] + 2, midY);
+      pdf.text(clipText(pdf, o.parts || '—', oColW[6] - 4), oColX[6] + 2, midY);
+
+      pdf.setTextColor(...COLORS.text);
+      pdf.text(o.laborCost > 0 ? o.laborCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '—', oColX[7] + 2, midY);
+      pdf.text(o.partsCost > 0 ? o.partsCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '—', oColX[8] + 2, midY);
+      const total = o.laborCost + o.partsCost;
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(total > 0 ? total.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '—', oColX[9] + 2, midY);
+
+      totalLabor += o.laborCost;
+      totalParts += o.partsCost;
+      y += rowHeight;
+    });
+
+    // Totals row
+    if (totalLabor > 0 || totalParts > 0) {
+      y = checkPageBreak(pdf, y, 8);
+      pdf.setFillColor(220, 228, 240);
+      pdf.rect(margin, y, contentWidth, 7, 'F');
+      pdf.setFontSize(7);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(...COLORS.text);
+      pdf.text('TOTAIS', oColX[0] + 2, y + 5);
+      pdf.text(totalLabor.toLocaleString('pt-BR', { minimumFractionDigits: 2 }), oColX[7] + 2, y + 5);
+      pdf.text(totalParts.toLocaleString('pt-BR', { minimumFractionDigits: 2 }), oColX[8] + 2, y + 5);
+      pdf.setTextColor(...COLORS.primary);
+      pdf.text((totalLabor + totalParts).toLocaleString('pt-BR', { minimumFractionDigits: 2 }), oColX[9] + 2, y + 5);
+      y += 8;
+    }
+    y += 6;
   }
 
   // Page numbers

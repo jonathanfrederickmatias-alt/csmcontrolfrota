@@ -247,6 +247,23 @@ export default function ReportsPage() {
           equipment: eqLabel(eq), description: 'Nenhum plano cadastrado', interval: 0, nextDue: 0, status: 'Sem Plano', lastExec: '—',
         })),
       ],
+      osRecords: filteredOrders.map(o => {
+        const eq = equipments.find(e => e.id === o.equipment_id);
+        return {
+          osNumber: o.os_number,
+          equipment: eq ? eqLabel(eq) : '—',
+          description: o.description,
+          priority: priorityLabels[o.priority] || o.priority,
+          status: osStatusLabels[o.status] || o.status,
+          mechanic: o.mechanic_name || '—',
+          parts: formatParts(o),
+          date: new Date(o.created_at).toLocaleDateString('pt-BR'),
+          startedAt: o.started_at ? new Date(o.started_at).toLocaleString('pt-BR') : '—',
+          completedAt: o.completed_at ? new Date(o.completed_at).toLocaleString('pt-BR') : '—',
+          laborCost: Number((o as any).labor_cost) || 0,
+          partsCost: Number((o as any).parts_cost) || 0,
+        };
+      }),
       equipmentDetails: selectedEq ? {
         name: selectedEq.name,
         plate: selectedEq.plate || undefined,

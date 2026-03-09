@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { CheckCircle, Wrench, Loader2, Play, Square, Plus, Trash2, Package } from "lucide-react";
+import { CheckCircle, Wrench, Loader2, Play, Square, Plus, Trash2, Package, CheckSquare, SquareIcon } from "lucide-react";
 import PublicLayout from "@/components/PublicLayout";
 import PhotoUpload from "@/components/PhotoUpload";
 
@@ -15,10 +15,18 @@ interface Part {
   description: string;
 }
 
+interface RequestItem {
+  id: string;
+  description: string;
+  priority: string;
+  done?: boolean;
+}
+
 interface WorkOrder {
   id: string;
   os_number: number;
   equipment_id: string;
+  maintenance_request_id: string;
   description: string;
   priority: string;
   status: string;
@@ -55,6 +63,9 @@ export default function QRMechanicOS() {
   const [photoStartUrl, setPhotoStartUrl] = useState('');
   const [photoEndUrl, setPhotoEndUrl] = useState('');
 
+  // Request items for per-item completion
+  const [requestItems, setRequestItems] = useState<RequestItem[]>([]);
+
   const fetchOS = async () => {
     if (!osId) return;
     const { data } = await supabase.from('work_orders').select('*').eq('id', osId).single();
@@ -66,13 +77,26 @@ export default function QRMechanicOS() {
       setPhotoStartUrl(wo.photo_start_url || '');
       setPhotoEndUrl(wo.photo_end_url || '');
 
-      // Load parts from DB or migrate from old part_code field
       const dbParts = Array.isArray(wo.parts) && wo.parts.length > 0
         ? wo.parts
         : wo.part_code
           ? [{ code: wo.part_code, description: '' }]
           : [{ code: '', description: '' }];
       setParts(dbParts);
+
+      // Fetch linked maintenance request items
+      const { data: reqData } = await supabase
+        .from('maintenance_requests')
+        .select('items')
+        .eq('id', wo.maintenance_request_id)
+        .single();
+
+      if (reqData && Array.isArray(reqData.items)) {
+        setRequestItems((reqData.items as unknown as RequestItem[]).map(item => ({
+          ...item,
+          done: item.done || false,
+        })));
+      }
 
       const { data: eq } = await supabase.from('equipments').select('*').eq('id', wo.equipment_id).single();
       setEquipment(eq as DBEquipment | null);
@@ -90,6 +114,23 @@ export default function QRMechanicOS() {
 
   const cleanParts = () => parts.filter(p => p.code.trim() || p.description.trim());
 
+  const toggleItemDone = (itemId: string) => {
+    setRequestItems(prev => prev.map(item =>
+      item.id === itemId ? { ...item, done: !item.done } : item
+    ));
+  };
+
+  const allItemsDone = requestItems.length > 0 && requestItems.every(i => i.done);
+  const doneCount = requestItems.filter(i => i.done).length;
+
+  const saveItemsStatus = async () => {
+    if (!os) return;
+    // Save item completion status back to the maintenance_request items
+    await supabase.from('maintenance_requests').update({
+      items: requestItems as unknown as any,
+    }).eq('id', os.maintenance_request_id);
+  };
+
   const handleStartService = async () => {
     if (!os || !mechanicName || !photoStartUrl) return;
     setSaving(true);
@@ -102,6 +143,7 @@ export default function QRMechanicOS() {
       part_code: cleanParts().map(p => p.code).filter(Boolean).join(', ') || null,
       notes: notes || null,
     }).eq('id', os.id);
+    await saveItemsStatus();
     setSaving(false);
     fetchOS();
   };
@@ -117,6 +159,11 @@ export default function QRMechanicOS() {
       part_code: cleanParts().map(p => p.code).filter(Boolean).join(', ') || null,
       notes: notes || null,
     }).eq('id', os.id);
+    // Mark all items as done on completion
+    const allDoneItems = requestItems.map(i => ({ ...i, done: true }));
+    await supabase.from('maintenance_requests').update({
+      items: allDoneItems as unknown as any,
+    }).eq('id', os.maintenance_request_id);
     setSaving(false);
     fetchOS();
   };
@@ -152,6 +199,24 @@ export default function QRMechanicOS() {
           {os.mechanic_name && <p className="text-sm text-muted-foreground mt-2">Mecânico: <strong>{os.mechanic_name}</strong></p>}
           {os.started_at && <p className="text-sm text-muted-foreground">Início: {new Date(os.started_at).toLocaleString('pt-BR')}</p>}
           {os.completed_at && <p className="text-sm text-success">Término: {new Date(os.completed_at).toLocaleString('pt-BR')}</p>}
+
+          {/* Request items summary */}
+          {requestItems.length > 0 && (
+            <div className="mt-4 text-left">
+              <p className="text-xs text-muted-foreground font-semibold mb-2">
+                Itens do Pedido ({requestItems.length})
+              </p>
+              <div className="space-y-1.5">
+                {requestItems.map((item) => (
+                  <div key={item.id} className="bg-success/10 rounded-lg px-3 py-2 text-sm flex items-center gap-2">
+                    <CheckSquare className="w-4 h-4 text-success shrink-0" />
+                    <span>{item.description}</span>
+                    <span className="ml-auto text-xs">{priorityLabels[item.priority] || item.priority}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {doneParts.length > 0 && (
             <div className="mt-4 text-left">
@@ -205,6 +270,49 @@ export default function QRMechanicOS() {
       </div>
 
       <div className="glass-card rounded-xl p-5 space-y-4">
+        {/* Request items checklist */}
+        {requestItems.length > 0 && (
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <Label className="text-base font-bold">Itens do Pedido</Label>
+              <span className="text-xs text-muted-foreground">{doneCount}/{requestItems.length} concluídos</span>
+            </div>
+            <div className="space-y-2">
+              {requestItems.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => isInProgress && toggleItemDone(item.id)}
+                  className={`w-full text-left border rounded-lg p-3 flex items-start gap-3 transition-colors ${
+                    item.done
+                      ? 'bg-success/10 border-success/30'
+                      : 'bg-background/50 border-border hover:border-primary/30'
+                  } ${!isInProgress ? 'cursor-default' : 'cursor-pointer'}`}
+                >
+                  {item.done ? (
+                    <CheckSquare className="w-5 h-5 text-success shrink-0 mt-0.5" />
+                  ) : (
+                    <SquareIcon className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm ${item.done ? 'line-through text-muted-foreground' : ''}`}>
+                      {item.description}
+                    </p>
+                    <span className="text-xs text-muted-foreground">
+                      {priorityLabels[item.priority] || item.priority}
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+            {!isInProgress && (
+              <p className="text-xs text-muted-foreground mt-2 italic">
+                Inicie o serviço para marcar itens como concluídos.
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Mechanic name */}
         <div>
           <Label>Nome do Mecânico *</Label>
@@ -307,6 +415,21 @@ export default function QRMechanicOS() {
                 </p>
               </div>
             )}
+
+            {/* Save items progress button */}
+            {requestItems.length > 0 && doneCount > 0 && !allItemsDone && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={async () => { setSaving(true); await saveItemsStatus(); setSaving(false); }}
+                disabled={saving}
+                className="w-full gap-2"
+              >
+                {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+                <CheckSquare className="w-4 h-4" /> Salvar Progresso ({doneCount}/{requestItems.length})
+              </Button>
+            )}
+
             <div className="border-t border-border pt-4">
               <p className="text-sm font-semibold flex items-center gap-2 mb-3">
                 <Square className="w-4 h-4 text-success" /> Término do Serviço

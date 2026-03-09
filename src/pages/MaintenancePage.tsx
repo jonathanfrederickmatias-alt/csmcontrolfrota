@@ -973,7 +973,7 @@ export default function MaintenancePage() {
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-sm">{h.description}</p>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        {eq?.name || '—'} — {new Date(h.executed_at).toLocaleDateString('pt-BR')}
+                        {eq ? eqLabel(eq) : '—'} — {new Date(h.executed_at).toLocaleDateString('pt-BR')}
                       </p>
                       {h.operator_name && <p className="text-xs text-muted-foreground">Responsável: {h.operator_name}</p>}
                       {h.notes && <p className="text-xs text-muted-foreground italic mt-0.5">Obs: {h.notes}</p>}

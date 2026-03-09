@@ -762,7 +762,7 @@ export default function MaintenancePage() {
                           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${pc.bg}`}>{pc.label}</span>
                           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${sc.bg}`}>{sc.label}</span>
                         </div>
-                        <p className="text-xs text-muted-foreground">{eq?.name} — {r.operator_name} — {new Date(r.created_at).toLocaleDateString('pt-BR')}</p>
+                        <p className="text-xs text-muted-foreground">{eq ? eqLabel(eq) : '—'} — {r.operator_name} — {new Date(r.created_at).toLocaleDateString('pt-BR')}</p>
                         {r.notes && <p className="text-xs text-muted-foreground mt-1 italic">Obs: {r.notes}</p>}
                         {(() => {
                           const linkedOS = workOrders.find(o => o.maintenance_request_id === r.id);

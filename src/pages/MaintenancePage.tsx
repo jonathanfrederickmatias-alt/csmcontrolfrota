@@ -806,6 +806,10 @@ export default function MaintenancePage() {
                 const pc = priorityConfig[r.priority];
                 const sc = requestStatusConfig[r.status];
                 const rAny = r as any;
+                const linkedOSList = workOrders.filter(o => o.maintenance_request_id === r.id);
+                const reqItems = Array.isArray((r as any).items) ? (r as any).items as { id: string; description: string; priority: string }[] : [];
+                const hasItems = reqItems.length > 0;
+                const allOsDone = linkedOSList.length > 0 && linkedOSList.every(o => o.status === 'done');
                 return (
                   <div key={r.id} className="glass-card rounded-xl p-4">
                     <div className="flex items-start justify-between gap-3">
@@ -814,22 +818,66 @@ export default function MaintenancePage() {
                           <p className="font-semibold">{r.description}</p>
                           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${pc.bg}`}>{pc.label}</span>
                           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${sc.bg}`}>{sc.label}</span>
+                          {hasItems && (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                              {reqItems.length} item(ns)
+                            </span>
+                          )}
                         </div>
                         <p className="text-xs text-muted-foreground">{eq ? eqLabel(eq) : '—'} — {r.operator_name} — {new Date(r.created_at).toLocaleDateString('pt-BR')}</p>
                         {r.notes && <p className="text-xs text-muted-foreground mt-1 italic">Obs: {r.notes}</p>}
-                        {(() => {
-                          const linkedOS = workOrders.find(o => o.maintenance_request_id === r.id);
-                          if (!linkedOS) return null;
-                          return (
-                            <button
-                              onClick={() => { setOsFilter('all'); setActiveTab('os'); }}
-                              className="inline-flex items-center gap-1 mt-1.5 text-xs text-primary hover:underline font-medium"
-                            >
-                              <Clipboard className="w-3 h-3" />
-                              Ver OS #{linkedOS.os_number} — {osStatusConfig[linkedOS.status]?.label || linkedOS.status}
-                            </button>
-                          );
-                        })()}
+
+                        {/* Items list */}
+                        {hasItems && (
+                          <div className="mt-2 space-y-1">
+                            {reqItems.map((item, idx) => {
+                              const itemOS = linkedOSList.find(o => o.description === item.description);
+                              const itemPc = priorityConfig[item.priority] || priorityConfig.medium;
+                              return (
+                                <div key={item.id || idx} className="flex items-center gap-2 text-xs p-1.5 rounded bg-secondary/50">
+                                  {itemOS ? (
+                                    itemOS.status === 'done' ? (
+                                      <CheckCircle className="w-3.5 h-3.5 text-success shrink-0" />
+                                    ) : (
+                                      <Wrench className="w-3.5 h-3.5 text-primary shrink-0" />
+                                    )
+                                  ) : (
+                                    <AlertTriangle className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                                  )}
+                                  <span className="flex-1">{item.description}</span>
+                                  <span className={`px-1.5 py-0.5 rounded-full font-medium ${itemPc.bg}`}>{itemPc.label}</span>
+                                  {itemOS && (
+                                    <button
+                                      onClick={() => { setOsFilter('all'); setActiveTab('os'); }}
+                                      className="text-primary hover:underline font-medium"
+                                    >
+                                      OS #{itemOS.os_number}
+                                    </button>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        {/* Single OS link (for backwards compatibility) */}
+                        {!hasItems && linkedOSList.length > 0 && (
+                          <button
+                            onClick={() => { setOsFilter('all'); setActiveTab('os'); }}
+                            className="inline-flex items-center gap-1 mt-1.5 text-xs text-primary hover:underline font-medium"
+                          >
+                            <Clipboard className="w-3 h-3" />
+                            Ver OS #{linkedOSList[0].os_number} — {osStatusConfig[linkedOSList[0].status]?.label || linkedOSList[0].status}
+                          </button>
+                        )}
+
+                        {/* Multiple OS summary */}
+                        {hasItems && linkedOSList.length > 0 && (
+                          <div className="mt-2 text-xs text-muted-foreground">
+                            OS: {linkedOSList.filter(o => o.status === 'done').length}/{linkedOSList.length} concluídas
+                          </div>
+                        )}
+
                         {(rAny.photo_start_url || rAny.photo_end_url) && (
                           <div className="flex gap-2 mt-2">
                             {rAny.photo_start_url && (
@@ -867,7 +915,7 @@ export default function MaintenancePage() {
                             <AlertDialogContent>
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Excluir pedido?</AlertDialogTitle>
-                                <AlertDialogDescription>O pedido e a OS vinculada serão removidos. Você poderá desfazer nos próximos segundos.</AlertDialogDescription>
+                                <AlertDialogDescription>O pedido e as OS vinculadas serão removidos. Você poderá desfazer nos próximos segundos.</AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
                                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
@@ -894,16 +942,34 @@ export default function MaintenancePage() {
                           </AlertDialog>
                         )}
                         {canEdit && r.status !== 'done' && (
-                          <Select value={r.status} onValueChange={v => handleRequestStatusChange(r.id, v)}>
-                            <SelectTrigger className="h-8 text-xs w-36">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="open">Aberto</SelectItem>
-                              <SelectItem value="in_progress">Em andamento</SelectItem>
-                              <SelectItem value="done">Concluído</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <>
+                            {allOsDone && (
+                              <Button
+                                size="sm"
+                                className="text-xs gap-1 bg-success hover:bg-success/90 text-success-foreground"
+                                onClick={async () => {
+                                  await supabase.from('maintenance_requests').update({
+                                    status: 'done',
+                                    resolved_at: new Date().toISOString(),
+                                  }).eq('id', r.id);
+                                  toast({ title: 'Pedido concluído!' });
+                                  fetchAll();
+                                }}
+                              >
+                                <CheckCircle className="w-3 h-3" /> Fechar Pedido
+                              </Button>
+                            )}
+                            <Select value={r.status} onValueChange={v => handleRequestStatusChange(r.id, v)}>
+                              <SelectTrigger className="h-8 text-xs w-36">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="open">Aberto</SelectItem>
+                                <SelectItem value="in_progress">Em andamento</SelectItem>
+                                <SelectItem value="done">Concluído</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </>
                         )}
                         {r.status === 'done' && r.resolved_at && (
                           <span className="text-xs text-muted-foreground">

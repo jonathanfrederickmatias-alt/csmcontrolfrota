@@ -90,7 +90,7 @@ export default function MaintenancePage() {
 
   // Closure dialog (dar baixa na OS)
   const [closureOS, setClosureOS] = useState<DBWorkOrder | null>(null);
-  const [closureForm, setClosureForm] = useState({ invoice_number: '', service_executed: '', mechanic_name: '', notes: '' });
+  const [closureForm, setClosureForm] = useState({ invoice_number: '', service_executed: '', mechanic_name: '', notes: '', labor_cost: '', parts_cost: '' });
 
   // PDF history filter dialog
   const [pdfHistoryDialog, setPdfHistoryDialog] = useState(false);

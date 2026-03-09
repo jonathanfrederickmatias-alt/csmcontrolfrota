@@ -489,6 +489,11 @@ export default function MaintenancePage() {
               }}>
                 <FileText className="w-4 h-4 text-primary" /> PDF
               </Button>
+              {canEdit && (
+                <Button size="sm" className="gap-2" onClick={() => setNewOsOpen(true)}>
+                  <Plus className="w-4 h-4" /> Nova OS
+                </Button>
+              )}
             </div>
           </div>
           {loading ? (

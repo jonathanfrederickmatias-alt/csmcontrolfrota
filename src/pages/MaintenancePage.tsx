@@ -263,7 +263,20 @@ export default function MaintenancePage() {
     }
     const update: any = { status: newStatus };
     if (newStatus === 'in_progress') update.started_at = new Date().toISOString();
+    if (newStatus === 'open') {
+      update.started_at = null;
+      update.completed_at = null;
+    }
     await supabase.from('work_orders').update(update).eq('id', os.id);
+
+    // Se a OS estava concluída e está sendo reaberta, reabrir também o pedido vinculado
+    if (os.status === 'done' && (newStatus === 'open' || newStatus === 'in_progress')) {
+      await supabase.from('maintenance_requests').update({
+        status: newStatus === 'open' ? 'open' : 'in_progress',
+        resolved_at: null,
+      }).eq('id', os.maintenance_request_id);
+    }
+
     toast({ title: 'Status da OS atualizado!' });
     fetchAll();
   };

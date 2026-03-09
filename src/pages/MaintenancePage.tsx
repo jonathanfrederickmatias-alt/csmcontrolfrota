@@ -116,7 +116,7 @@ export default function MaintenancePage() {
     ]);
     setEquipments((eqRes.data || []) as DBEquipment[]);
     setPlans((plRes.data || []) as DBMaintenancePlan[]);
-    setRequests((reqRes.data || []) as DBMaintenanceRequest[]);
+    setRequests((reqRes.data || []) as unknown as DBMaintenanceRequest[]);
     setHistory((histRes.data || []) as DBMaintenanceHistory[]);
     setWorkOrders((osRes.data || []) as DBWorkOrder[]);
     setLoading(false);

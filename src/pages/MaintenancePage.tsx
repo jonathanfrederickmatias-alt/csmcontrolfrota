@@ -88,6 +88,9 @@ export default function MaintenancePage() {
   const [editHistory, setEditHistory] = useState<DBMaintenanceHistory | null>(null);
   const [histEditForm, setHistEditForm] = useState({ description: '', hour_meter: '', operator_name: '', notes: '' });
 
+  // Controlled tab
+  const [activeTab, setActiveTab] = useState('plans');
+
   const fetchAll = async () => {
     const [eqRes, plRes, reqRes, histRes, osRes] = await Promise.all([
       supabase.from('equipments').select('*').order('name'),

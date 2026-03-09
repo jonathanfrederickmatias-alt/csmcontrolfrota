@@ -512,23 +512,39 @@ export default function ReportsPage() {
                       <th className="pb-2 pr-4">Operador</th>
                       <th className="pb-2 pr-4">Tipo</th>
                       <th className="pb-2 pr-4">Horímetro</th>
-                      <th className="pb-2">Status</th>
+                      <th className="pb-2 pr-4">Status</th>
+                      <th className="pb-2">Não Conformidades</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
                     {filteredChecklists.map(c => {
                       const eq = equipments.find(e => e.id === c.equipment_id);
+                      const ncItems = Array.isArray(c.items) ? (c.items as any[]).filter(i => i.checked === false) : [];
                       return (
-                        <tr key={c.id} className="hover:bg-secondary/30 transition-colors">
+                        <tr key={c.id} className="hover:bg-secondary/30 transition-colors align-top">
                           <td className="py-2 pr-4">{new Date(c.date + 'T12:00:00').toLocaleDateString('pt-BR')}</td>
                           <td className="py-2 pr-4 font-medium">{eq?.name || '—'}</td>
                           <td className="py-2 pr-4 text-muted-foreground">{c.operator_name}</td>
                           <td className="py-2 pr-4 capitalize">{c.type === 'daily' ? 'Diário' : c.type === 'corrective' ? 'Corretivo' : 'Preventivo'}</td>
                           <td className="py-2 pr-4 font-mono">{c.hour_meter}h</td>
-                          <td className="py-2">
+                          <td className="py-2 pr-4">
                             <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${c.status === 'ok' ? 'bg-success/15 text-success' : c.status === 'attention' ? 'bg-warning/15 text-warning' : 'bg-destructive/15 text-destructive'}`}>
                               {checklistStatusLabels[c.status] || c.status}
                             </span>
+                          </td>
+                          <td className="py-2 text-xs">
+                            {ncItems.length === 0 ? (
+                              <span className="text-success">Conforme</span>
+                            ) : (
+                              <div className="space-y-0.5">
+                                {ncItems.map((item: any, idx: number) => (
+                                  <div key={idx} className="text-destructive">
+                                    <span className="font-medium">• {item.label}</span>
+                                    {item.observation && <span className="text-muted-foreground ml-1">({item.observation})</span>}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </td>
                         </tr>
                       );

@@ -456,6 +456,8 @@ export default function MaintenancePage() {
                         {os.started_at && <p className="text-xs text-muted-foreground">Início: {new Date(os.started_at).toLocaleDateString('pt-BR')}</p>}
                         {os.completed_at && <p className="text-xs text-success">Concluída: {new Date(os.completed_at).toLocaleDateString('pt-BR')}</p>}
                         {os.notes && <p className="text-xs text-muted-foreground italic mt-1">Obs: {os.notes}</p>}
+                        {(os as any).invoice_number && <p className="text-xs text-muted-foreground mt-1">📄 NF: {(os as any).invoice_number}</p>}
+                        {(os as any).service_executed && <p className="text-xs text-muted-foreground mt-1">🔧 Serviço: {(os as any).service_executed}</p>}
                         <Button
                           size="sm"
                           variant="outline"

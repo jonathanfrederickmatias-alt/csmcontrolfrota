@@ -476,29 +476,31 @@ export default function MaintenancePage() {
                           </AlertDialog>
                         )}
                       </div>
-                      {os.status !== 'done' && (
-                        <div className="shrink-0 space-y-2">
-                          <Input
-                            placeholder="Nome do mecânico"
-                            className="h-8 text-xs w-40"
-                            defaultValue={os.mechanic_name || ''}
-                            onBlur={e => { if (e.target.value !== (os.mechanic_name || '')) handleOsMechanicChange(os, e.target.value); }}
-                          />
-                          <Select value={os.status} onValueChange={v => handleOsStatusChange(os, v)}>
-                            <SelectTrigger className="h-8 text-xs w-40"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="open">Aberta</SelectItem>
-                              <SelectItem value="in_progress">Em andamento</SelectItem>
-                              <SelectItem value="done">Concluída</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
-                      {os.status === 'done' && os.completed_at && (
-                        <span className="text-xs text-muted-foreground shrink-0">
-                          Concluída em {new Date(os.completed_at).toLocaleDateString('pt-BR')}
-                        </span>
-                      )}
+                      <div className="shrink-0 space-y-2">
+                        {canEdit && (
+                          <>
+                            <Input
+                              placeholder="Nome do mecânico"
+                              className="h-8 text-xs w-40"
+                              defaultValue={os.mechanic_name || ''}
+                              onBlur={e => { if (e.target.value !== (os.mechanic_name || '')) handleOsMechanicChange(os, e.target.value); }}
+                            />
+                            <Select value={os.status} onValueChange={v => handleOsStatusChange(os, v)}>
+                              <SelectTrigger className="h-8 text-xs w-40"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="open">Aberta</SelectItem>
+                                <SelectItem value="in_progress">Em andamento</SelectItem>
+                                <SelectItem value="done">Concluída</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </>
+                        )}
+                        {os.status === 'done' && os.completed_at && (
+                          <span className="text-xs text-muted-foreground">
+                            Concluída em {new Date(os.completed_at).toLocaleDateString('pt-BR')}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );

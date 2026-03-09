@@ -264,10 +264,20 @@ export interface ObraInfo {
   cnpj?: string;
 }
 
+export interface PlanHistoryRow {
+  description: string;
+  hourMeter: number;
+  date: string;
+  operator: string;
+  notes: string;
+}
+
 export async function exportMaintenancePlansPDF(
   plans: PlanRow[],
   filterName: string,
-  obraInfo?: ObraInfo
+  obraInfo?: ObraInfo,
+  historyByEquipment?: Record<string, PlanHistoryRow[]>,
+  historyPeriodLabel?: string
 ) {
   const logoData = await loadLogoAsBase64();
   const pdf = new jsPDF('l', 'mm', 'a4');

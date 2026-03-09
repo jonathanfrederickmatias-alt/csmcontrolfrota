@@ -174,9 +174,12 @@ export default function ReportsPage() {
     const clSheet = XLSX.utils.json_to_sheet(
       filteredChecklists.map(c => {
         const eq = equipments.find(e => e.id === c.equipment_id);
+        const ncItems = Array.isArray(c.items) ? (c.items as any[]).filter(i => i.checked === false) : [];
+        const ncText = ncItems.map(i => i.label + (i.observation ? ` (${i.observation})` : '')).join('; ');
         return {
           Data: c.date, Equipamento: eq?.name || '—', Operador: c.operator_name, Tipo: c.type,
           Horímetro: c.hour_meter, Status: checklistStatusLabels[c.status] || c.status,
+          'Não Conformidades': ncText || 'Conforme',
         };
       })
     );

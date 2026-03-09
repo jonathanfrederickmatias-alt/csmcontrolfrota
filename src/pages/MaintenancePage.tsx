@@ -98,6 +98,11 @@ export default function MaintenancePage() {
   const [pdfHistoryTo, setPdfHistoryTo] = useState('');
   const [pdfExporting, setPdfExporting] = useState(false);
 
+  // New OS dialog
+  const [newOsOpen, setNewOsOpen] = useState(false);
+  const [newOsForm, setNewOsForm] = useState({ equipmentId: '', description: '', priority: 'medium', operator_name: '' });
+  const [newOsSaving, setNewOsSaving] = useState(false);
+
   // Controlled tab
   const [activeTab, setActiveTab] = useState('plans');
 

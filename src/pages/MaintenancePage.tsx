@@ -98,6 +98,11 @@ export default function MaintenancePage() {
   const [pdfHistoryTo, setPdfHistoryTo] = useState('');
   const [pdfExporting, setPdfExporting] = useState(false);
 
+  // New OS dialog
+  const [newOsOpen, setNewOsOpen] = useState(false);
+  const [newOsForm, setNewOsForm] = useState({ equipmentId: '', description: '', priority: 'medium', operator_name: '' });
+  const [newOsSaving, setNewOsSaving] = useState(false);
+
   // Controlled tab
   const [activeTab, setActiveTab] = useState('plans');
 
@@ -361,6 +366,45 @@ export default function MaintenancePage() {
     setEditHistory(null);
     fetchAll();
   };
+
+  const handleCreateOS = async () => {
+    if (!newOsForm.equipmentId || !newOsForm.description) return;
+    setNewOsSaving(true);
+    // Create maintenance request first (required by work_orders FK)
+    const { data: reqData, error: reqErr } = await supabase.from('maintenance_requests').insert({
+      equipment_id: newOsForm.equipmentId,
+      description: newOsForm.description,
+      priority: newOsForm.priority,
+      operator_name: newOsForm.operator_name || 'Sistema',
+      status: 'open',
+    }).select().single();
+
+    if (reqErr || !reqData) {
+      toast({ title: 'Erro ao criar pedido vinculado', variant: 'destructive' });
+      setNewOsSaving(false);
+      return;
+    }
+
+    // Create work order
+    const { error: osErr } = await supabase.from('work_orders').insert({
+      equipment_id: newOsForm.equipmentId,
+      maintenance_request_id: reqData.id,
+      description: newOsForm.description,
+      priority: newOsForm.priority,
+      status: 'open',
+    });
+
+    if (osErr) {
+      toast({ title: 'Erro ao criar OS', variant: 'destructive' });
+    } else {
+      toast({ title: 'OS criada com sucesso!' });
+      setNewOsOpen(false);
+      setNewOsForm({ equipmentId: '', description: '', priority: 'medium', operator_name: '' });
+    }
+    setNewOsSaving(false);
+    fetchAll();
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -383,7 +427,7 @@ export default function MaintenancePage() {
               <SelectTrigger className="w-64"><SelectValue placeholder="Filtrar por equipamento" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos os equipamentos</SelectItem>
-                {equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eq.name}</SelectItem>)}
+                {equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eqLabel(eq)}</SelectItem>)}
               </SelectContent>
             </Select>
             <div className="flex gap-2 flex-wrap">
@@ -393,7 +437,7 @@ export default function MaintenancePage() {
                   const eq = equipments.find(e => e.id === o.equipment_id);
                   return {
                     'OS #': o.os_number,
-                    Equipamento: eq?.name || '—',
+                    Equipamento: eq ? eqLabel(eq) : '—',
                     Descrição: o.description,
                     Prioridade: priorityConfig[o.priority]?.label || o.priority,
                     Status: osStatusConfig[o.status]?.label || o.status,
@@ -445,6 +489,11 @@ export default function MaintenancePage() {
               }}>
                 <FileText className="w-4 h-4 text-primary" /> PDF
               </Button>
+              {canEdit && (
+                <Button size="sm" className="gap-2" onClick={() => setNewOsOpen(true)}>
+                  <Plus className="w-4 h-4" /> Nova OS
+                </Button>
+              )}
             </div>
           </div>
           {loading ? (
@@ -470,7 +519,7 @@ export default function MaintenancePage() {
                           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${sc.bg}`}>{sc.label}</span>
                         </div>
                         <p className="font-semibold mt-1">{os.description}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{eq?.name || '—'} — {new Date(os.created_at).toLocaleDateString('pt-BR')}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{eq ? eqLabel(eq) : '—'} — {new Date(os.created_at).toLocaleDateString('pt-BR')}</p>
                         {os.mechanic_name && <p className="text-xs text-muted-foreground">Mecânico: {os.mechanic_name}</p>}
                         {os.started_at && <p className="text-xs text-muted-foreground">Início: {new Date(os.started_at).toLocaleDateString('pt-BR')}</p>}
                         {os.completed_at && <p className="text-xs text-success">Concluída: {new Date(os.completed_at).toLocaleDateString('pt-BR')}</p>}
@@ -566,7 +615,7 @@ export default function MaintenancePage() {
               <SelectTrigger className="w-64"><SelectValue placeholder="Filtrar por equipamento" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos os equipamentos</SelectItem>
-                {equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eq.name}</SelectItem>)}
+                {equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eqLabel(eq)}</SelectItem>)}
               </SelectContent>
             </Select>
             <div className="flex gap-2 flex-wrap">
@@ -575,7 +624,7 @@ export default function MaintenancePage() {
                 const data = filteredPlans.map(p => {
                   const eq = equipments.find(e => e.id === p.equipment_id);
                   return {
-                    Equipamento: eq?.name || '—', Descrição: p.description,
+                    Equipamento: eq ? eqLabel(eq) : '—', Descrição: p.description,
                     'Intervalo (h)': p.interval_hours, 'Próxima (h)': p.next_due_at,
                     'Última feita (h)': p.last_done_at,
                     Status: p.status === 'ok' ? 'OK' : p.status === 'approaching' ? 'Próxima' : 'Atrasada',
@@ -603,7 +652,7 @@ export default function MaintenancePage() {
                   <div><Label>Equipamento *</Label>
                     <Select value={form.equipmentId} onValueChange={v => setForm({...form, equipmentId: v})}>
                       <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
-                      <SelectContent>{equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eq.name}</SelectItem>)}</SelectContent>
+                      <SelectContent>{equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eqLabel(eq)}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
                   <div><Label>Descrição *</Label><Input value={form.description} onChange={e => setForm({...form, description: e.target.value})} placeholder="Ex: Troca de óleo" /></div>
@@ -641,7 +690,7 @@ export default function MaintenancePage() {
                           <h3 className="font-bold">{plan.description}</h3>
                           <span className={`text-xs px-2 py-0.5 rounded-full ${sc.bg} ${sc.color} font-medium`}>{sc.label}</span>
                         </div>
-                        <p className="text-sm text-muted-foreground">{eq?.name || 'Equipamento'}</p>
+                        <p className="text-sm text-muted-foreground">{eq ? eqLabel(eq) : 'Equipamento'}</p>
                         <div className="flex gap-4 mt-2 text-xs text-muted-foreground font-mono flex-wrap">
                           <span>Intervalo: {plan.interval_hours}h</span>
                           <span>Próxima: {plan.next_due_at}h</span>
@@ -684,7 +733,7 @@ export default function MaintenancePage() {
               <SelectTrigger className="w-64"><SelectValue placeholder="Filtrar por equipamento" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos os equipamentos</SelectItem>
-                {equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eq.name}</SelectItem>)}
+                {equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eqLabel(eq)}</SelectItem>)}
               </SelectContent>
             </Select>
             <div className="flex gap-2 flex-wrap">
@@ -694,7 +743,7 @@ export default function MaintenancePage() {
                   const eq = equipments.find(e => e.id === r.equipment_id);
                   return {
                     Data: new Date(r.created_at).toLocaleDateString('pt-BR'),
-                    Equipamento: eq?.name || '—',
+                    Equipamento: eq ? eqLabel(eq) : '—',
                     Descrição: r.description,
                     Prioridade: priorityConfig[r.priority]?.label || r.priority,
                     Status: requestStatusConfig[r.status]?.label || r.status,
@@ -762,7 +811,7 @@ export default function MaintenancePage() {
                           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${pc.bg}`}>{pc.label}</span>
                           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${sc.bg}`}>{sc.label}</span>
                         </div>
-                        <p className="text-xs text-muted-foreground">{eq?.name} — {r.operator_name} — {new Date(r.created_at).toLocaleDateString('pt-BR')}</p>
+                        <p className="text-xs text-muted-foreground">{eq ? eqLabel(eq) : '—'} — {r.operator_name} — {new Date(r.created_at).toLocaleDateString('pt-BR')}</p>
                         {r.notes && <p className="text-xs text-muted-foreground mt-1 italic">Obs: {r.notes}</p>}
                         {(() => {
                           const linkedOS = workOrders.find(o => o.maintenance_request_id === r.id);
@@ -874,7 +923,7 @@ export default function MaintenancePage() {
               <SelectTrigger className="w-64"><SelectValue placeholder="Filtrar por equipamento" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos os equipamentos</SelectItem>
-                {equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eq.name}</SelectItem>)}
+                {equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eqLabel(eq)}</SelectItem>)}
               </SelectContent>
             </Select>
             <div className="flex gap-2 flex-wrap">
@@ -940,7 +989,7 @@ export default function MaintenancePage() {
                     <div><Label>Equipamento *</Label>
                       <Select value={historyForm.equipmentId} onValueChange={v => setHistoryForm({...historyForm, equipmentId: v})}>
                         <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
-                        <SelectContent>{equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eq.name}</SelectItem>)}</SelectContent>
+                        <SelectContent>{equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eqLabel(eq)}</SelectItem>)}</SelectContent>
                       </Select>
                     </div>
                     <div><Label>Descrição do serviço *</Label><Input value={historyForm.description} onChange={e => setHistoryForm({...historyForm, description: e.target.value})} placeholder="Ex: Troca de óleo do motor" /></div>
@@ -973,7 +1022,7 @@ export default function MaintenancePage() {
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-sm">{h.description}</p>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        {eq?.name || '—'} — {new Date(h.executed_at).toLocaleDateString('pt-BR')}
+                        {eq ? eqLabel(eq) : '—'} — {new Date(h.executed_at).toLocaleDateString('pt-BR')}
                       </p>
                       {h.operator_name && <p className="text-xs text-muted-foreground">Responsável: {h.operator_name}</p>}
                       {h.notes && <p className="text-xs text-muted-foreground italic mt-0.5">Obs: {h.notes}</p>}
@@ -1263,6 +1312,37 @@ export default function MaintenancePage() {
             }}>
               {pdfExporting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Gerar PDF
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Nova OS Dialog */}
+      <Dialog open={newOsOpen} onOpenChange={(v) => { setNewOsOpen(v); if (!v) setNewOsForm({ equipmentId: '', description: '', priority: 'medium', operator_name: '' }); }}>
+        <DialogContent className="bg-card border-border">
+          <DialogHeader><DialogTitle>Nova Ordem de Serviço</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div><Label>Equipamento *</Label>
+              <Select value={newOsForm.equipmentId} onValueChange={v => setNewOsForm({...newOsForm, equipmentId: v})}>
+                <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
+                <SelectContent>{equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eqLabel(eq)}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div><Label>Descrição do serviço *</Label><Textarea value={newOsForm.description} onChange={e => setNewOsForm({...newOsForm, description: e.target.value})} placeholder="Descreva o problema ou serviço necessário..." rows={3} /></div>
+            <div><Label>Prioridade</Label>
+              <Select value={newOsForm.priority} onValueChange={v => setNewOsForm({...newOsForm, priority: v})}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Baixa</SelectItem>
+                  <SelectItem value="medium">Média</SelectItem>
+                  <SelectItem value="high">Alta</SelectItem>
+                  <SelectItem value="urgent">Urgente</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div><Label>Solicitante</Label><Input value={newOsForm.operator_name} onChange={e => setNewOsForm({...newOsForm, operator_name: e.target.value})} placeholder="Nome do solicitante" /></div>
+            <Button onClick={handleCreateOS} disabled={!newOsForm.equipmentId || !newOsForm.description || newOsSaving} className="w-full">
+              {newOsSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Criar OS
             </Button>
           </div>
         </DialogContent>

@@ -92,6 +92,12 @@ export default function MaintenancePage() {
   const [closureOS, setClosureOS] = useState<DBWorkOrder | null>(null);
   const [closureForm, setClosureForm] = useState({ invoice_number: '', service_executed: '', mechanic_name: '', notes: '' });
 
+  // PDF history filter dialog
+  const [pdfHistoryDialog, setPdfHistoryDialog] = useState(false);
+  const [pdfHistoryFrom, setPdfHistoryFrom] = useState('');
+  const [pdfHistoryTo, setPdfHistoryTo] = useState('');
+  const [pdfExporting, setPdfExporting] = useState(false);
+
   // Controlled tab
   const [activeTab, setActiveTab] = useState('plans');
 

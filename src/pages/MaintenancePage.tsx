@@ -1206,6 +1206,30 @@ export default function MaintenancePage() {
                 placeholder="Nome do mecânico"
               />
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Custo Mão de Obra (R$)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={closureForm.labor_cost}
+                  onChange={e => setClosureForm({...closureForm, labor_cost: e.target.value})}
+                  placeholder="0,00"
+                />
+              </div>
+              <div>
+                <Label>Custo Peças (R$)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={closureForm.parts_cost}
+                  onChange={e => setClosureForm({...closureForm, parts_cost: e.target.value})}
+                  placeholder="0,00"
+                />
+              </div>
+            </div>
             <div>
               <Label>Observações</Label>
               <Textarea

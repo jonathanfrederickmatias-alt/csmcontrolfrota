@@ -641,7 +641,7 @@ export default function MaintenancePage() {
                           <h3 className="font-bold">{plan.description}</h3>
                           <span className={`text-xs px-2 py-0.5 rounded-full ${sc.bg} ${sc.color} font-medium`}>{sc.label}</span>
                         </div>
-                        <p className="text-sm text-muted-foreground">{eq?.name || 'Equipamento'}</p>
+                        <p className="text-sm text-muted-foreground">{eq ? eqLabel(eq) : 'Equipamento'}</p>
                         <div className="flex gap-4 mt-2 text-xs text-muted-foreground font-mono flex-wrap">
                           <span>Intervalo: {plan.interval_hours}h</span>
                           <span>Próxima: {plan.next_due_at}h</span>

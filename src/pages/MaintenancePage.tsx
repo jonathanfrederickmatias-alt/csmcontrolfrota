@@ -1099,6 +1099,34 @@ export default function MaintenancePage() {
                       {plan && <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary mt-1 inline-block">Plano: {plan.description}</span>}
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
+                      {canEdit && (() => {
+                        const linkedOS = workOrders.find(o => o.equipment_id === h.equipment_id && o.status === 'done' && o.maintenance_request_id);
+                        return linkedOS ? (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button size="sm" variant="outline" className="h-7 text-xs gap-1 text-warning border-warning/30 hover:bg-warning/10">
+                                <Wrench className="w-3 h-3" /> Reabrir OS
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Reabrir OS #{linkedOS.os_number}?</AlertDialogTitle>
+                                <AlertDialogDescription>A OS será reaberta, o pedido vinculado voltará ao status "Aberto" e este registro do histórico será removido.</AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction onClick={async () => {
+                                  await supabase.from('work_orders').update({ status: 'open', completed_at: null, started_at: null }).eq('id', linkedOS.id);
+                                  await supabase.from('maintenance_requests').update({ status: 'open', resolved_at: null }).eq('id', linkedOS.maintenance_request_id);
+                                  await supabase.from('maintenance_history').delete().eq('id', h.id);
+                                  toast({ title: `OS #${linkedOS.os_number} reaberta com sucesso!` });
+                                  fetchAll();
+                                }}>Reabrir</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        ) : null;
+                      })()}
                       {canEdit && (
                         <button onClick={() => openEditHistory(h)} className="text-muted-foreground hover:text-primary p-1 transition-colors">
                           <Edit2 className="w-3.5 h-3.5" />

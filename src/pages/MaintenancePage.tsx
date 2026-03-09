@@ -756,6 +756,19 @@ export default function MaintenancePage() {
                         </div>
                         <p className="text-xs text-muted-foreground">{eq?.name} — {r.operator_name} — {new Date(r.created_at).toLocaleDateString('pt-BR')}</p>
                         {r.notes && <p className="text-xs text-muted-foreground mt-1 italic">Obs: {r.notes}</p>}
+                        {(() => {
+                          const linkedOS = workOrders.find(o => o.maintenance_request_id === r.id);
+                          if (!linkedOS) return null;
+                          return (
+                            <button
+                              onClick={() => { setOsFilter('all'); setActiveTab('os'); }}
+                              className="inline-flex items-center gap-1 mt-1.5 text-xs text-primary hover:underline font-medium"
+                            >
+                              <Clipboard className="w-3 h-3" />
+                              Ver OS #{linkedOS.os_number} — {osStatusConfig[linkedOS.status]?.label || linkedOS.status}
+                            </button>
+                          );
+                        })()}
                         {(rAny.photo_start_url || rAny.photo_end_url) && (
                           <div className="flex gap-2 mt-2">
                             {rAny.photo_start_url && (

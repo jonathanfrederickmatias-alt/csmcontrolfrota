@@ -74,7 +74,7 @@ export default function QRMaintenanceRequest() {
       priority: i.priority,
     }));
 
-    const { data: inserted, error: insertError } = await supabase.from('maintenance_requests').insert({
+    const { error: insertError } = await supabase.from('maintenance_requests').insert({
       equipment_id: equipmentId,
       description: generalDescription,
       priority: generalPriority,
@@ -82,7 +82,7 @@ export default function QRMaintenanceRequest() {
       operator_name: operatorName,
       photo_start_url: photoUrl || null,
       items: itemsPayload,
-    } as any).select().single();
+    } as any);
 
     if (insertError) {
       console.error('Insert error:', insertError);
@@ -91,9 +91,9 @@ export default function QRMaintenanceRequest() {
       return;
     }
 
-    if (inserted && ['urgent', 'high'].includes(generalPriority)) {
+    if (['urgent', 'high'].includes(generalPriority)) {
       supabase.functions.invoke('notify-maintenance', {
-        body: { requestId: (inserted as any).id },
+        body: { priority: generalPriority },
       }).catch(console.error);
     }
 

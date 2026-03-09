@@ -1145,6 +1145,58 @@ export default function MaintenancePage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Closure Dialog (Dar Baixa na OS) */}
+      <Dialog open={!!closureOS} onOpenChange={v => { if (!v) setClosureOS(null); }}>
+        <DialogContent className="bg-card border-border">
+          <DialogHeader>
+            <DialogTitle>Dar Baixa na OS #{closureOS?.os_number}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Serviço Executado *</Label>
+              <Textarea
+                value={closureForm.service_executed}
+                onChange={e => setClosureForm({...closureForm, service_executed: e.target.value})}
+                placeholder="Descreva o serviço realizado..."
+                rows={3}
+              />
+            </div>
+            <div>
+              <Label>Número da Nota Fiscal</Label>
+              <Input
+                value={closureForm.invoice_number}
+                onChange={e => setClosureForm({...closureForm, invoice_number: e.target.value})}
+                placeholder="Ex: NF-001234"
+              />
+            </div>
+            <div>
+              <Label>Mecânico Responsável</Label>
+              <Input
+                value={closureForm.mechanic_name}
+                onChange={e => setClosureForm({...closureForm, mechanic_name: e.target.value})}
+                placeholder="Nome do mecânico"
+              />
+            </div>
+            <div>
+              <Label>Observações</Label>
+              <Textarea
+                value={closureForm.notes}
+                onChange={e => setClosureForm({...closureForm, notes: e.target.value})}
+                placeholder="Observações adicionais..."
+                rows={2}
+              />
+            </div>
+            <Button
+              onClick={handleClosureConfirm}
+              disabled={!closureForm.service_executed}
+              className="w-full"
+            >
+              Confirmar e Concluir OS
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

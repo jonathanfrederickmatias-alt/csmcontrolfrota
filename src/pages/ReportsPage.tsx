@@ -71,6 +71,7 @@ export default function ReportsPage() {
       setChecklists((clRes.data || []) as unknown as DBChecklist[]);
       setPlans((mpRes.data || []) as DBMaintenancePlan[]);
       setWorkOrders((osRes.data || []) as DBWorkOrder[]);
+      setMaintenanceHistory((mhRes.data || []) as DBMaintenanceHistory[]);
       setLoading(false);
     };
     fetchAll();

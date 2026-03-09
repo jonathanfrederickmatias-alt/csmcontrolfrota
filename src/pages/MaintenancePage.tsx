@@ -267,6 +267,8 @@ export default function MaintenancePage() {
       setClosureForm({
         invoice_number: (os as any).invoice_number || '',
         service_executed: (os as any).service_executed || '',
+        labor_cost: (os as any).labor_cost ? String((os as any).labor_cost) : '',
+        parts_cost: (os as any).parts_cost ? String((os as any).parts_cost) : '',
         mechanic_name: os.mechanic_name || '',
         notes: os.notes || '',
       });

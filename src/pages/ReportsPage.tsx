@@ -236,7 +236,9 @@ export default function ReportsPage() {
       }),
       checklistRecords: filteredChecklists.map(c => {
         const eq = equipments.find(e => e.id === c.equipment_id);
-        return { date: c.date, equipment: eq ? eqLabel(eq) : '—', operator: c.operator_name, hourMeter: c.hour_meter, status: checklistStatusLabels[c.status] || c.status };
+        const ncItems = Array.isArray(c.items) ? (c.items as any[]).filter(i => i.checked === false) : [];
+        const ncText = ncItems.map(i => i.label + (i.observation ? ` (${i.observation})` : '')).join('; ');
+        return { date: c.date, equipment: eq ? eqLabel(eq) : '—', operator: c.operator_name, hourMeter: c.hour_meter, status: checklistStatusLabels[c.status] || c.status, ncItems: ncText };
       }),
       maintenancePlans: [
         ...filteredPlans.map(p => {

@@ -192,6 +192,7 @@ export default function QRMaintenanceRequest() {
         </div>
 
         <PhotoUpload label="Foto do Problema (opcional)" onUploaded={setPhotoUrl} />
+        {error && <p className="text-destructive text-sm font-medium">{error}</p>}
         <Button onClick={handleSave} disabled={!equipmentId || validItems.length === 0 || !operatorName || saving} className="w-full h-12 text-base font-bold">
           {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
           <Wrench className="w-5 h-5 mr-2" /> Enviar Pedido ({validItems.length} item{validItems.length !== 1 ? 's' : ''})

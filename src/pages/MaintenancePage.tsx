@@ -303,6 +303,8 @@ export default function MaintenancePage() {
       service_executed: closureForm.service_executed || null,
       mechanic_name: closureForm.mechanic_name || null,
       notes: closureForm.notes || null,
+      labor_cost: closureForm.labor_cost ? Number(closureForm.labor_cost) : 0,
+      parts_cost: closureForm.parts_cost ? Number(closureForm.parts_cost) : 0,
     };
     await supabase.from('work_orders').update(update).eq('id', closureOS.id);
     toast({ title: 'OS concluída com sucesso!' });

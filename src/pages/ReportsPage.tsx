@@ -41,6 +41,7 @@ export default function ReportsPage() {
   const [checklists, setChecklists] = useState<DBChecklist[]>([]);
   const [plans, setPlans] = useState<DBMaintenancePlan[]>([]);
   const [workOrders, setWorkOrders] = useState<DBWorkOrder[]>([]);
+  const [maintenanceHistory, setMaintenanceHistory] = useState<DBMaintenanceHistory[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

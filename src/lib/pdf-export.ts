@@ -874,7 +874,7 @@ interface GeneralReportData {
   checklistStatus: { name: string; value: number }[];
   maintenanceStatus: { name: string; value: number; color: string }[];
   fuelRecords: { date: string; equipment: string; combo: string; liters: number; operator: string }[];
-  checklistRecords: { date: string; equipment: string; operator: string; hourMeter: number; status: string }[];
+  checklistRecords: { date: string; equipment: string; operator: string; hourMeter: number; status: string; ncItems?: string }[];
   maintenancePlans: { equipment: string; description: string; interval: number; nextDue: number; status: string; lastExec: string }[];
   osRecords?: { osNumber: number; equipment: string; description: string; priority: string; status: string; mechanic: string; parts: string; date: string; startedAt: string; completedAt: string; laborCost: number; partsCost: number }[];
   equipmentDetails?: { name: string; plate?: string; model?: string; brand?: string; costCenter?: string; year?: number; currentHourMeter?: number };
@@ -1129,10 +1129,10 @@ export async function exportGeneralReportsPDF(data: GeneralReportData) {
     pdf.text('Detalhamento de Checklists', margin + 6, y + 5.5);
     y += 10;
 
-    const cColW = [28, 70, 70, 40, contentWidth - 208];
+    const cColW = [24, 50, 50, 28, 24, contentWidth - 176];
     const cColX = [margin];
     for (let i = 1; i < cColW.length; i++) cColX.push(cColX[i - 1] + cColW[i - 1]);
-    const cHeaders = ['Data', 'Equipamento', 'Operador', 'Horímetro', 'Status'];
+    const cHeaders = ['Data', 'Equipamento', 'Operador', 'Horímetro', 'Status', 'Não Conformidades'];
 
     pdf.setFillColor(220, 228, 240);
     pdf.rect(margin, y, contentWidth, 6, 'F');
@@ -1143,8 +1143,15 @@ export async function exportGeneralReportsPDF(data: GeneralReportData) {
     y += 6;
 
     data.checklistRecords.forEach((c, idx) => {
-      y = checkPageBreak(pdf, y, 7);
-      if (idx % 2 === 1) { pdf.setFillColor(...COLORS.rowAlt); pdf.rect(margin, y, contentWidth, 6.5, 'F'); }
+      pdf.setFontSize(6.5);
+      pdf.setFont('helvetica', 'normal');
+      const ncText = c.ncItems || 'Conforme';
+      const ncLines = wrapText(pdf, ncText, cColW[5] - 4);
+      const lineHeight = 3.5;
+      const rowHeight = Math.max(6.5, ncLines.length * lineHeight + 3);
+
+      y = checkPageBreak(pdf, y, rowHeight);
+      if (idx % 2 === 1) { pdf.setFillColor(...COLORS.rowAlt); pdf.rect(margin, y, contentWidth, rowHeight, 'F'); }
       pdf.setFontSize(6.5); pdf.setFont('helvetica', 'normal');
       pdf.setTextColor(...COLORS.text);
       pdf.text(c.date, cColX[0] + 2, y + 4.5);
@@ -1156,7 +1163,17 @@ export async function exportGeneralReportsPDF(data: GeneralReportData) {
       pdf.setTextColor(...sColor);
       pdf.setFont('helvetica', 'bold');
       pdf.text(c.status, cColX[4] + 2, y + 4.5);
-      y += 6.5;
+
+      // NC items
+      pdf.setFont('helvetica', 'normal');
+      if (c.ncItems) {
+        pdf.setTextColor(...COLORS.danger);
+      } else {
+        pdf.setTextColor(...COLORS.success);
+      }
+      ncLines.forEach((line, li) => pdf.text(line, cColX[5] + 2, y + 4.5 + li * lineHeight));
+
+      y += rowHeight;
     });
     y += 6;
   }

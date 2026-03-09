@@ -90,7 +90,7 @@ export default function MaintenancePage() {
 
   // Closure dialog (dar baixa na OS)
   const [closureOS, setClosureOS] = useState<DBWorkOrder | null>(null);
-  const [closureForm, setClosureForm] = useState({ invoice_number: '', service_executed: '', mechanic_name: '', notes: '' });
+  const [closureForm, setClosureForm] = useState({ invoice_number: '', service_executed: '', mechanic_name: '', notes: '', labor_cost: '', parts_cost: '' });
 
   // PDF history filter dialog
   const [pdfHistoryDialog, setPdfHistoryDialog] = useState(false);
@@ -267,6 +267,8 @@ export default function MaintenancePage() {
       setClosureForm({
         invoice_number: (os as any).invoice_number || '',
         service_executed: (os as any).service_executed || '',
+        labor_cost: (os as any).labor_cost ? String((os as any).labor_cost) : '',
+        parts_cost: (os as any).parts_cost ? String((os as any).parts_cost) : '',
         mechanic_name: os.mechanic_name || '',
         notes: os.notes || '',
       });
@@ -301,6 +303,8 @@ export default function MaintenancePage() {
       service_executed: closureForm.service_executed || null,
       mechanic_name: closureForm.mechanic_name || null,
       notes: closureForm.notes || null,
+      labor_cost: closureForm.labor_cost ? Number(closureForm.labor_cost) : 0,
+      parts_cost: closureForm.parts_cost ? Number(closureForm.parts_cost) : 0,
     };
     await supabase.from('work_orders').update(update).eq('id', closureOS.id);
     toast({ title: 'OS concluída com sucesso!' });
@@ -1201,6 +1205,30 @@ export default function MaintenancePage() {
                 onChange={e => setClosureForm({...closureForm, mechanic_name: e.target.value})}
                 placeholder="Nome do mecânico"
               />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Custo Mão de Obra (R$)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={closureForm.labor_cost}
+                  onChange={e => setClosureForm({...closureForm, labor_cost: e.target.value})}
+                  placeholder="0,00"
+                />
+              </div>
+              <div>
+                <Label>Custo Peças (R$)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={closureForm.parts_cost}
+                  onChange={e => setClosureForm({...closureForm, parts_cost: e.target.value})}
+                  placeholder="0,00"
+                />
+              </div>
             </div>
             <div>
               <Label>Observações</Label>

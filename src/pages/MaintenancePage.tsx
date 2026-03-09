@@ -383,7 +383,7 @@ export default function MaintenancePage() {
               <SelectTrigger className="w-64"><SelectValue placeholder="Filtrar por equipamento" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos os equipamentos</SelectItem>
-                {equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eq.name}</SelectItem>)}
+                {equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eqLabel(eq)}</SelectItem>)}
               </SelectContent>
             </Select>
             <div className="flex gap-2 flex-wrap">
@@ -393,7 +393,7 @@ export default function MaintenancePage() {
                   const eq = equipments.find(e => e.id === o.equipment_id);
                   return {
                     'OS #': o.os_number,
-                    Equipamento: eq?.name || '—',
+                    Equipamento: eq ? eqLabel(eq) : '—',
                     Descrição: o.description,
                     Prioridade: priorityConfig[o.priority]?.label || o.priority,
                     Status: osStatusConfig[o.status]?.label || o.status,

@@ -1316,6 +1316,37 @@ export default function MaintenancePage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Nova OS Dialog */}
+      <Dialog open={newOsOpen} onOpenChange={(v) => { setNewOsOpen(v); if (!v) setNewOsForm({ equipmentId: '', description: '', priority: 'medium', operator_name: '' }); }}>
+        <DialogContent className="bg-card border-border">
+          <DialogHeader><DialogTitle>Nova Ordem de Serviço</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div><Label>Equipamento *</Label>
+              <Select value={newOsForm.equipmentId} onValueChange={v => setNewOsForm({...newOsForm, equipmentId: v})}>
+                <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
+                <SelectContent>{equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eqLabel(eq)}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div><Label>Descrição do serviço *</Label><Textarea value={newOsForm.description} onChange={e => setNewOsForm({...newOsForm, description: e.target.value})} placeholder="Descreva o problema ou serviço necessário..." rows={3} /></div>
+            <div><Label>Prioridade</Label>
+              <Select value={newOsForm.priority} onValueChange={v => setNewOsForm({...newOsForm, priority: v})}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Baixa</SelectItem>
+                  <SelectItem value="medium">Média</SelectItem>
+                  <SelectItem value="high">Alta</SelectItem>
+                  <SelectItem value="urgent">Urgente</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div><Label>Solicitante</Label><Input value={newOsForm.operator_name} onChange={e => setNewOsForm({...newOsForm, operator_name: e.target.value})} placeholder="Nome do solicitante" /></div>
+            <Button onClick={handleCreateOS} disabled={!newOsForm.equipmentId || !newOsForm.description || newOsSaving} className="w-full">
+              {newOsSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Criar OS
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

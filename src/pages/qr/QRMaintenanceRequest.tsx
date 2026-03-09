@@ -51,9 +51,12 @@ export default function QRMaintenanceRequest() {
 
   const validItems = items.filter(i => i.description.trim());
 
+  const [error, setError] = useState('');
+
   const handleSave = async () => {
     if (validItems.length === 0) return;
     setSaving(true);
+    setError('');
 
     // Use the first item's priority as the general priority, and a summary description
     const generalPriority = validItems.reduce((highest, item) => {
@@ -71,7 +74,7 @@ export default function QRMaintenanceRequest() {
       priority: i.priority,
     }));
 
-    const { data: inserted } = await supabase.from('maintenance_requests').insert({
+    const { data: inserted, error: insertError } = await supabase.from('maintenance_requests').insert({
       equipment_id: equipmentId,
       description: generalDescription,
       priority: generalPriority,
@@ -80,6 +83,13 @@ export default function QRMaintenanceRequest() {
       photo_start_url: photoUrl || null,
       items: itemsPayload,
     } as any).select().single();
+
+    if (insertError) {
+      console.error('Insert error:', insertError);
+      setError(`Erro ao salvar: ${insertError.message}`);
+      setSaving(false);
+      return;
+    }
 
     if (inserted && ['urgent', 'high'].includes(generalPriority)) {
       supabase.functions.invoke('notify-maintenance', {
@@ -182,6 +192,7 @@ export default function QRMaintenanceRequest() {
         </div>
 
         <PhotoUpload label="Foto do Problema (opcional)" onUploaded={setPhotoUrl} />
+        {error && <p className="text-destructive text-sm font-medium">{error}</p>}
         <Button onClick={handleSave} disabled={!equipmentId || validItems.length === 0 || !operatorName || saving} className="w-full h-12 text-base font-bold">
           {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
           <Wrench className="w-5 h-5 mr-2" /> Enviar Pedido ({validItems.length} item{validItems.length !== 1 ? 's' : ''})

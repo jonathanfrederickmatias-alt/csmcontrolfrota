@@ -566,7 +566,7 @@ export default function MaintenancePage() {
               <SelectTrigger className="w-64"><SelectValue placeholder="Filtrar por equipamento" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos os equipamentos</SelectItem>
-                {equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eq.name}</SelectItem>)}
+                {equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eqLabel(eq)}</SelectItem>)}
               </SelectContent>
             </Select>
             <div className="flex gap-2 flex-wrap">
@@ -575,7 +575,7 @@ export default function MaintenancePage() {
                 const data = filteredPlans.map(p => {
                   const eq = equipments.find(e => e.id === p.equipment_id);
                   return {
-                    Equipamento: eq?.name || '—', Descrição: p.description,
+                    Equipamento: eq ? eqLabel(eq) : '—', Descrição: p.description,
                     'Intervalo (h)': p.interval_hours, 'Próxima (h)': p.next_due_at,
                     'Última feita (h)': p.last_done_at,
                     Status: p.status === 'ok' ? 'OK' : p.status === 'approaching' ? 'Próxima' : 'Atrasada',

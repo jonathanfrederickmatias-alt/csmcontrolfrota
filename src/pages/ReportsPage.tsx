@@ -83,6 +83,9 @@ export default function ReportsPage() {
   const filteredPlans = selectedEquipment === 'all' ? plans : plans.filter(p => p.equipment_id === selectedEquipment);
   const filteredEquipments = selectedEquipment === 'all' ? equipments : equipments.filter(e => e.id === selectedEquipment);
   const filteredOrders = selectedEquipment === 'all' ? workOrders : workOrders.filter(o => o.equipment_id === selectedEquipment);
+  const filteredHistory = selectedEquipment === 'all' ? maintenanceHistory : maintenanceHistory.filter(h => h.equipment_id === selectedEquipment);
+
+  const selectedEqFull = equipments.find(e => e.id === selectedEquipment);
 
   // Fuel by equipment
   const fuelByEquipment = filteredEquipments

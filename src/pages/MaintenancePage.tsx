@@ -366,6 +366,45 @@ export default function MaintenancePage() {
     setEditHistory(null);
     fetchAll();
   };
+
+  const handleCreateOS = async () => {
+    if (!newOsForm.equipmentId || !newOsForm.description) return;
+    setNewOsSaving(true);
+    // Create maintenance request first (required by work_orders FK)
+    const { data: reqData, error: reqErr } = await supabase.from('maintenance_requests').insert({
+      equipment_id: newOsForm.equipmentId,
+      description: newOsForm.description,
+      priority: newOsForm.priority,
+      operator_name: newOsForm.operator_name || 'Sistema',
+      status: 'open',
+    }).select().single();
+
+    if (reqErr || !reqData) {
+      toast({ title: 'Erro ao criar pedido vinculado', variant: 'destructive' });
+      setNewOsSaving(false);
+      return;
+    }
+
+    // Create work order
+    const { error: osErr } = await supabase.from('work_orders').insert({
+      equipment_id: newOsForm.equipmentId,
+      maintenance_request_id: reqData.id,
+      description: newOsForm.description,
+      priority: newOsForm.priority,
+      status: 'open',
+    });
+
+    if (osErr) {
+      toast({ title: 'Erro ao criar OS', variant: 'destructive' });
+    } else {
+      toast({ title: 'OS criada com sucesso!' });
+      setNewOsOpen(false);
+      setNewOsForm({ equipmentId: '', description: '', priority: 'medium', operator_name: '' });
+    }
+    setNewOsSaving(false);
+    fetchAll();
+  };
+
   return (
     <div className="space-y-6">
       <div>

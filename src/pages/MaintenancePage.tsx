@@ -88,6 +88,10 @@ export default function MaintenancePage() {
   const [editHistory, setEditHistory] = useState<DBMaintenanceHistory | null>(null);
   const [histEditForm, setHistEditForm] = useState({ description: '', hour_meter: '', operator_name: '', notes: '' });
 
+  // Closure dialog (dar baixa na OS)
+  const [closureOS, setClosureOS] = useState<DBWorkOrder | null>(null);
+  const [closureForm, setClosureForm] = useState({ invoice_number: '', service_executed: '', mechanic_name: '', notes: '' });
+
   // Controlled tab
   const [activeTab, setActiveTab] = useState('plans');
 
@@ -247,11 +251,36 @@ export default function MaintenancePage() {
   const filteredOrders = osFilter === 'all' ? workOrders : workOrders.filter(o => o.equipment_id === osFilter);
 
   const handleOsStatusChange = async (os: DBWorkOrder, newStatus: string) => {
+    if (newStatus === 'done') {
+      setClosureOS(os);
+      setClosureForm({
+        invoice_number: (os as any).invoice_number || '',
+        service_executed: (os as any).service_executed || '',
+        mechanic_name: os.mechanic_name || '',
+        notes: os.notes || '',
+      });
+      return;
+    }
     const update: any = { status: newStatus };
     if (newStatus === 'in_progress') update.started_at = new Date().toISOString();
-    if (newStatus === 'done') update.completed_at = new Date().toISOString();
     await supabase.from('work_orders').update(update).eq('id', os.id);
     toast({ title: 'Status da OS atualizado!' });
+    fetchAll();
+  };
+
+  const handleClosureConfirm = async () => {
+    if (!closureOS) return;
+    const update: any = {
+      status: 'done',
+      completed_at: new Date().toISOString(),
+      invoice_number: closureForm.invoice_number || null,
+      service_executed: closureForm.service_executed || null,
+      mechanic_name: closureForm.mechanic_name || null,
+      notes: closureForm.notes || null,
+    };
+    await supabase.from('work_orders').update(update).eq('id', closureOS.id);
+    toast({ title: 'OS concluída com sucesso!' });
+    setClosureOS(null);
     fetchAll();
   };
 
@@ -427,6 +456,8 @@ export default function MaintenancePage() {
                         {os.started_at && <p className="text-xs text-muted-foreground">Início: {new Date(os.started_at).toLocaleDateString('pt-BR')}</p>}
                         {os.completed_at && <p className="text-xs text-success">Concluída: {new Date(os.completed_at).toLocaleDateString('pt-BR')}</p>}
                         {os.notes && <p className="text-xs text-muted-foreground italic mt-1">Obs: {os.notes}</p>}
+                        {(os as any).invoice_number && <p className="text-xs text-muted-foreground mt-1">📄 NF: {(os as any).invoice_number}</p>}
+                        {(os as any).service_executed && <p className="text-xs text-muted-foreground mt-1">🔧 Serviço: {(os as any).service_executed}</p>}
                         <Button
                           size="sm"
                           variant="outline"
@@ -1111,6 +1142,58 @@ export default function MaintenancePage() {
             <div><Label>Responsável</Label><Input value={histEditForm.operator_name} onChange={e => setHistEditForm({...histEditForm, operator_name: e.target.value})} /></div>
             <div><Label>Observações</Label><Textarea value={histEditForm.notes} onChange={e => setHistEditForm({...histEditForm, notes: e.target.value})} rows={2} /></div>
             <Button onClick={handleSaveEditHistory} disabled={!histEditForm.description || !histEditForm.hour_meter} className="w-full">Salvar Alterações</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Closure Dialog (Dar Baixa na OS) */}
+      <Dialog open={!!closureOS} onOpenChange={v => { if (!v) setClosureOS(null); }}>
+        <DialogContent className="bg-card border-border">
+          <DialogHeader>
+            <DialogTitle>Dar Baixa na OS #{closureOS?.os_number}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Serviço Executado *</Label>
+              <Textarea
+                value={closureForm.service_executed}
+                onChange={e => setClosureForm({...closureForm, service_executed: e.target.value})}
+                placeholder="Descreva o serviço realizado..."
+                rows={3}
+              />
+            </div>
+            <div>
+              <Label>Número da Nota Fiscal</Label>
+              <Input
+                value={closureForm.invoice_number}
+                onChange={e => setClosureForm({...closureForm, invoice_number: e.target.value})}
+                placeholder="Ex: NF-001234"
+              />
+            </div>
+            <div>
+              <Label>Mecânico Responsável</Label>
+              <Input
+                value={closureForm.mechanic_name}
+                onChange={e => setClosureForm({...closureForm, mechanic_name: e.target.value})}
+                placeholder="Nome do mecânico"
+              />
+            </div>
+            <div>
+              <Label>Observações</Label>
+              <Textarea
+                value={closureForm.notes}
+                onChange={e => setClosureForm({...closureForm, notes: e.target.value})}
+                placeholder="Observações adicionais..."
+                rows={2}
+              />
+            </div>
+            <Button
+              onClick={handleClosureConfirm}
+              disabled={!closureForm.service_executed}
+              className="w-full"
+            >
+              Confirmar e Concluir OS
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

@@ -487,6 +487,7 @@ export type Database = {
           description: string
           equipment_id: string
           id: string
+          invoice_number: string | null
           maintenance_request_id: string
           mechanic_name: string | null
           notes: string | null
@@ -496,6 +497,7 @@ export type Database = {
           photo_end_url: string | null
           photo_start_url: string | null
           priority: string
+          service_executed: string | null
           started_at: string | null
           status: string
           updated_at: string
@@ -506,6 +508,7 @@ export type Database = {
           description: string
           equipment_id: string
           id?: string
+          invoice_number?: string | null
           maintenance_request_id: string
           mechanic_name?: string | null
           notes?: string | null
@@ -515,6 +518,7 @@ export type Database = {
           photo_end_url?: string | null
           photo_start_url?: string | null
           priority?: string
+          service_executed?: string | null
           started_at?: string | null
           status?: string
           updated_at?: string
@@ -525,6 +529,7 @@ export type Database = {
           description?: string
           equipment_id?: string
           id?: string
+          invoice_number?: string | null
           maintenance_request_id?: string
           mechanic_name?: string | null
           notes?: string | null
@@ -534,6 +539,7 @@ export type Database = {
           photo_end_url?: string | null
           photo_start_url?: string | null
           priority?: string
+          service_executed?: string | null
           started_at?: string | null
           status?: string
           updated_at?: string

@@ -12,7 +12,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
 } from 'recharts';
-import { BarChart2, Droplets, Clock, Wrench, Calendar, FileSpreadsheet, FileText, Filter, ClipboardList, Clipboard } from 'lucide-react';
+import { BarChart2, Droplets, Clock, Wrench, Calendar, FileSpreadsheet, FileText, Filter, ClipboardList, Clipboard, Info, Calculator } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';

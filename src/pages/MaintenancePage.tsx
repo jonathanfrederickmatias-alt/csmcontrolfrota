@@ -320,7 +320,7 @@ export default function MaintenancePage() {
         <p className="text-muted-foreground mt-1">Planos preventivos, pedidos e histórico</p>
       </div>
 
-      <Tabs defaultValue="plans" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="w-full grid grid-cols-4">
           <TabsTrigger value="os" className="gap-1.5"><Clipboard className="w-4 h-4" /> OS</TabsTrigger>
           <TabsTrigger value="plans" className="gap-1.5"><Wrench className="w-4 h-4" /> Planos</TabsTrigger>

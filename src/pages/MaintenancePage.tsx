@@ -589,51 +589,7 @@ export default function MaintenancePage() {
               }}>
                 <FileSpreadsheet className="w-4 h-4 text-success" /> Excel
               </Button>
-              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => {
-                const filterName = planFilter === 'all' ? 'Todos' : equipments.find(e => e.id === planFilter)?.name || 'Filtrado';
-                const rows = filteredPlans.map(p => {
-                  const eq = equipments.find(e => e.id === p.equipment_id);
-                  const currentHM = eq?.current_hour_meter || 0;
-                  return {
-                    equipment: eq ? eqLabel(eq) : '—',
-                    description: p.description,
-                    intervalHours: p.interval_hours,
-                    nextDueAt: p.next_due_at,
-                    lastDoneAt: p.last_done_at,
-                    currentHM,
-                    remaining: p.next_due_at - currentHM,
-                    status: p.status as 'ok' | 'approaching' | 'overdue',
-                    lastExecuted: p.last_executed_at ? new Date(p.last_executed_at).toLocaleDateString('pt-BR') : undefined,
-                    plate: eq?.plate || undefined,
-                    model: eq?.model || undefined,
-                    brand: eq?.brand || undefined,
-                    costCenter: eq?.cost_center || undefined,
-                    year: eq?.year || undefined,
-                  };
-                });
-                // Add equipments without plans
-                const eqsWithPlans = new Set(filteredPlans.map(p => p.equipment_id));
-                const targetEqs = planFilter === 'all' ? equipments : equipments.filter(e => e.id === planFilter);
-                targetEqs.filter(eq => !eqsWithPlans.has(eq.id)).forEach(eq => {
-                  rows.push({
-                    equipment: eqLabel(eq),
-                    description: 'Nenhum plano de manutenção cadastrado',
-                    intervalHours: 0,
-                    nextDueAt: 0,
-                    lastDoneAt: 0,
-                    currentHM: eq.current_hour_meter,
-                    remaining: 0,
-                    status: 'ok' as const,
-                    lastExecuted: undefined,
-                    plate: eq.plate || undefined,
-                    model: eq.model || undefined,
-                    brand: eq.brand || undefined,
-                    costCenter: eq.cost_center || undefined,
-                    year: eq.year || undefined,
-                  });
-                });
-                exportMaintenancePlansPDF(rows, filterName);
-              }}>
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setPdfHistoryDialog(true)}>
                 <FileText className="w-4 h-4 text-primary" /> PDF
               </Button>
             {canEdit && (

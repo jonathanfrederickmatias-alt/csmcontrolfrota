@@ -1172,6 +1172,101 @@ export default function MaintenancePage() {
           </div>
         </DialogContent>
       </Dialog>
+      {/* PDF History Period Filter Dialog */}
+      <Dialog open={pdfHistoryDialog} onOpenChange={(v) => { setPdfHistoryDialog(v); if (!v) { setPdfHistoryFrom(''); setPdfHistoryTo(''); } }}>
+        <DialogContent className="bg-card border-border max-w-sm">
+          <DialogHeader><DialogTitle>Exportar PDF com Histórico</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">Selecione o período do histórico de manutenção a incluir no PDF. Deixe em branco para incluir todo o histórico.</p>
+          <div className="space-y-3">
+            <div><Label>Data inicial</Label><Input type="date" value={pdfHistoryFrom} onChange={e => setPdfHistoryFrom(e.target.value)} /></div>
+            <div><Label>Data final</Label><Input type="date" value={pdfHistoryTo} onChange={e => setPdfHistoryTo(e.target.value)} /></div>
+            <Button className="w-full" disabled={pdfExporting} onClick={async () => {
+              setPdfExporting(true);
+              try {
+                // Build plan rows
+                const filterName = planFilter === 'all' ? 'Todos' : equipments.find(e => e.id === planFilter)?.name || 'Filtrado';
+                const rows = filteredPlans.map(p => {
+                  const eq = equipments.find(e => e.id === p.equipment_id);
+                  const currentHM = eq?.current_hour_meter || 0;
+                  return {
+                    equipment: eq ? eqLabel(eq) : '—',
+                    description: p.description,
+                    intervalHours: p.interval_hours,
+                    nextDueAt: p.next_due_at,
+                    lastDoneAt: p.last_done_at,
+                    currentHM,
+                    remaining: p.next_due_at - currentHM,
+                    status: p.status as 'ok' | 'approaching' | 'overdue',
+                    lastExecuted: p.last_executed_at ? new Date(p.last_executed_at).toLocaleDateString('pt-BR') : undefined,
+                    plate: eq?.plate || undefined,
+                    model: eq?.model || undefined,
+                    brand: eq?.brand || undefined,
+                    costCenter: eq?.cost_center || undefined,
+                    year: eq?.year || undefined,
+                  };
+                });
+                // Add equipments without plans
+                const eqsWithPlans = new Set(filteredPlans.map(p => p.equipment_id));
+                const targetEqs = planFilter === 'all' ? equipments : equipments.filter(e => e.id === planFilter);
+                targetEqs.filter(eq => !eqsWithPlans.has(eq.id)).forEach(eq => {
+                  rows.push({
+                    equipment: eqLabel(eq),
+                    description: 'Nenhum plano de manutenção cadastrado',
+                    intervalHours: 0, nextDueAt: 0, lastDoneAt: 0,
+                    currentHM: eq.current_hour_meter, remaining: 0,
+                    status: 'ok' as const, lastExecuted: undefined,
+                    plate: eq.plate || undefined, model: eq.model || undefined,
+                    brand: eq.brand || undefined, costCenter: eq.cost_center || undefined,
+                    year: eq.year || undefined,
+                  });
+                });
+
+                // Fetch history with optional date filter
+                let query = supabase.from('maintenance_history').select('*').order('executed_at', { ascending: false });
+                if (pdfHistoryFrom) query = query.gte('executed_at', pdfHistoryFrom);
+                if (pdfHistoryTo) query = query.lte('executed_at', pdfHistoryTo + 'T23:59:59');
+                const { data: histData } = await query;
+                const allHist = (histData || []) as DBMaintenanceHistory[];
+
+                // Group by equipment name
+                const historyByEquipment: Record<string, PlanHistoryRow[]> = {};
+                allHist.forEach(h => {
+                  const eq = equipments.find(e => e.id === h.equipment_id);
+                  const eqName = eq ? eqLabel(eq) : '—';
+                  if (!historyByEquipment[eqName]) historyByEquipment[eqName] = [];
+                  historyByEquipment[eqName].push({
+                    description: h.description,
+                    hourMeter: h.hour_meter,
+                    date: new Date(h.executed_at).toLocaleDateString('pt-BR'),
+                    operator: h.operator_name || '—',
+                    notes: h.notes || '',
+                  });
+                });
+
+                // Build period label
+                let periodLabel = '';
+                if (pdfHistoryFrom && pdfHistoryTo) {
+                  periodLabel = `${new Date(pdfHistoryFrom + 'T12:00:00').toLocaleDateString('pt-BR')} a ${new Date(pdfHistoryTo + 'T12:00:00').toLocaleDateString('pt-BR')}`;
+                } else if (pdfHistoryFrom) {
+                  periodLabel = `A partir de ${new Date(pdfHistoryFrom + 'T12:00:00').toLocaleDateString('pt-BR')}`;
+                } else if (pdfHistoryTo) {
+                  periodLabel = `Até ${new Date(pdfHistoryTo + 'T12:00:00').toLocaleDateString('pt-BR')}`;
+                }
+
+                await exportMaintenancePlansPDF(rows, filterName, undefined, historyByEquipment, periodLabel || undefined);
+                setPdfHistoryDialog(false);
+                setPdfHistoryFrom('');
+                setPdfHistoryTo('');
+              } finally {
+                setPdfExporting(false);
+              }
+            }}>
+              {pdfExporting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Gerar PDF
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

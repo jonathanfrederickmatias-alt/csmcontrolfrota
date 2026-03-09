@@ -41,6 +41,8 @@ export interface DBMaintenanceHistory {
   executed_at: string;
   notes?: string;
   operator_name?: string;
+  parts_cost?: number;
+  labor_cost?: number;
   created_at: string;
 }
 

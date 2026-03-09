@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { DBEquipment, DBFuelRecord, DBChecklist, DBMaintenancePlan, DBWorkOrder } from '@/lib/supabase-types';
+import { DBEquipment, DBFuelRecord, DBChecklist, DBMaintenancePlan, DBWorkOrder, DBMaintenanceHistory } from '@/lib/supabase-types';
 
 interface Part { code: string; description: string; }
 function formatParts(o: any): string {
@@ -12,7 +12,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
 } from 'recharts';
-import { BarChart2, Droplets, Clock, Wrench, Calendar, FileSpreadsheet, FileText, Filter, ClipboardList, Clipboard } from 'lucide-react';
+import { BarChart2, Droplets, Clock, Wrench, Calendar, FileSpreadsheet, FileText, Filter, ClipboardList, Clipboard, Info, Calculator } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
@@ -41,6 +41,7 @@ export default function ReportsPage() {
   const [checklists, setChecklists] = useState<DBChecklist[]>([]);
   const [plans, setPlans] = useState<DBMaintenancePlan[]>([]);
   const [workOrders, setWorkOrders] = useState<DBWorkOrder[]>([]);
+  const [maintenanceHistory, setMaintenanceHistory] = useState<DBMaintenanceHistory[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -48,7 +49,7 @@ export default function ReportsPage() {
       setLoading(true);
       const cutoff = period === 'all' ? null : new Date(Date.now() - parseInt(period) * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-      const [eqRes, frRes, clRes, mpRes, osRes] = await Promise.all([
+      const [eqRes, frRes, clRes, mpRes, osRes, mhRes] = await Promise.all([
         supabase.from('equipments').select('*'),
         cutoff
           ? supabase.from('fuel_records').select('*').gte('date', cutoff).order('date')
@@ -60,6 +61,9 @@ export default function ReportsPage() {
         cutoff
           ? supabase.from('work_orders').select('*').gte('created_at', cutoff + 'T00:00:00').order('created_at', { ascending: false })
           : supabase.from('work_orders').select('*').order('created_at', { ascending: false }),
+        cutoff
+          ? supabase.from('maintenance_history').select('*').gte('executed_at', cutoff + 'T00:00:00').order('executed_at', { ascending: false })
+          : supabase.from('maintenance_history').select('*').order('executed_at', { ascending: false }),
       ]);
 
       setEquipments((eqRes.data || []) as DBEquipment[]);
@@ -67,6 +71,7 @@ export default function ReportsPage() {
       setChecklists((clRes.data || []) as unknown as DBChecklist[]);
       setPlans((mpRes.data || []) as DBMaintenancePlan[]);
       setWorkOrders((osRes.data || []) as DBWorkOrder[]);
+      setMaintenanceHistory((mhRes.data || []) as DBMaintenanceHistory[]);
       setLoading(false);
     };
     fetchAll();
@@ -78,6 +83,9 @@ export default function ReportsPage() {
   const filteredPlans = selectedEquipment === 'all' ? plans : plans.filter(p => p.equipment_id === selectedEquipment);
   const filteredEquipments = selectedEquipment === 'all' ? equipments : equipments.filter(e => e.id === selectedEquipment);
   const filteredOrders = selectedEquipment === 'all' ? workOrders : workOrders.filter(o => o.equipment_id === selectedEquipment);
+  const filteredHistory = selectedEquipment === 'all' ? maintenanceHistory : maintenanceHistory.filter(h => h.equipment_id === selectedEquipment);
+
+  const selectedEqFull = equipments.find(e => e.id === selectedEquipment);
 
   // Fuel by equipment
   const fuelByEquipment = filteredEquipments
@@ -367,6 +375,56 @@ export default function ReportsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Equipment Summary Panel */}
+          {selectedEquipment !== 'all' && selectedEqFull && (
+            <div className="glass-card rounded-xl p-5 lg:col-span-2 bg-primary/5 border-primary/20">
+              <h2 className="font-bold mb-4 flex items-center gap-2 text-primary">
+                <Info className="w-5 h-5" />
+                Resumo do Equipamento: {selectedEqFull.name}
+              </h2>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="space-y-2 text-sm">
+                  <p><span className="text-muted-foreground">Placa/ID:</span> <span className="font-medium">{selectedEqFull.plate || '—'}</span></p>
+                  <p><span className="text-muted-foreground">Modelo/Marca:</span> <span className="font-medium">{selectedEqFull.model || '—'} / {selectedEqFull.brand || '—'}</span></p>
+                  <p><span className="text-muted-foreground">Ano:</span> <span className="font-medium">{selectedEqFull.year || '—'}</span></p>
+                  <p><span className="text-muted-foreground">Centro de Custo:</span> <span className="font-medium">{selectedEqFull.cost_center || '—'}</span></p>
+                  <p><span className="text-muted-foreground">Horímetro Atual:</span> <span className="font-mono font-bold">{selectedEqFull.current_hour_meter}h</span></p>
+                </div>
+                
+                <div className="space-y-2 text-sm">
+                  <h3 className="font-semibold text-muted-foreground mb-1">Checklists no Período</h3>
+                  <p><span className="text-success font-medium">Conformes (OK):</span> {filteredChecklists.filter(c => c.status === 'ok').length}</p>
+                  <p><span className="text-warning font-medium">Atenção:</span> {filteredChecklists.filter(c => c.status === 'attention').length}</p>
+                  <p><span className="text-destructive font-medium">Críticos:</span> {filteredChecklists.filter(c => c.status === 'critical').length}</p>
+                  <div className="mt-2 pt-2 border-t border-border">
+                    <p className="font-bold">Total: {filteredChecklists.length}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-2 text-sm">
+                  <h3 className="font-semibold text-muted-foreground mb-1">Ordens de Serviço</h3>
+                  <p><span className="text-muted-foreground">Abertas:</span> {filteredOrders.filter(o => o.status === 'open').length}</p>
+                  <p><span className="text-primary font-medium">Em Andamento:</span> {filteredOrders.filter(o => o.status === 'in_progress').length}</p>
+                  <p><span className="text-success font-medium">Concluídas:</span> {filteredOrders.filter(o => o.status === 'done').length}</p>
+                  <div className="mt-2 pt-2 border-t border-border">
+                    <p className="font-bold">Total: {filteredOrders.length}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-2 text-sm">
+                  <h3 className="font-semibold text-muted-foreground mb-1 flex items-center gap-1.5"><Calculator className="w-4 h-4" /> Custos e Consumo</h3>
+                  <p><span className="text-muted-foreground">Combustível:</span> <span className="font-mono font-medium">{filteredFuel.reduce((acc, curr) => acc + Number(curr.liters), 0).toLocaleString('pt-BR')}L</span></p>
+                  <p><span className="text-muted-foreground">Custo Peças:</span> <span className="font-mono font-medium">R$ {filteredHistory.reduce((acc, curr) => acc + Number(curr.parts_cost || 0), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span></p>
+                  <p><span className="text-muted-foreground">Custo Mão de Obra:</span> <span className="font-mono font-medium">R$ {filteredHistory.reduce((acc, curr) => acc + Number(curr.labor_cost || 0), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span></p>
+                  <div className="mt-2 pt-2 border-t border-border">
+                    <p className="font-bold text-destructive">Total Manutenção: R$ {(filteredHistory.reduce((acc, curr) => acc + Number(curr.parts_cost || 0) + Number(curr.labor_cost || 0), 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Combustível por dia */}
           <div className="glass-card rounded-xl p-5 lg:col-span-2">
             <h2 className="font-bold mb-4 flex items-center gap-2">

@@ -88,6 +88,10 @@ export default function MaintenancePage() {
   const [editHistory, setEditHistory] = useState<DBMaintenanceHistory | null>(null);
   const [histEditForm, setHistEditForm] = useState({ description: '', hour_meter: '', operator_name: '', notes: '' });
 
+  // Closure dialog (dar baixa na OS)
+  const [closureOS, setClosureOS] = useState<DBWorkOrder | null>(null);
+  const [closureForm, setClosureForm] = useState({ invoice_number: '', service_executed: '', mechanic_name: '', notes: '' });
+
   // Controlled tab
   const [activeTab, setActiveTab] = useState('plans');
 

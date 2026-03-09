@@ -455,6 +455,67 @@ export async function exportMaintenancePlansPDF(
       });
     }
 
+    // === History section for this equipment ===
+    const eqHistory = historyByEquipment?.[equipName];
+    if (eqHistory && eqHistory.length > 0) {
+      y += 2;
+      y = checkPageBreak(pdf, y, 20);
+
+      // History sub-header
+      pdf.setFillColor(45, 55, 72);
+      pdf.roundedRect(margin + 4, y, contentWidth - 8, 8, 1, 1, 'F');
+      pdf.setTextColor(...COLORS.primary);
+      pdf.setFontSize(7.5);
+      pdf.setFont('helvetica', 'bold');
+      const histLabel = historyPeriodLabel ? `Histórico de Manutenção (${historyPeriodLabel})` : 'Histórico de Manutenção';
+      pdf.text(histLabel, margin + 8, y + 5.5);
+      y += 10;
+
+      // History table header
+      const hColWidths = [90, 22, 28, 50, 83];
+      const hColHeaders = ['Descrição', 'Horímetro', 'Data', 'Operador', 'Observações'];
+      const hColX = [margin];
+      for (let i = 1; i < hColWidths.length; i++) hColX.push(hColX[i - 1] + hColWidths[i - 1]);
+
+      pdf.setFillColor(200, 210, 225);
+      pdf.rect(margin, y, contentWidth, 6, 'F');
+      pdf.setTextColor(...COLORS.textMuted);
+      pdf.setFontSize(6);
+      pdf.setFont('helvetica', 'bold');
+      hColHeaders.forEach((h, i) => pdf.text(h, hColX[i] + 2, y + 4));
+      y += 6;
+
+      eqHistory.forEach((h, idx) => {
+        pdf.setFontSize(6);
+        pdf.setFont('helvetica', 'normal');
+        const descLines = wrapText(pdf, h.description, hColWidths[0] - 4);
+        const notesLines = wrapText(pdf, h.notes, hColWidths[4] - 4);
+        const lineHeight = 3.2;
+        const rowHeight = Math.max(6, Math.max(descLines.length, notesLines.length) * lineHeight + 2.5);
+
+        y = checkPageBreak(pdf, y, rowHeight);
+
+        if (idx % 2 === 1) {
+          pdf.setFillColor(...COLORS.rowAlt);
+          pdf.rect(margin, y, contentWidth, rowHeight, 'F');
+        }
+
+        pdf.setTextColor(...COLORS.text);
+        descLines.forEach((line, li) => pdf.text(line, hColX[0] + 2, y + 3.8 + li * lineHeight));
+
+        const midY = y + rowHeight / 2 + 1.2;
+        pdf.setTextColor(...COLORS.textMuted);
+        pdf.text(`${h.hourMeter}h`, hColX[1] + 2, midY);
+        pdf.text(h.date, hColX[2] + 2, midY);
+        pdf.text(clipText(pdf, h.operator, hColWidths[3] - 4), hColX[3] + 2, midY);
+
+        pdf.setTextColor(...COLORS.text);
+        notesLines.forEach((line, li) => pdf.text(line, hColX[4] + 2, y + 3.8 + li * lineHeight));
+
+        y += rowHeight;
+      });
+    }
+
     y += 5;
   }
 

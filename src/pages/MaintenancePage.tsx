@@ -14,7 +14,7 @@ import { toast } from "@/hooks/use-toast";
 import { toast as sonnerToast } from "sonner";
 import PhotoUpload from "@/components/PhotoUpload";
 import * as XLSX from 'xlsx';
-import { exportMaintenancePlansPDF, exportMaintenanceRequestsPDF, exportMaintenanceHistoryPDF, exportWorkOrdersPDF } from '@/lib/pdf-export';
+import { exportMaintenancePlansPDF, exportMaintenanceRequestsPDF, exportMaintenanceHistoryPDF, exportWorkOrdersPDF, PlanHistoryRow } from '@/lib/pdf-export';
 import { calculateMaintenanceStatus } from '@/lib/maintenance-utils';
 import { useUserRoles } from '@/hooks/useUserRoles';
 

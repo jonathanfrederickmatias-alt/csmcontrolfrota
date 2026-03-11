@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, Key, Loader2, Users } from 'lucide-react';
+import { Plus, Trash2, Key, Loader2, Users, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import type { AppRole } from '@/hooks/useUserRoles';
 
@@ -38,6 +38,7 @@ export default function UsersPage() {
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [pinDialogOpen, setPinDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserWithRole | null>(null);
   const [newPin, setNewPin] = useState('');
@@ -50,6 +51,12 @@ export default function UsersPage() {
   const [createPin, setCreatePin] = useState('');
   const [saving, setSaving] = useState(false);
 
+  // Edit user form
+  const [editName, setEditName] = useState('');
+  const [editRole, setEditRole] = useState<AppRole>('gestor');
+  const [editPassword, setEditPassword] = useState('');
+  const [editPin, setEditPin] = useState('');
+
   const fetchUsers = async () => {
     setLoading(true);
     const { data: profiles } = await supabase.from('profiles').select('*');
@@ -60,7 +67,7 @@ export default function UsersPage() {
       const mapped: UserWithRole[] = profiles.map((p: any) => ({
         user_id: p.user_id,
         display_name: p.display_name,
-        email: p.display_name, // fallback, will be overridden
+        email: p.display_name,
         roles: allRoles.filter((r: any) => r.user_id === p.user_id).map((r: any) => r.role as AppRole),
         pin: pins?.find((pin: any) => pin.user_id === p.user_id)?.pin,
       }));
@@ -82,7 +89,6 @@ export default function UsersPage() {
     }
     setSaving(true);
 
-    // Create user via edge function
     const { data, error } = await supabase.functions.invoke('manage-users', {
       body: { action: 'create', email, password, displayName, role, pin: role === 'abastecedor' ? createPin : undefined },
     });
@@ -93,6 +99,47 @@ export default function UsersPage() {
       toast.success('Usuário criado com sucesso!');
       setDialogOpen(false);
       setEmail(''); setPassword(''); setDisplayName(''); setRole('gestor'); setCreatePin('');
+      fetchUsers();
+    }
+    setSaving(false);
+  };
+
+  const openEditDialog = (user: UserWithRole) => {
+    setSelectedUser(user);
+    setEditName(user.display_name);
+    setEditRole(user.roles[0] || 'gestor');
+    setEditPassword('');
+    setEditPin(user.pin || '');
+    setEditDialogOpen(true);
+  };
+
+  const handleUpdateUser = async () => {
+    if (!selectedUser || !editName) {
+      toast.error('Nome é obrigatório');
+      return;
+    }
+    if (editRole === 'abastecedor' && editPin && editPin.length < 4) {
+      toast.error('PIN deve ter pelo menos 4 dígitos');
+      return;
+    }
+    setSaving(true);
+
+    const body: any = {
+      action: 'update',
+      userId: selectedUser.user_id,
+      displayName: editName,
+      role: editRole,
+    };
+    if (editPassword) body.password = editPassword;
+    if (editRole === 'abastecedor' && editPin) body.pin = editPin;
+
+    const { data, error } = await supabase.functions.invoke('manage-users', { body });
+
+    if (error || data?.error) {
+      toast.error(data?.error || 'Erro ao atualizar usuário');
+    } else {
+      toast.success('Usuário atualizado com sucesso!');
+      setEditDialogOpen(false);
       fetchUsers();
     }
     setSaving(false);
@@ -254,6 +301,14 @@ export default function UsersPage() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => openEditDialog(u)}
+                        title="Editar usuário"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
                       {u.roles.includes('abastecedor') && (
                         <Button
                           variant="ghost"
@@ -295,6 +350,53 @@ export default function UsersPage() {
           </Table>
         </div>
       )}
+
+      {/* Edit User Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Usuário</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div>
+              <Label>Nome</Label>
+              <Input value={editName} onChange={e => setEditName(e.target.value)} placeholder="Nome do usuário" />
+            </div>
+            <div>
+              <Label>Nova Senha (deixe em branco para manter)</Label>
+              <Input type="password" value={editPassword} onChange={e => setEditPassword(e.target.value)} placeholder="••••••••" minLength={6} />
+            </div>
+            <div>
+              <Label>Perfil</Label>
+              <Select value={editRole} onValueChange={v => setEditRole(v as AppRole)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">Administrador</SelectItem>
+                  <SelectItem value="gestor">Gestor</SelectItem>
+                  <SelectItem value="mecanico">Mecânico</SelectItem>
+                  <SelectItem value="abastecedor">Abastecedor</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {editRole === 'abastecedor' && (
+              <div>
+                <Label>PIN de Abastecimento</Label>
+                <Input
+                  value={editPin}
+                  onChange={e => setEditPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="Ex: 1234"
+                  maxLength={6}
+                  className="text-center text-2xl tracking-widest font-mono"
+                />
+              </div>
+            )}
+            <Button onClick={handleUpdateUser} className="w-full" disabled={saving}>
+              {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Salvar Alterações
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* PIN Dialog */}
       <Dialog open={pinDialogOpen} onOpenChange={setPinDialogOpen}>

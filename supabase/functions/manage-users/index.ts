@@ -44,7 +44,6 @@ Deno.serve(async (req) => {
     const { action, email, password, displayName, role, userId, pin } = await req.json();
 
     if (action === 'create') {
-      // Create user
       const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
         email,
         password,
@@ -58,14 +57,12 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Assign role
       if (newUser.user && role) {
         await supabaseAdmin.from('user_roles').insert({
           user_id: newUser.user.id,
           role,
         });
 
-        // If abastecedor, create PIN
         if (role === 'abastecedor') {
           await supabaseAdmin.from('fuel_pins').insert({
             user_id: newUser.user.id,
@@ -79,6 +76,67 @@ Deno.serve(async (req) => {
       });
     }
 
+    if (action === 'update') {
+      if (!userId) {
+        return new Response(JSON.stringify({ error: 'userId é obrigatório' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Update display name in profiles
+      if (displayName) {
+        await supabaseAdmin.from('profiles').update({ display_name: displayName }).eq('user_id', userId);
+        // Also update auth user metadata
+        await supabaseAdmin.auth.admin.updateUserById(userId, {
+          user_metadata: { display_name: displayName },
+        });
+      }
+
+      // Update password if provided
+      if (password) {
+        const { error: pwError } = await supabaseAdmin.auth.admin.updateUserById(userId, { password });
+        if (pwError) {
+          return new Response(JSON.stringify({ error: pwError.message }), {
+            status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      }
+
+      // Update role if provided
+      if (role) {
+        // Remove existing roles and set new one
+        await supabaseAdmin.from('user_roles').delete().eq('user_id', userId);
+        await supabaseAdmin.from('user_roles').insert({ user_id: userId, role });
+
+        // Handle PIN for abastecedor
+        if (role === 'abastecedor') {
+          const { data: existingPin } = await supabaseAdmin.from('fuel_pins').select('id').eq('user_id', userId).maybeSingle();
+          if (!existingPin) {
+            await supabaseAdmin.from('fuel_pins').insert({ user_id: userId, pin: pin || '1234' });
+          } else if (pin) {
+            await supabaseAdmin.from('fuel_pins').update({ pin }).eq('user_id', userId);
+          }
+        } else {
+          // Remove PIN if no longer abastecedor
+          await supabaseAdmin.from('fuel_pins').delete().eq('user_id', userId);
+        }
+      }
+
+      // Update PIN independently (if role stays abastecedor)
+      if (pin && !role) {
+        const { data: existingPin } = await supabaseAdmin.from('fuel_pins').select('id').eq('user_id', userId).maybeSingle();
+        if (existingPin) {
+          await supabaseAdmin.from('fuel_pins').update({ pin }).eq('user_id', userId);
+        } else {
+          await supabaseAdmin.from('fuel_pins').insert({ user_id: userId, pin });
+        }
+      }
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     if (action === 'delete') {
       if (!userId) {
         return new Response(JSON.stringify({ error: 'userId é obrigatório' }), {
@@ -86,19 +144,16 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Prevent self-deletion
       if (userId === caller.id) {
         return new Response(JSON.stringify({ error: 'Você não pode excluir a si mesmo' }), {
           status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
-      // Delete related data first
       await supabaseAdmin.from('fuel_pins').delete().eq('user_id', userId);
       await supabaseAdmin.from('user_roles').delete().eq('user_id', userId);
       await supabaseAdmin.from('profiles').delete().eq('user_id', userId);
 
-      // Delete the auth user
       const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);
       if (deleteError) {
         return new Response(JSON.stringify({ error: deleteError.message }), {

@@ -271,6 +271,8 @@ export default function MaintenancePage() {
         parts_cost: (os as any).parts_cost ? String((os as any).parts_cost) : '',
         mechanic_name: os.mechanic_name || '',
         notes: os.notes || '',
+        photo_start_url: (os as any).photo_start_url || '',
+        photo_end_url: (os as any).photo_end_url || '',
       });
       return;
     }

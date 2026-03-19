@@ -17,6 +17,7 @@ import ReportsPage from "@/pages/ReportsPage";
 import QRCodePage from "@/pages/QRCodePage";
 import MaintenanceRequestPage from "@/pages/MaintenanceRequestPage";
 import ObrasPage from "@/pages/ObrasPage";
+import SegurosPage from "@/pages/SegurosPage";
 import UsersPage from "@/pages/UsersPage";
 import QRChecklist from "@/pages/qr/QRChecklist";
 import QRFuel from "@/pages/qr/QRFuel";

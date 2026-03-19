@@ -252,7 +252,7 @@ export type Database = {
         Row: {
           created_at: string
           end_date: string
-          equipment_id: string
+          equipment_ids: Json
           id: string
           insurance_company: string
           notes: string | null
@@ -263,7 +263,7 @@ export type Database = {
         Insert: {
           created_at?: string
           end_date: string
-          equipment_id: string
+          equipment_ids?: Json
           id?: string
           insurance_company: string
           notes?: string | null
@@ -274,7 +274,7 @@ export type Database = {
         Update: {
           created_at?: string
           end_date?: string
-          equipment_id?: string
+          equipment_ids?: Json
           id?: string
           insurance_company?: string
           notes?: string | null
@@ -282,15 +282,7 @@ export type Database = {
           start_date?: string
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "insurance_records_equipment_id_fkey"
-            columns: ["equipment_id"]
-            isOneToOne: false
-            referencedRelation: "equipments"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       maintenance_history: {
         Row: {

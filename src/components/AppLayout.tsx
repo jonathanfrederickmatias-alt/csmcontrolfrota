@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Truck, ClipboardCheck, ClipboardList, Wrench, Fuel, QrCode, Menu, X, BarChart2, Droplets, Building2, Users, LogOut } from "lucide-react";
+import { LayoutDashboard, Truck, ClipboardCheck, ClipboardList, Wrench, Fuel, QrCode, Menu, X, BarChart2, Droplets, Building2, Users, LogOut, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import csmLogo from "@/assets/csm-logo.png";
 import { useUserRoles } from "@/hooks/useUserRoles";

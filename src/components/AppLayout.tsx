@@ -14,6 +14,7 @@ const allNavItems = [
   { to: "/manutencao", label: "Manutenção", icon: Wrench, roles: ['admin', 'gestor', 'mecanico', 'abastecedor'] },
   { to: "/abastecimento", label: "Abastecimento", icon: Fuel, roles: ['admin', 'gestor', 'abastecedor'] },
   { to: "/reabastecimento", label: "Reabastecimento", icon: Droplets, roles: ['admin', 'gestor'] },
+  { to: "/seguros", label: "Seguros", icon: ShieldCheck, roles: ['admin', 'gestor'] },
   { to: "/relatorios", label: "Relatórios", icon: BarChart2, roles: ['admin', 'gestor'] },
   { to: "/obras", label: "Obras", icon: Building2, roles: ['admin', 'gestor', 'abastecedor'] },
   { to: "/qrcode", label: "QR Code", icon: QrCode, roles: ['admin', 'gestor'] },

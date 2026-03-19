@@ -1341,6 +1341,18 @@ export default function MaintenancePage() {
                 rows={2}
               />
             </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <PhotoUpload
+                label="Foto/Arquivo Início"
+                onUploaded={url => setClosureForm({...closureForm, photo_start_url: url})}
+                value={closureForm.photo_start_url}
+              />
+              <PhotoUpload
+                label="Foto/Arquivo Término"
+                onUploaded={url => setClosureForm({...closureForm, photo_end_url: url})}
+                value={closureForm.photo_end_url}
+              />
+            </div>
             <Button
               onClick={handleClosureConfirm}
               disabled={!closureForm.service_executed}

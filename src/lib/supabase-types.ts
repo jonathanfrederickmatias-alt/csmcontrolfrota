@@ -106,6 +106,7 @@ export interface DBFuelRecord {
   liters: number;
   date: string;
   operator_name: string;
+  photo_url?: string;
   created_at: string;
 }
 

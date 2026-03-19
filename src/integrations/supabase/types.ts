@@ -248,6 +248,50 @@ export type Database = {
           },
         ]
       }
+      insurance_records: {
+        Row: {
+          created_at: string
+          end_date: string
+          equipment_id: string
+          id: string
+          insurance_company: string
+          notes: string | null
+          policy_number: string | null
+          start_date: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          end_date: string
+          equipment_id: string
+          id?: string
+          insurance_company: string
+          notes?: string | null
+          policy_number?: string | null
+          start_date: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          end_date?: string
+          equipment_id?: string
+          id?: string
+          insurance_company?: string
+          notes?: string | null
+          policy_number?: string | null
+          start_date?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "insurance_records_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       maintenance_history: {
         Row: {
           created_at: string

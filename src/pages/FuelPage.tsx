@@ -175,22 +175,23 @@ export default function FuelPage() {
               const combo = equipments.find(e => e.id === r.combo_equipment_id);
               const target = equipments.find(e => e.id === r.target_equipment_id);
               return (
-                <div key={r.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
+                <div key={r.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 cursor-pointer hover:bg-secondary/80 transition-colors" onClick={() => setDetailRecord(r)}>
                   <div>
                     <p className="text-sm font-medium">{combo?.name} → {target?.name}</p>
                     <p className="text-xs text-muted-foreground">{r.operator_name} — {r.date}</p>
                   </div>
                   <div className="flex items-center gap-2">
+                    {r.photo_url && <Image className="w-3.5 h-3.5 text-muted-foreground" />}
                     <span className="text-lg font-mono font-bold text-accent">{r.liters}L</span>
                     {canEdit && (
-                      <button onClick={() => openEdit(r)} className="text-muted-foreground hover:text-primary p-1 transition-colors">
+                      <button onClick={(e) => { e.stopPropagation(); openEdit(r); }} className="text-muted-foreground hover:text-primary p-1 transition-colors">
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
                     )}
                     {canEdit && (
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <button className="text-muted-foreground hover:text-destructive p-1 transition-colors">
+                          <button onClick={(e) => e.stopPropagation()} className="text-muted-foreground hover:text-destructive p-1 transition-colors">
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </AlertDialogTrigger>
@@ -225,6 +226,59 @@ export default function FuelPage() {
           </div>
         )}
       </div>
+
+      {/* Detail dialog */}
+      <Dialog open={!!detailRecord} onOpenChange={v => { if (!v) setDetailRecord(null); }}>
+        <DialogContent className="bg-card border-border max-w-lg">
+          <DialogHeader><DialogTitle>Detalhes do Abastecimento</DialogTitle></DialogHeader>
+          {detailRecord && (() => {
+            const combo = equipments.find(e => e.id === detailRecord.combo_equipment_id);
+            const target = equipments.find(e => e.id === detailRecord.target_equipment_id);
+            const targetId = target?.cost_center || target?.plate || '';
+            const comboId = combo?.cost_center || combo?.plate || '';
+            return (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p className="text-muted-foreground text-xs">Origem (Comboio)</p>
+                    <p className="font-medium">{combo?.name}{comboId ? ` (${comboId})` : ''}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-xs">Destino (Equipamento)</p>
+                    <p className="font-medium">{target?.name}{targetId ? ` (${targetId})` : ''}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-xs">Litros</p>
+                    <p className="font-bold text-lg text-accent">{detailRecord.liters}L</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-xs">Data</p>
+                    <p className="font-medium">{detailRecord.date}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-muted-foreground text-xs">Operador</p>
+                    <p className="font-medium">{detailRecord.operator_name}</p>
+                  </div>
+                </div>
+                {detailRecord.photo_url && (
+                  <div>
+                    <p className="text-muted-foreground text-xs mb-2">Foto / Arquivo</p>
+                    {detailRecord.photo_url.match(/\.(jpg|jpeg|png|gif|webp|bmp)$/i) || detailRecord.photo_url.includes('/photos/') ? (
+                      <a href={detailRecord.photo_url} target="_blank" rel="noopener noreferrer">
+                        <img src={detailRecord.photo_url} alt="Foto do abastecimento" className="rounded-lg max-h-64 w-full object-contain border" />
+                      </a>
+                    ) : (
+                      <a href={detailRecord.photo_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-primary hover:underline">
+                        <FileText className="w-4 h-4" /> Ver arquivo anexado
+                      </a>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
 
       {/* Edit fuel record dialog */}
       <Dialog open={!!editRecord} onOpenChange={v => { if (!v) setEditRecord(null); }}>

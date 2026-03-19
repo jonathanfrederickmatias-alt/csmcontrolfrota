@@ -90,7 +90,7 @@ export default function MaintenancePage() {
 
   // Closure dialog (dar baixa na OS)
   const [closureOS, setClosureOS] = useState<DBWorkOrder | null>(null);
-  const [closureForm, setClosureForm] = useState({ invoice_number: '', service_executed: '', mechanic_name: '', notes: '', labor_cost: '', parts_cost: '' });
+  const [closureForm, setClosureForm] = useState({ invoice_number: '', service_executed: '', mechanic_name: '', notes: '', labor_cost: '', parts_cost: '', photo_start_url: '', photo_end_url: '' });
 
   // PDF history filter dialog
   const [pdfHistoryDialog, setPdfHistoryDialog] = useState(false);
@@ -271,6 +271,8 @@ export default function MaintenancePage() {
         parts_cost: (os as any).parts_cost ? String((os as any).parts_cost) : '',
         mechanic_name: os.mechanic_name || '',
         notes: os.notes || '',
+        photo_start_url: (os as any).photo_start_url || '',
+        photo_end_url: (os as any).photo_end_url || '',
       });
       return;
     }
@@ -305,6 +307,8 @@ export default function MaintenancePage() {
       notes: closureForm.notes || null,
       labor_cost: closureForm.labor_cost ? Number(closureForm.labor_cost) : 0,
       parts_cost: closureForm.parts_cost ? Number(closureForm.parts_cost) : 0,
+      photo_start_url: closureForm.photo_start_url || null,
+      photo_end_url: closureForm.photo_end_url || null,
     };
     await supabase.from('work_orders').update(update).eq('id', closureOS.id);
     toast({ title: 'OS concluída com sucesso!' });
@@ -1335,6 +1339,18 @@ export default function MaintenancePage() {
                 onChange={e => setClosureForm({...closureForm, notes: e.target.value})}
                 placeholder="Observações adicionais..."
                 rows={2}
+              />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <PhotoUpload
+                label="Foto/Arquivo Início"
+                onUploaded={url => setClosureForm({...closureForm, photo_start_url: url})}
+                value={closureForm.photo_start_url}
+              />
+              <PhotoUpload
+                label="Foto/Arquivo Término"
+                onUploaded={url => setClosureForm({...closureForm, photo_end_url: url})}
+                value={closureForm.photo_end_url}
               />
             </div>
             <Button

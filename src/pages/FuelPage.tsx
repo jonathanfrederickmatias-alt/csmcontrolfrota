@@ -27,7 +27,8 @@ export default function FuelPage() {
   const [saving, setSaving] = useState(false);
   const [photoUrl, setPhotoUrl] = useState('');
 
-  // Edit state
+  // Detail & Edit state
+  const [detailRecord, setDetailRecord] = useState<DBFuelRecord | null>(null);
   const [editRecord, setEditRecord] = useState<DBFuelRecord | null>(null);
   const [editForm, setEditForm] = useState({ liters: '', operator_name: '', date: '' });
 

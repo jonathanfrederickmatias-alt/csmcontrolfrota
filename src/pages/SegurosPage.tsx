@@ -5,18 +5,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Plus, Pencil, Trash2, ShieldCheck, AlertTriangle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { format, differenceInDays, parseISO } from "date-fns";
-import { ptBR } from "date-fns/locale";
 
 interface InsuranceRecord {
   id: string;
-  equipment_id: string;
+  equipment_ids: string[];
   insurance_company: string;
   policy_number: string | null;
   start_date: string;
@@ -32,37 +32,44 @@ export default function SegurosPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<InsuranceRecord | null>(null);
 
-  const [equipmentId, setEquipmentId] = useState("");
+  const [selectedEquipmentIds, setSelectedEquipmentIds] = useState<string[]>([]);
   const [company, setCompany] = useState("");
   const [policyNumber, setPolicyNumber] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [notes, setNotes] = useState("");
+  const [equipSearch, setEquipSearch] = useState("");
 
   const fetchRecords = useCallback(async () => {
     const { data } = await supabase
       .from("insurance_records")
       .select("*")
       .order("end_date", { ascending: true });
-    if (data) setRecords(data as InsuranceRecord[]);
+    if (data) {
+      setRecords(data.map(r => ({
+        ...r,
+        equipment_ids: Array.isArray(r.equipment_ids) ? (r.equipment_ids as string[]) : [],
+      })));
+    }
     setLoading(false);
   }, []);
 
   useEffect(() => { fetchRecords(); }, [fetchRecords]);
 
   const resetForm = () => {
-    setEquipmentId("");
+    setSelectedEquipmentIds([]);
     setCompany("");
     setPolicyNumber("");
     setStartDate("");
     setEndDate("");
     setNotes("");
     setEditing(null);
+    setEquipSearch("");
   };
 
   const openEdit = (r: InsuranceRecord) => {
     setEditing(r);
-    setEquipmentId(r.equipment_id);
+    setSelectedEquipmentIds(r.equipment_ids);
     setCompany(r.insurance_company);
     setPolicyNumber(r.policy_number || "");
     setStartDate(r.start_date);
@@ -71,14 +78,20 @@ export default function SegurosPage() {
     setOpen(true);
   };
 
+  const toggleEquipment = (id: string) => {
+    setSelectedEquipmentIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
   const handleSave = async () => {
-    if (!equipmentId || !company || !startDate || !endDate) {
+    if (selectedEquipmentIds.length === 0 || !company || !startDate || !endDate) {
       toast({ title: "Preencha os campos obrigatórios", variant: "destructive" });
       return;
     }
 
     const payload = {
-      equipment_id: equipmentId,
+      equipment_ids: selectedEquipmentIds,
       insurance_company: company,
       policy_number: policyNumber || null,
       start_date: startDate,
@@ -107,7 +120,12 @@ export default function SegurosPage() {
     fetchRecords();
   };
 
-  const getEquipmentName = (id: string) => equipments.find(e => e.id === id)?.name || "—";
+  const getEquipLabel = (id: string) => {
+    const eq = equipments.find(e => e.id === id);
+    if (!eq) return "—";
+    const identifier = eq.cost_center || eq.plate || "";
+    return identifier ? `${eq.name} (${identifier})` : eq.name;
+  };
 
   const getStatusBadge = (endDate: string) => {
     const days = differenceInDays(parseISO(endDate), new Date());
@@ -115,6 +133,15 @@ export default function SegurosPage() {
     if (days <= 15) return <Badge className="bg-yellow-500 hover:bg-yellow-600 gap-1"><AlertTriangle className="w-3 h-3" /> Vence em {days}d</Badge>;
     return <Badge className="bg-green-600 hover:bg-green-700 gap-1"><ShieldCheck className="w-3 h-3" /> Vigente</Badge>;
   };
+
+  const filteredEquipments = equipments
+    .filter(e => e.type !== 'combo')
+    .filter(e => {
+      if (!equipSearch) return true;
+      const search = equipSearch.toLowerCase();
+      const label = getEquipLabel(e.id).toLowerCase();
+      return label.includes(search);
+    });
 
   return (
     <div className="space-y-6">
@@ -133,15 +160,24 @@ export default function SegurosPage() {
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label>Equipamento *</Label>
-                <Select value={equipmentId} onValueChange={setEquipmentId}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>
-                    {equipments.filter(e => e.type !== 'combo').map(e => (
-                      <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label>Equipamentos * ({selectedEquipmentIds.length} selecionados)</Label>
+                <Input
+                  placeholder="Buscar equipamento..."
+                  value={equipSearch}
+                  onChange={e => setEquipSearch(e.target.value)}
+                  className="mb-2"
+                />
+                <ScrollArea className="h-40 rounded-md border p-2">
+                  {filteredEquipments.map(e => (
+                    <label key={e.id} className="flex items-center gap-2 py-1.5 px-1 hover:bg-muted/50 rounded cursor-pointer text-sm">
+                      <Checkbox
+                        checked={selectedEquipmentIds.includes(e.id)}
+                        onCheckedChange={() => toggleEquipment(e.id)}
+                      />
+                      {getEquipLabel(e.id)}
+                    </label>
+                  ))}
+                </ScrollArea>
               </div>
               <div>
                 <Label>Seguradora *</Label>
@@ -180,7 +216,7 @@ export default function SegurosPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Equipamento</TableHead>
+                <TableHead>Equipamentos</TableHead>
                 <TableHead>Seguradora</TableHead>
                 <TableHead>Apólice</TableHead>
                 <TableHead>Período</TableHead>
@@ -191,7 +227,13 @@ export default function SegurosPage() {
             <TableBody>
               {records.map(r => (
                 <TableRow key={r.id}>
-                  <TableCell className="font-medium">{getEquipmentName(r.equipment_id)}</TableCell>
+                  <TableCell className="font-medium max-w-[200px]">
+                    <div className="flex flex-wrap gap-1">
+                      {r.equipment_ids.map(id => (
+                        <Badge key={id} variant="outline" className="text-xs">{getEquipLabel(id)}</Badge>
+                      ))}
+                    </div>
+                  </TableCell>
                   <TableCell>{r.insurance_company}</TableCell>
                   <TableCell>{r.policy_number || "—"}</TableCell>
                   <TableCell className="text-sm">

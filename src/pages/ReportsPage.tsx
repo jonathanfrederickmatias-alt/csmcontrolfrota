@@ -174,7 +174,7 @@ export default function ReportsPage() {
       filteredFuel.map(r => {
         const target = equipments.find(e => e.id === r.target_equipment_id);
         const combo = equipments.find(e => e.id === r.combo_equipment_id);
-        return { Data: r.date, Equipamento: target?.name || '—', Comboio: combo?.name || '—', Litros: r.liters, Responsável: r.operator_name };
+        return { Data: r.date, Equipamento: target?.name || '—', Comboio: combo?.name || '—', Litros: r.liters, Horímetro: (r as any).hour_meter || '—', Responsável: r.operator_name };
       })
     );
     XLSX.utils.book_append_sheet(wb, fuelSheet, 'Abastecimentos');

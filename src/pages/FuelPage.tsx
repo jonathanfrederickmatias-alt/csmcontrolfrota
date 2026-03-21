@@ -21,6 +21,7 @@ export default function FuelPage() {
   const [records, setRecords] = useState<DBFuelRecord[]>([]);
   const [comboId, setComboId] = useState('');
   const [targetId, setTargetId] = useState('');
+  const [hourMeter, setHourMeter] = useState('');
   const [liters, setLiters] = useState('');
   const [operatorName, setOperatorName] = useState('');
   const [saved, setSaved] = useState(false);
@@ -30,7 +31,7 @@ export default function FuelPage() {
   // Detail & Edit state
   const [detailRecord, setDetailRecord] = useState<DBFuelRecord | null>(null);
   const [editRecord, setEditRecord] = useState<DBFuelRecord | null>(null);
-  const [editForm, setEditForm] = useState({ liters: '', operator_name: '', date: '' });
+  const [editForm, setEditForm] = useState({ liters: '', operator_name: '', date: '', hour_meter: '' });
 
   const fetchData = async () => {
     const [eqRes, frRes] = await Promise.all([
@@ -56,19 +57,20 @@ export default function FuelPage() {
       date: new Date().toISOString().split('T')[0],
       operator_name: operatorName,
       photo_url: photoUrl || null,
+      hour_meter: hourMeter ? Number(hourMeter) : null,
     } as any);
     setSaving(false);
     setSaved(true);
     fetchData();
     setTimeout(() => {
       setSaved(false);
-      setComboId(''); setTargetId(''); setLiters(''); setOperatorName(''); setPhotoUrl('');
+      setComboId(''); setTargetId(''); setLiters(''); setOperatorName(''); setPhotoUrl(''); setHourMeter('');
     }, 2000);
   };
 
   const openEdit = (r: DBFuelRecord) => {
     setEditRecord(r);
-    setEditForm({ liters: String(r.liters), operator_name: r.operator_name, date: r.date });
+    setEditForm({ liters: String(r.liters), operator_name: r.operator_name, date: r.date, hour_meter: r.hour_meter ? String(r.hour_meter) : '' });
   };
 
   const handleSaveEdit = async () => {
@@ -77,7 +79,8 @@ export default function FuelPage() {
       liters: Number(editForm.liters),
       operator_name: editForm.operator_name,
       date: editForm.date,
-    }).eq('id', editRecord.id);
+      hour_meter: editForm.hour_meter ? Number(editForm.hour_meter) : null,
+    } as any).eq('id', editRecord.id);
     toast.success('Registro atualizado!');
     setEditRecord(null);
     fetchData();
@@ -155,6 +158,7 @@ export default function FuelPage() {
               )}
             </div>
             <div><Label>Operador *</Label><Input value={operatorName} onChange={e => setOperatorName(e.target.value)} placeholder="Nome" /></div>
+            <div><Label>Horímetro</Label><Input type="number" value={hourMeter} onChange={e => setHourMeter(e.target.value)} placeholder="Ex: 1500" /></div>
           </div>
           <div className="mt-4">
             <PhotoUpload label="Foto do Abastecimento" required onUploaded={setPhotoUrl} acceptFiles />
@@ -178,7 +182,7 @@ export default function FuelPage() {
                 <div key={r.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 cursor-pointer hover:bg-secondary/80 transition-colors" onClick={() => setDetailRecord(r)}>
                   <div>
                     <p className="text-sm font-medium">{combo?.name} → {target?.name}</p>
-                    <p className="text-xs text-muted-foreground">{r.operator_name} — {r.date}</p>
+                    <p className="text-xs text-muted-foreground">{r.operator_name} — {r.date}{r.hour_meter ? ` — ${r.hour_meter}h` : ''}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     {r.photo_url && <Image className="w-3.5 h-3.5 text-muted-foreground" />}
@@ -252,6 +256,10 @@ export default function FuelPage() {
                     <p className="font-bold text-lg text-accent">{detailRecord.liters}L</p>
                   </div>
                   <div>
+                    <p className="text-muted-foreground text-xs">Horímetro</p>
+                    <p className="font-medium">{detailRecord.hour_meter ? `${detailRecord.hour_meter}h` : '—'}</p>
+                  </div>
+                  <div>
                     <p className="text-muted-foreground text-xs">Data</p>
                     <p className="font-medium">{detailRecord.date}</p>
                   </div>
@@ -288,6 +296,7 @@ export default function FuelPage() {
             <div><Label>Litros *</Label><Input type="number" value={editForm.liters} onChange={e => setEditForm({...editForm, liters: e.target.value})} /></div>
             <div><Label>Operador *</Label><Input value={editForm.operator_name} onChange={e => setEditForm({...editForm, operator_name: e.target.value})} /></div>
             <div><Label>Data</Label><Input type="date" value={editForm.date} onChange={e => setEditForm({...editForm, date: e.target.value})} /></div>
+            <div><Label>Horímetro</Label><Input type="number" value={editForm.hour_meter} onChange={e => setEditForm({...editForm, hour_meter: e.target.value})} placeholder="Ex: 1500" /></div>
             <Button onClick={handleSaveEdit} disabled={!editForm.liters || !editForm.operator_name} className="w-full">Salvar Alterações</Button>
           </div>
         </DialogContent>

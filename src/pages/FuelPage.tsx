@@ -79,7 +79,8 @@ export default function FuelPage() {
       liters: Number(editForm.liters),
       operator_name: editForm.operator_name,
       date: editForm.date,
-    }).eq('id', editRecord.id);
+      hour_meter: editForm.hour_meter ? Number(editForm.hour_meter) : null,
+    } as any).eq('id', editRecord.id);
     toast.success('Registro atualizado!');
     setEditRecord(null);
     fetchData();

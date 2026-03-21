@@ -57,6 +57,7 @@ export default function FuelPage() {
       date: new Date().toISOString().split('T')[0],
       operator_name: operatorName,
       photo_url: photoUrl || null,
+      hour_meter: hourMeter ? Number(hourMeter) : null,
     } as any);
     setSaving(false);
     setSaved(true);

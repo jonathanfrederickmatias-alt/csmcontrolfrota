@@ -21,6 +21,7 @@ export default function FuelPage() {
   const [records, setRecords] = useState<DBFuelRecord[]>([]);
   const [comboId, setComboId] = useState('');
   const [targetId, setTargetId] = useState('');
+  const [hourMeter, setHourMeter] = useState('');
   const [liters, setLiters] = useState('');
   const [operatorName, setOperatorName] = useState('');
   const [saved, setSaved] = useState(false);

@@ -31,7 +31,7 @@ export default function FuelPage() {
   // Detail & Edit state
   const [detailRecord, setDetailRecord] = useState<DBFuelRecord | null>(null);
   const [editRecord, setEditRecord] = useState<DBFuelRecord | null>(null);
-  const [editForm, setEditForm] = useState({ liters: '', operator_name: '', date: '' });
+  const [editForm, setEditForm] = useState({ liters: '', operator_name: '', date: '', hour_meter: '' });
 
   const fetchData = async () => {
     const [eqRes, frRes] = await Promise.all([

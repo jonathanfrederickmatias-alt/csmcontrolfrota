@@ -256,6 +256,10 @@ export default function FuelPage() {
                     <p className="font-bold text-lg text-accent">{detailRecord.liters}L</p>
                   </div>
                   <div>
+                    <p className="text-muted-foreground text-xs">Horímetro</p>
+                    <p className="font-medium">{detailRecord.hour_meter ? `${detailRecord.hour_meter}h` : '—'}</p>
+                  </div>
+                  <div>
                     <p className="text-muted-foreground text-xs">Data</p>
                     <p className="font-medium">{detailRecord.date}</p>
                   </div>

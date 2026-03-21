@@ -70,7 +70,7 @@ export default function FuelPage() {
 
   const openEdit = (r: DBFuelRecord) => {
     setEditRecord(r);
-    setEditForm({ liters: String(r.liters), operator_name: r.operator_name, date: r.date });
+    setEditForm({ liters: String(r.liters), operator_name: r.operator_name, date: r.date, hour_meter: r.hour_meter ? String(r.hour_meter) : '' });
   };
 
   const handleSaveEdit = async () => {

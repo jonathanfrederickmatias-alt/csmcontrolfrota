@@ -158,6 +158,7 @@ export type Database = {
           combo_equipment_id: string
           created_at: string
           date: string
+          hour_meter: number | null
           id: string
           liters: number
           operator_name: string
@@ -168,6 +169,7 @@ export type Database = {
           combo_equipment_id: string
           created_at?: string
           date?: string
+          hour_meter?: number | null
           id?: string
           liters: number
           operator_name: string
@@ -178,6 +180,7 @@ export type Database = {
           combo_equipment_id?: string
           created_at?: string
           date?: string
+          hour_meter?: number | null
           id?: string
           liters?: number
           operator_name?: string

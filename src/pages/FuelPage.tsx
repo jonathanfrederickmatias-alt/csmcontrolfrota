@@ -182,7 +182,7 @@ export default function FuelPage() {
                 <div key={r.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 cursor-pointer hover:bg-secondary/80 transition-colors" onClick={() => setDetailRecord(r)}>
                   <div>
                     <p className="text-sm font-medium">{combo?.name} → {target?.name}</p>
-                    <p className="text-xs text-muted-foreground">{r.operator_name} — {r.date}</p>
+                    <p className="text-xs text-muted-foreground">{r.operator_name} — {r.date}{r.hour_meter ? ` — ${r.hour_meter}h` : ''}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     {r.photo_url && <Image className="w-3.5 h-3.5 text-muted-foreground" />}

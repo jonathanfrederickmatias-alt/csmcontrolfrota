@@ -64,7 +64,7 @@ export default function FuelPage() {
     fetchData();
     setTimeout(() => {
       setSaved(false);
-      setComboId(''); setTargetId(''); setLiters(''); setOperatorName(''); setPhotoUrl('');
+      setComboId(''); setTargetId(''); setLiters(''); setOperatorName(''); setPhotoUrl(''); setHourMeter('');
     }, 2000);
   };
 

@@ -184,7 +184,11 @@ export default function FuelPage() {
                     <p className="text-sm font-medium">{combo?.name} → {target?.name}</p>
                     <p className="text-xs text-muted-foreground">
                       {r.operator_name} — {new Date(r.date + 'T12:00:00').toLocaleDateString('pt-BR')}
-                      {r.hour_meter ? <span className="ml-2 inline-flex items-center gap-1 text-primary font-semibold">⏱ {r.hour_meter}h</span> : ''}
+                      {r.hour_meter ? (
+                        <span className="ml-2 inline-flex items-center gap-1 text-primary font-semibold">⏱ {r.hour_meter}h</span>
+                      ) : target ? (
+                        <span className="ml-2 inline-flex items-center gap-1 text-muted-foreground">⏱ {target.current_hour_meter}h (atual)</span>
+                      ) : null}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">

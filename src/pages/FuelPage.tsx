@@ -39,7 +39,40 @@ export default function FuelPage() {
       supabase.from('fuel_records').select('*').order('created_at', { ascending: false }).limit(50),
     ]);
     setEquipments((eqRes.data || []) as DBEquipment[]);
-    setRecords((frRes.data || []) as DBFuelRecord[]);
+    const fuelData = (frRes.data || []) as DBFuelRecord[];
+
+    // For records without hour_meter, try to find from checklists or work_orders of the same day
+    const missingHM = fuelData.filter(r => !r.hour_meter);
+    if (missingHM.length > 0) {
+      const dates = [...new Set(missingHM.map(r => r.date))];
+      const targetIds = [...new Set(missingHM.map(r => r.target_equipment_id))];
+
+      const [clRes, woRes] = await Promise.all([
+        supabase.from('checklists').select('equipment_id, date, hour_meter').in('equipment_id', targetIds).in('date', dates),
+        supabase.from('work_orders').select('equipment_id, created_at, started_at').in('equipment_id', targetIds),
+      ]);
+
+      const checklistMap = new Map<string, number>();
+      (clRes.data || []).forEach((c: any) => {
+        checklistMap.set(`${c.equipment_id}_${c.date}`, c.hour_meter);
+      });
+
+      // Work orders: extract date from started_at or created_at
+      const woMap = new Map<string, number>();
+      // WO doesn't have hour_meter directly, skip for now
+
+      fuelData.forEach(r => {
+        if (!r.hour_meter) {
+          const key = `${r.target_equipment_id}_${r.date}`;
+          const fromChecklist = checklistMap.get(key);
+          if (fromChecklist) {
+            (r as any)._fallbackHourMeter = fromChecklist;
+          }
+        }
+      });
+    }
+
+    setRecords(fuelData);
   };
 
   useEffect(() => { fetchData(); }, []);

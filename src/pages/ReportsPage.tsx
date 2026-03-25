@@ -517,6 +517,44 @@ export default function ReportsPage() {
             )}
           </div>
 
+          {/* Eficiência de Combustível */}
+          <div className="glass-card rounded-xl p-5 lg:col-span-2">
+            <h2 className="font-bold mb-4 flex items-center gap-2">
+              <Calculator className="w-5 h-5 text-success" />
+              Eficiência de Combustível (km/L ou L/h)
+            </h2>
+            <p className="text-xs text-muted-foreground mb-3">
+              Calculado pela diferença de horímetro/hodômetro entre abastecimentos consecutivos.
+              Caminhões = km/L • Máquinas = L/h
+            </p>
+            {fuelEfficiency.length === 0 ? (
+              <p className="text-muted-foreground text-sm">Necessário ao menos 2 abastecimentos com horímetro preenchido por equipamento.</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={Math.max(220, fuelEfficiency.length * 40)}>
+                <BarChart data={fuelEfficiency} layout="vertical" margin={{ top: 0, right: 40, bottom: 0, left: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 14% 82%)" />
+                  <XAxis type="number" tick={{ fill: 'hsl(220 10% 40%)', fontSize: 11 }} />
+                  <YAxis dataKey="name" type="category" width={100} tick={{ fill: 'hsl(220 10% 40%)', fontSize: 11 }} />
+                  <Tooltip
+                    contentStyle={{ background: 'white', border: '1px solid hsl(220 14% 85%)', borderRadius: 8 }}
+                    formatter={(v: number, _name: string, props: any) => [`${v} ${props.payload.unit}`, 'Eficiência']}
+                  />
+                  <Bar dataKey="efficiency" fill="hsl(142 71% 45%)" radius={[0, 4, 4, 0]}>
+                    {fuelEfficiency.map((item, i) => (
+                      <Cell key={i} fill={item.unit === 'km/L' ? 'hsl(210 80% 45%)' : 'hsl(38 92% 50%)'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+            {fuelEfficiency.length > 0 && (
+              <div className="flex gap-4 mt-3 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm" style={{ background: 'hsl(210 80% 45%)' }} /> Caminhões (km/L)</span>
+                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm" style={{ background: 'hsl(38 92% 50%)' }} /> Máquinas (L/h)</span>
+              </div>
+            )}
+          </div>
+
           {/* Horímetro */}
           <div className="glass-card rounded-xl p-5">
             <h2 className="font-bold mb-4 flex items-center gap-2">

@@ -114,6 +114,54 @@ export default function ReportsPage() {
       }));
   })();
 
+  // Fuel efficiency (km/l or l/h)
+  const fuelEfficiency = (() => {
+    // Group ALL fuel records (not just filtered period) by target equipment, need full history for delta calc
+    const allFuelByEq: Record<string, { date: string; hour_meter: number; liters: number }[]> = {};
+    // Use filteredFuel which already respects period + equipment filter
+    filteredFuel.forEach(r => {
+      const hm = Number((r as any).hour_meter);
+      if (!hm || hm <= 0) return;
+      if (!allFuelByEq[r.target_equipment_id]) allFuelByEq[r.target_equipment_id] = [];
+      allFuelByEq[r.target_equipment_id].push({ date: r.date, hour_meter: hm, liters: Number(r.liters) });
+    });
+
+    const results: { name: string; efficiency: number; unit: string; eqId: string }[] = [];
+
+    Object.entries(allFuelByEq).forEach(([eqId, records]) => {
+      if (records.length < 2) return;
+      const eq = equipments.find(e => e.id === eqId);
+      if (!eq) return;
+
+      // Sort by date then hour_meter
+      records.sort((a, b) => a.date.localeCompare(b.date) || a.hour_meter - b.hour_meter);
+
+      let totalDelta = 0;
+      let totalLiters = 0;
+      for (let i = 1; i < records.length; i++) {
+        const delta = records[i].hour_meter - records[i - 1].hour_meter;
+        if (delta > 0) {
+          totalDelta += delta;
+          totalLiters += records[i].liters;
+        }
+      }
+
+      if (totalDelta > 0 && totalLiters > 0) {
+        const isTruck = eq.type === 'truck';
+        // Truck: km/l = delta_km / liters | Machine: l/h = liters / delta_hours
+        const eff = isTruck ? totalDelta / totalLiters : totalLiters / totalDelta;
+        results.push({
+          name: eqLabel(eq, 20),
+          efficiency: Math.round(eff * 100) / 100,
+          unit: isTruck ? 'km/L' : 'L/h',
+          eqId,
+        });
+      }
+    });
+
+    return results.sort((a, b) => b.efficiency - a.efficiency);
+  })();
+
   // Hours worked
   const hoursByEquipment = filteredEquipments
     .filter(e => e.type !== 'combo')

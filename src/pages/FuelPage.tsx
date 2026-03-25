@@ -119,7 +119,7 @@ export default function FuelPage() {
     fetchData();
   };
 
-  const canSave = comboId && targetId && liters && operatorName && Number(liters) > 0 && photoUrl;
+  const canSave = comboId && targetId && liters && operatorName && hourMeter && Number(liters) > 0 && Number(hourMeter) > 0 && photoUrl;
 
   return (
     <div>
@@ -191,7 +191,7 @@ export default function FuelPage() {
               )}
             </div>
             <div><Label>Operador *</Label><Input value={operatorName} onChange={e => setOperatorName(e.target.value)} placeholder="Nome" /></div>
-            <div><Label>Horímetro</Label><Input type="number" value={hourMeter} onChange={e => setHourMeter(e.target.value)} placeholder="Ex: 1500" /></div>
+            <div><Label>Horímetro / Hodômetro *</Label><Input type="number" value={hourMeter} onChange={e => setHourMeter(e.target.value)} placeholder="Ex: 1500" /></div>
           </div>
           <div className="mt-4">
             <PhotoUpload label="Foto do Abastecimento" required onUploaded={setPhotoUrl} acceptFiles />

@@ -219,8 +219,8 @@ export default function FuelPage() {
                       {r.operator_name} — {new Date(r.date + 'T12:00:00').toLocaleDateString('pt-BR')}
                       {r.hour_meter ? (
                         <span className="ml-2 inline-flex items-center gap-1 text-primary font-semibold">⏱ {r.hour_meter}h</span>
-                      ) : target ? (
-                        <span className="ml-2 inline-flex items-center gap-1 text-muted-foreground">⏱ {target.current_hour_meter}h (atual)</span>
+                      ) : (r as any)._fallbackHourMeter ? (
+                        <span className="ml-2 inline-flex items-center gap-1 text-muted-foreground">⏱ {(r as any)._fallbackHourMeter}h (checklist)</span>
                       ) : null}
                     </p>
                   </div>

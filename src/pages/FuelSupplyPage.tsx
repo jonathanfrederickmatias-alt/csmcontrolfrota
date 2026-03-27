@@ -241,6 +241,7 @@ export default function FuelSupplyPage() {
                    <th className="pb-2 pr-4">Litros</th>
                    <th className="pb-2 pr-4">Nota Fiscal</th>
                    <th className="pb-2 pr-4">Fornecedor</th>
+                   <th className="pb-2 pr-4">Itens Extras</th>
                    <th className="pb-2 pr-4">Responsável</th>
                    <th className="pb-2"></th>
                  </tr>
@@ -262,6 +263,11 @@ export default function FuelSupplyPage() {
                        <td className="py-2 pr-4 font-mono font-bold text-success">+{r.liters}L</td>
                        <td className="py-2 pr-4 text-muted-foreground">{r.invoice_number || '—'}</td>
                        <td className="py-2 pr-4 text-muted-foreground">{r.supplier || '—'}</td>
+                       <td className="py-2 pr-4 text-xs text-muted-foreground">
+                         {r.extra_items && r.extra_items.length > 0
+                           ? r.extra_items.map((it, i) => <span key={i} className="inline-block bg-secondary rounded px-1.5 py-0.5 mr-1 mb-0.5">{it.name}{it.quantity ? ` (${it.quantity})` : ''}</span>)
+                           : '—'}
+                       </td>
                        <td className="py-2 pr-4 text-muted-foreground">{r.responsible_name}</td>
                        <td className="py-2">
                          {canEdit && (
@@ -323,6 +329,19 @@ export default function FuelSupplyPage() {
             <div><Label>Fornecedor</Label><Input value={editForm.supplier} onChange={e => setEditForm({...editForm, supplier: e.target.value})} /></div>
             <div><Label>Responsável *</Label><Input value={editForm.responsible_name} onChange={e => setEditForm({...editForm, responsible_name: e.target.value})} /></div>
             <div><Label>Observações</Label><Textarea value={editForm.notes} onChange={e => setEditForm({...editForm, notes: e.target.value})} rows={2} /></div>
+            <div>
+              <Label>Itens Extras</Label>
+              {editExtraItems.map((item, idx) => (
+                <div key={idx} className="flex gap-2 mt-2">
+                  <Input value={item.name} onChange={e => { const items = [...editExtraItems]; items[idx] = { ...items[idx], name: e.target.value }; setEditExtraItems(items); }} placeholder="Item" className="flex-1" />
+                  <Input value={item.quantity} onChange={e => { const items = [...editExtraItems]; items[idx] = { ...items[idx], quantity: e.target.value }; setEditExtraItems(items); }} placeholder="Qtd" className="w-20" />
+                  <button type="button" onClick={() => setEditExtraItems(editExtraItems.filter((_, i) => i !== idx))} className="text-muted-foreground hover:text-destructive p-1"><X className="w-4 h-4" /></button>
+                </div>
+              ))}
+              <Button type="button" variant="outline" size="sm" className="mt-2 gap-1" onClick={() => setEditExtraItems([...editExtraItems, { name: '', quantity: '' }])}>
+                <Plus className="w-3 h-3" /> Adicionar item
+              </Button>
+            </div>
             <Button onClick={handleSaveEdit} disabled={!editForm.liters || !editForm.responsible_name} className="w-full">Salvar Alterações</Button>
           </div>
         </DialogContent>

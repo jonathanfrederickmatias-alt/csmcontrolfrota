@@ -155,7 +155,7 @@ export type Database = {
       }
       fuel_records: {
         Row: {
-          combo_equipment_id: string
+          combo_equipment_id: string | null
           created_at: string
           date: string
           extra_items: Json
@@ -164,10 +164,10 @@ export type Database = {
           liters: number
           operator_name: string
           photo_url: string | null
-          target_equipment_id: string
+          target_equipment_id: string | null
         }
         Insert: {
-          combo_equipment_id: string
+          combo_equipment_id?: string | null
           created_at?: string
           date?: string
           extra_items?: Json
@@ -176,10 +176,10 @@ export type Database = {
           liters: number
           operator_name: string
           photo_url?: string | null
-          target_equipment_id: string
+          target_equipment_id?: string | null
         }
         Update: {
-          combo_equipment_id?: string
+          combo_equipment_id?: string | null
           created_at?: string
           date?: string
           extra_items?: Json
@@ -188,7 +188,7 @@ export type Database = {
           liters?: number
           operator_name?: string
           photo_url?: string | null
-          target_equipment_id?: string
+          target_equipment_id?: string | null
         }
         Relationships: [
           {

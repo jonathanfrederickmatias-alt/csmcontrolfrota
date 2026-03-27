@@ -309,27 +309,35 @@ export default function FuelPage() {
             return (
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <p className="text-muted-foreground text-xs">Origem (Comboio)</p>
-                    <p className="font-medium">{combo?.name}{comboId ? ` (${comboId})` : ''}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground text-xs">Destino (Equipamento)</p>
-                    <p className="font-medium">{target?.name}{targetId ? ` (${targetId})` : ''}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground text-xs">Litros</p>
-                    <p className="font-bold text-lg text-accent">{detailRecord.liters}L</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground text-xs">Horímetro</p>
-                    <p className="font-medium">{detailRecord.hour_meter ? `${detailRecord.hour_meter}h` : '—'}</p>
-                  </div>
+                  {combo && (
+                    <div>
+                      <p className="text-muted-foreground text-xs">Origem (Comboio)</p>
+                      <p className="font-medium">{combo.name}{comboId ? ` (${comboId})` : ''}</p>
+                    </div>
+                  )}
+                  {target && (
+                    <div>
+                      <p className="text-muted-foreground text-xs">Destino (Equipamento)</p>
+                      <p className="font-medium">{target.name}{targetId ? ` (${targetId})` : ''}</p>
+                    </div>
+                  )}
+                  {detailRecord.liters > 0 && (
+                    <div>
+                      <p className="text-muted-foreground text-xs">Litros</p>
+                      <p className="font-bold text-lg text-accent">{detailRecord.liters}L</p>
+                    </div>
+                  )}
+                  {detailRecord.hour_meter && (
+                    <div>
+                      <p className="text-muted-foreground text-xs">Horímetro</p>
+                      <p className="font-medium">{detailRecord.hour_meter}h</p>
+                    </div>
+                  )}
                   <div>
                     <p className="text-muted-foreground text-xs">Data</p>
-                    <p className="font-medium">{detailRecord.date}</p>
+                    <p className="font-medium">{new Date(detailRecord.date + 'T12:00:00').toLocaleDateString('pt-BR')}</p>
                   </div>
-                  <div className="col-span-2">
+                  <div>
                     <p className="text-muted-foreground text-xs">Operador</p>
                     <p className="font-medium">{detailRecord.operator_name}</p>
                   </div>

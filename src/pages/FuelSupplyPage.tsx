@@ -80,6 +80,7 @@ export default function FuelSupplyPage() {
 
   const openEdit = (r: DBFuelSupplyRecord) => {
     setEditRecord(r);
+    setEditExtraItems(r.extra_items || []);
     setEditForm({
       liters: String(r.liters),
       invoice_number: r.invoice_number || '',
@@ -99,6 +100,7 @@ export default function FuelSupplyPage() {
       date: editForm.date,
       notes: editForm.notes || null,
       responsible_name: editForm.responsible_name,
+      extra_items: editExtraItems.filter(i => i.name.trim()) as any,
     }).eq('id', editRecord.id);
     toast.success('Registro atualizado!');
     setEditRecord(null);

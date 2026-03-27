@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { DBEquipment, DBFuelRecord } from "@/lib/supabase-types";
+import { DBEquipment, DBFuelRecord, FuelSupplyExtraItem } from "@/lib/supabase-types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Fuel, CheckCircle, Droplets, Loader2, Plus, Edit2, Trash2, Eye, Image, FileText } from "lucide-react";
+import { Fuel, CheckCircle, Droplets, Loader2, Plus, Edit2, Trash2, Eye, Image, FileText, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -27,11 +27,12 @@ export default function FuelPage() {
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [photoUrl, setPhotoUrl] = useState('');
-
+  const [extraItems, setExtraItems] = useState<FuelSupplyExtraItem[]>([]);
   // Detail & Edit state
   const [detailRecord, setDetailRecord] = useState<DBFuelRecord | null>(null);
   const [editRecord, setEditRecord] = useState<DBFuelRecord | null>(null);
   const [editForm, setEditForm] = useState({ liters: '', operator_name: '', date: '', hour_meter: '' });
+  const [editExtraItems, setEditExtraItems] = useState<FuelSupplyExtraItem[]>([]);
 
   const fetchData = async () => {
     const [eqRes, frRes] = await Promise.all([
@@ -91,18 +92,20 @@ export default function FuelPage() {
       operator_name: operatorName,
       photo_url: photoUrl || null,
       hour_meter: hourMeter ? Number(hourMeter) : null,
+      extra_items: extraItems.filter(i => i.name.trim()),
     } as any);
     setSaving(false);
     setSaved(true);
     fetchData();
     setTimeout(() => {
       setSaved(false);
-      setComboId(''); setTargetId(''); setLiters(''); setOperatorName(''); setPhotoUrl(''); setHourMeter('');
+      setComboId(''); setTargetId(''); setLiters(''); setOperatorName(''); setPhotoUrl(''); setHourMeter(''); setExtraItems([]);
     }, 2000);
   };
 
   const openEdit = (r: DBFuelRecord) => {
     setEditRecord(r);
+    setEditExtraItems(((r as any).extra_items || []) as FuelSupplyExtraItem[]);
     setEditForm({ liters: String(r.liters), operator_name: r.operator_name, date: r.date, hour_meter: r.hour_meter ? String(r.hour_meter) : '' });
   };
 
@@ -113,6 +116,7 @@ export default function FuelPage() {
       operator_name: editForm.operator_name,
       date: editForm.date,
       hour_meter: editForm.hour_meter ? Number(editForm.hour_meter) : null,
+      extra_items: editExtraItems.filter(i => i.name.trim()),
     } as any).eq('id', editRecord.id);
     toast.success('Registro atualizado!');
     setEditRecord(null);
@@ -196,6 +200,19 @@ export default function FuelPage() {
           <div className="mt-4">
             <PhotoUpload label="Foto do Abastecimento" required onUploaded={setPhotoUrl} acceptFiles />
           </div>
+          <div className="mt-4">
+            <Label>Itens Extras (gelo, gasolina galão, etc.)</Label>
+            {extraItems.map((item, idx) => (
+              <div key={idx} className="flex gap-2 mt-2">
+                <Input value={item.name} onChange={e => { const items = [...extraItems]; items[idx] = { ...items[idx], name: e.target.value }; setExtraItems(items); }} placeholder="Item (ex: Saco de gelo)" className="flex-1" />
+                <Input value={item.quantity} onChange={e => { const items = [...extraItems]; items[idx] = { ...items[idx], quantity: e.target.value }; setExtraItems(items); }} placeholder="Qtd" className="w-20" />
+                <button type="button" onClick={() => setExtraItems(extraItems.filter((_, i) => i !== idx))} className="text-muted-foreground hover:text-destructive p-1"><X className="w-4 h-4" /></button>
+              </div>
+            ))}
+            <Button type="button" variant="outline" size="sm" className="mt-2 gap-1" onClick={() => setExtraItems([...extraItems, { name: '', quantity: '' }])}>
+              <Plus className="w-3 h-3" /> Adicionar item
+            </Button>
+          </div>
           <Button onClick={handleSave} disabled={!canSave || saving} className="w-full mt-4 h-12 text-base font-bold">
             {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Registrar Abastecimento
           </Button>
@@ -221,8 +238,13 @@ export default function FuelPage() {
                         <span className="ml-2 inline-flex items-center gap-1 text-primary font-semibold">⏱ {r.hour_meter}h</span>
                       ) : (r as any)._fallbackHourMeter ? (
                         <span className="ml-2 inline-flex items-center gap-1 text-muted-foreground">⏱ {(r as any)._fallbackHourMeter}h (checklist)</span>
-                      ) : null}
+                       ) : null}
                     </p>
+                    {(r as any).extra_items && (r as any).extra_items.length > 0 && (
+                      <p className="text-xs mt-0.5">
+                        {(r as any).extra_items.map((it: any, i: number) => <span key={i} className="inline-block bg-secondary rounded px-1.5 py-0.5 mr-1 mb-0.5">{it.name}{it.quantity ? ` (${it.quantity})` : ''}</span>)}
+                      </p>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     {r.photo_url && <Image className="w-3.5 h-3.5 text-muted-foreground" />}
@@ -307,6 +329,14 @@ export default function FuelPage() {
                     <p className="text-muted-foreground text-xs">Operador</p>
                     <p className="font-medium">{detailRecord.operator_name}</p>
                   </div>
+                  {(detailRecord as any).extra_items && (detailRecord as any).extra_items.length > 0 && (
+                    <div className="col-span-2">
+                      <p className="text-muted-foreground text-xs">Itens Extras</p>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {(detailRecord as any).extra_items.map((it: any, i: number) => <span key={i} className="inline-block bg-secondary rounded px-2 py-1 text-sm">{it.name}{it.quantity ? ` (${it.quantity})` : ''}</span>)}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 {detailRecord.photo_url && (
                   <div>
@@ -337,6 +367,19 @@ export default function FuelPage() {
             <div><Label>Operador *</Label><Input value={editForm.operator_name} onChange={e => setEditForm({...editForm, operator_name: e.target.value})} /></div>
             <div><Label>Data</Label><Input type="date" value={editForm.date} onChange={e => setEditForm({...editForm, date: e.target.value})} /></div>
             <div><Label>Horímetro</Label><Input type="number" value={editForm.hour_meter} onChange={e => setEditForm({...editForm, hour_meter: e.target.value})} placeholder="Ex: 1500" /></div>
+            <div>
+              <Label>Itens Extras</Label>
+              {editExtraItems.map((item, idx) => (
+                <div key={idx} className="flex gap-2 mt-2">
+                  <Input value={item.name} onChange={e => { const items = [...editExtraItems]; items[idx] = { ...items[idx], name: e.target.value }; setEditExtraItems(items); }} placeholder="Item" className="flex-1" />
+                  <Input value={item.quantity} onChange={e => { const items = [...editExtraItems]; items[idx] = { ...items[idx], quantity: e.target.value }; setEditExtraItems(items); }} placeholder="Qtd" className="w-20" />
+                  <button type="button" onClick={() => setEditExtraItems(editExtraItems.filter((_, i) => i !== idx))} className="text-muted-foreground hover:text-destructive p-1"><X className="w-4 h-4" /></button>
+                </div>
+              ))}
+              <Button type="button" variant="outline" size="sm" className="mt-2 gap-1" onClick={() => setEditExtraItems([...editExtraItems, { name: '', quantity: '' }])}>
+                <Plus className="w-3 h-3" /> Adicionar item
+              </Button>
+            </div>
             <Button onClick={handleSaveEdit} disabled={!editForm.liters || !editForm.operator_name} className="w-full">Salvar Alterações</Button>
           </div>
         </DialogContent>

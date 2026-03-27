@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { DBEquipment, DBFuelSupplyRecord, FuelSupplyExtraItem } from '@/lib/supabase-types';
+import { DBEquipment, DBFuelSupplyRecord } from '@/lib/supabase-types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Truck, CheckCircle, Plus, Droplets, Edit2, Trash2, X } from 'lucide-react';
+import { Truck, CheckCircle, Plus, Droplets, Edit2, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Textarea } from '@/components/ui/textarea';
@@ -23,7 +23,6 @@ export default function FuelSupplyPage() {
   const [saved, setSaved] = useState(false);
 
   const [photoUrl, setPhotoUrl] = useState('');
-  const [extraItems, setExtraItems] = useState<FuelSupplyExtraItem[]>([]);
   const [form, setForm] = useState({
     combo_equipment_id: '',
     liters: '',
@@ -36,7 +35,6 @@ export default function FuelSupplyPage() {
 
   // Edit state
   const [editRecord, setEditRecord] = useState<DBFuelSupplyRecord | null>(null);
-  const [editExtraItems, setEditExtraItems] = useState<FuelSupplyExtraItem[]>([]);
   const [editForm, setEditForm] = useState({ liters: '', invoice_number: '', supplier: '', date: '', notes: '', responsible_name: '' });
 
   const fetchData = async () => {
@@ -63,7 +61,6 @@ export default function FuelSupplyPage() {
       notes: form.notes || null,
       responsible_name: form.responsible_name,
       photo_url: photoUrl || null,
-      extra_items: extraItems.filter(i => i.name.trim()) as any,
     });
 
     setLoading(false);
@@ -73,14 +70,12 @@ export default function FuelSupplyPage() {
       fetchData();
       setForm({ combo_equipment_id: '', liters: '', invoice_number: '', supplier: '', date: new Date().toISOString().split('T')[0], notes: '', responsible_name: '' });
       setPhotoUrl('');
-      setExtraItems([]);
       setTimeout(() => setSaved(false), 3000);
     }
   };
 
   const openEdit = (r: DBFuelSupplyRecord) => {
     setEditRecord(r);
-    setEditExtraItems(r.extra_items || []);
     setEditForm({
       liters: String(r.liters),
       invoice_number: r.invoice_number || '',
@@ -100,7 +95,6 @@ export default function FuelSupplyPage() {
       date: editForm.date,
       notes: editForm.notes || null,
       responsible_name: editForm.responsible_name,
-      extra_items: editExtraItems.filter(i => i.name.trim()) as any,
     }).eq('id', editRecord.id);
     toast.success('Registro atualizado!');
     setEditRecord(null);
@@ -155,19 +149,6 @@ export default function FuelSupplyPage() {
               <div>
                 <Label>Responsável *</Label>
                 <Input value={form.responsible_name} onChange={e => setForm({ ...form, responsible_name: e.target.value })} placeholder="Nome do responsável" />
-              </div>
-              <div>
-                <Label>Itens Extras (gelo, gasolina galão, etc.)</Label>
-                {extraItems.map((item, idx) => (
-                  <div key={idx} className="flex gap-2 mt-2">
-                    <Input value={item.name} onChange={e => { const items = [...extraItems]; items[idx] = { ...items[idx], name: e.target.value }; setExtraItems(items); }} placeholder="Item (ex: Saco de gelo)" className="flex-1" />
-                    <Input value={item.quantity} onChange={e => { const items = [...extraItems]; items[idx] = { ...items[idx], quantity: e.target.value }; setExtraItems(items); }} placeholder="Qtd" className="w-20" />
-                    <button type="button" onClick={() => setExtraItems(extraItems.filter((_, i) => i !== idx))} className="text-muted-foreground hover:text-destructive p-1"><X className="w-4 h-4" /></button>
-                  </div>
-                ))}
-                <Button type="button" variant="outline" size="sm" className="mt-2 gap-1" onClick={() => setExtraItems([...extraItems, { name: '', quantity: '' }])}>
-                  <Plus className="w-3 h-3" /> Adicionar item
-                </Button>
               </div>
               <div>
                 <Label>Observações</Label>
@@ -241,7 +222,7 @@ export default function FuelSupplyPage() {
                    <th className="pb-2 pr-4">Litros</th>
                    <th className="pb-2 pr-4">Nota Fiscal</th>
                    <th className="pb-2 pr-4">Fornecedor</th>
-                   <th className="pb-2 pr-4">Itens Extras</th>
+                   
                    <th className="pb-2 pr-4">Responsável</th>
                    <th className="pb-2"></th>
                  </tr>
@@ -263,11 +244,6 @@ export default function FuelSupplyPage() {
                        <td className="py-2 pr-4 font-mono font-bold text-success">+{r.liters}L</td>
                        <td className="py-2 pr-4 text-muted-foreground">{r.invoice_number || '—'}</td>
                        <td className="py-2 pr-4 text-muted-foreground">{r.supplier || '—'}</td>
-                       <td className="py-2 pr-4 text-xs text-muted-foreground">
-                         {r.extra_items && r.extra_items.length > 0
-                           ? r.extra_items.map((it, i) => <span key={i} className="inline-block bg-secondary rounded px-1.5 py-0.5 mr-1 mb-0.5">{it.name}{it.quantity ? ` (${it.quantity})` : ''}</span>)
-                           : '—'}
-                       </td>
                        <td className="py-2 pr-4 text-muted-foreground">{r.responsible_name}</td>
                        <td className="py-2">
                          {canEdit && (
@@ -329,19 +305,6 @@ export default function FuelSupplyPage() {
             <div><Label>Fornecedor</Label><Input value={editForm.supplier} onChange={e => setEditForm({...editForm, supplier: e.target.value})} /></div>
             <div><Label>Responsável *</Label><Input value={editForm.responsible_name} onChange={e => setEditForm({...editForm, responsible_name: e.target.value})} /></div>
             <div><Label>Observações</Label><Textarea value={editForm.notes} onChange={e => setEditForm({...editForm, notes: e.target.value})} rows={2} /></div>
-            <div>
-              <Label>Itens Extras</Label>
-              {editExtraItems.map((item, idx) => (
-                <div key={idx} className="flex gap-2 mt-2">
-                  <Input value={item.name} onChange={e => { const items = [...editExtraItems]; items[idx] = { ...items[idx], name: e.target.value }; setEditExtraItems(items); }} placeholder="Item" className="flex-1" />
-                  <Input value={item.quantity} onChange={e => { const items = [...editExtraItems]; items[idx] = { ...items[idx], quantity: e.target.value }; setEditExtraItems(items); }} placeholder="Qtd" className="w-20" />
-                  <button type="button" onClick={() => setEditExtraItems(editExtraItems.filter((_, i) => i !== idx))} className="text-muted-foreground hover:text-destructive p-1"><X className="w-4 h-4" /></button>
-                </div>
-              ))}
-              <Button type="button" variant="outline" size="sm" className="mt-2 gap-1" onClick={() => setEditExtraItems([...editExtraItems, { name: '', quantity: '' }])}>
-                <Plus className="w-3 h-3" /> Adicionar item
-              </Button>
-            </div>
             <Button onClick={handleSaveEdit} disabled={!editForm.liters || !editForm.responsible_name} className="w-full">Salvar Alterações</Button>
           </div>
         </DialogContent>

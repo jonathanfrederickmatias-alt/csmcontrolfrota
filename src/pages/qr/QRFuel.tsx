@@ -47,15 +47,18 @@ export default function QRFuel() {
 
   const handleSave = async () => {
     setSaving(true);
-    await supabase.from('fuel_records').insert({
-      combo_equipment_id: comboId,
-      target_equipment_id: targetId,
-      liters: Number(liters),
+    const record: any = {
       date: new Date().toISOString().split('T')[0],
       operator_name: operatorName,
       photo_url: photoUrl || null,
       extra_items: extraItems.filter(i => i.name.trim()),
-    } as any);
+    };
+    if (comboId) record.combo_equipment_id = comboId;
+    if (targetId) record.target_equipment_id = targetId;
+    if (liters && Number(liters) > 0) record.liters = Number(liters);
+    else record.liters = 0;
+    if (hourMeter && Number(hourMeter) > 0) record.hour_meter = Number(hourMeter);
+    await supabase.from('fuel_records').insert(record);
     if (hourMeter && Number(hourMeter) > 0 && targetId) {
       await supabase.from('equipments').update({
         current_hour_meter: Number(hourMeter),
@@ -66,7 +69,9 @@ export default function QRFuel() {
     setSaved(true);
   };
 
-  const canSave = comboId && targetId && liters && operatorName && Number(liters) > 0 && photoUrl;
+  const hasExtraItems = extraItems.some(i => i.name.trim());
+  const hasFuel = comboId && targetId && liters && Number(liters) > 0 && photoUrl;
+  const canSave = operatorName && (hasFuel || hasExtraItems);
 
   if (saved) {
     return (

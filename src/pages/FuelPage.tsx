@@ -84,16 +84,18 @@ export default function FuelPage() {
 
   const handleSave = async () => {
     setSaving(true);
-    await supabase.from('fuel_records').insert({
-      combo_equipment_id: comboId,
-      target_equipment_id: targetId,
-      liters: Number(liters),
+    const record: any = {
       date: new Date().toISOString().split('T')[0],
       operator_name: operatorName,
       photo_url: photoUrl || null,
-      hour_meter: hourMeter ? Number(hourMeter) : null,
       extra_items: extraItems.filter(i => i.name.trim()),
-    } as any);
+    };
+    if (comboId) record.combo_equipment_id = comboId;
+    if (targetId) record.target_equipment_id = targetId;
+    if (liters && Number(liters) > 0) record.liters = Number(liters);
+    else record.liters = 0;
+    if (hourMeter && Number(hourMeter) > 0) record.hour_meter = Number(hourMeter);
+    await supabase.from('fuel_records').insert(record);
     setSaving(false);
     setSaved(true);
     fetchData();
@@ -123,7 +125,9 @@ export default function FuelPage() {
     fetchData();
   };
 
-  const canSave = comboId && targetId && liters && operatorName && hourMeter && Number(liters) > 0 && Number(hourMeter) > 0 && photoUrl;
+  const hasExtraItems = extraItems.some(i => i.name.trim());
+  const hasFuel = comboId && targetId && liters && Number(liters) > 0 && hourMeter && Number(hourMeter) > 0 && photoUrl;
+  const canSave = operatorName && (hasFuel || hasExtraItems);
 
   return (
     <div>

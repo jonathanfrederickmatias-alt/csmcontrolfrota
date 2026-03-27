@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { DBEquipment } from "@/lib/supabase-types";
+import { DBEquipment, FuelSupplyExtraItem } from "@/lib/supabase-types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Fuel, CheckCircle, Lock, Loader2 } from "lucide-react";
+import { Fuel, CheckCircle, Lock, Loader2, Plus, X } from "lucide-react";
 import PublicLayout from "@/components/PublicLayout";
 import PhotoUpload from "@/components/PhotoUpload";
 
@@ -26,6 +26,7 @@ export default function QRFuel() {
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [photoUrl, setPhotoUrl] = useState('');
+  const [extraItems, setExtraItems] = useState<FuelSupplyExtraItem[]>([]);
 
   useEffect(() => {
     supabase.from('equipments').select('*').order('name').then(({ data }) => {
@@ -53,6 +54,7 @@ export default function QRFuel() {
       date: new Date().toISOString().split('T')[0],
       operator_name: operatorName,
       photo_url: photoUrl || null,
+      extra_items: extraItems.filter(i => i.name.trim()),
     } as any);
     if (hourMeter && Number(hourMeter) > 0 && targetId) {
       await supabase.from('equipments').update({
@@ -167,6 +169,19 @@ export default function QRFuel() {
         </div>
         <div><Label>Responsável *</Label><Input value={operatorName} onChange={e => setOperatorName(e.target.value)} placeholder="Nome do responsável" /></div>
         <PhotoUpload label="Foto do Abastecimento" required onUploaded={setPhotoUrl} acceptFiles />
+        <div>
+          <Label>Itens Extras (gelo, gasolina galão, etc.)</Label>
+          {extraItems.map((item, idx) => (
+            <div key={idx} className="flex gap-2 mt-2">
+              <Input value={item.name} onChange={e => { const items = [...extraItems]; items[idx] = { ...items[idx], name: e.target.value }; setExtraItems(items); }} placeholder="Item (ex: Saco de gelo)" className="flex-1" />
+              <Input value={item.quantity} onChange={e => { const items = [...extraItems]; items[idx] = { ...items[idx], quantity: e.target.value }; setExtraItems(items); }} placeholder="Qtd" className="w-20" />
+              <button type="button" onClick={() => setExtraItems(extraItems.filter((_, i) => i !== idx))} className="text-muted-foreground hover:text-destructive p-1"><X className="w-4 h-4" /></button>
+            </div>
+          ))}
+          <Button type="button" variant="outline" size="sm" className="mt-2 gap-1" onClick={() => setExtraItems([...extraItems, { name: '', quantity: '' }])}>
+            <Plus className="w-3 h-3" /> Adicionar item
+          </Button>
+        </div>
         <Button onClick={handleSave} disabled={!canSave || saving} className="w-full h-12 text-base font-bold">
           {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Registrar Abastecimento
         </Button>

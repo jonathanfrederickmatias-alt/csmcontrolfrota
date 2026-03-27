@@ -43,7 +43,7 @@ export default function FuelSupplyPage() {
       supabase.from('fuel_supply_records').select('*').order('created_at', { ascending: false }).limit(50),
     ]);
     setCombos((eqRes.data || []) as DBEquipment[]);
-    setRecords((supRes.data || []) as DBFuelSupplyRecord[]);
+    setRecords((supRes.data || []) as unknown as DBFuelSupplyRecord[]);
   };
 
   useEffect(() => { fetchData(); }, []);

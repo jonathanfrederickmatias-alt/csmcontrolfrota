@@ -179,30 +179,30 @@ export default function FuelPage() {
             <Fuel className="w-5 h-5 text-primary" /> Registrar Abastecimento
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div><Label>Comboio *</Label>
+            <div><Label>Comboio {!hasExtraItems && '*'}</Label>
               <Select value={comboId} onValueChange={setComboId}>
                 <SelectTrigger><SelectValue placeholder="Selecionar comboio..." /></SelectTrigger>
                 <SelectContent>{combos.map(c => <SelectItem key={c.id} value={c.id}>{c.name} ({c.current_fuel || 0}L)</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div><Label>Equipamento Destino *</Label>
+            <div><Label>Equipamento Destino {!hasExtraItems && '*'}</Label>
               <Select value={targetId} onValueChange={setTargetId}>
                 <SelectTrigger><SelectValue placeholder="Selecionar máquina..." /></SelectTrigger>
                 <SelectContent>{targets.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div>
-              <Label>Litros *</Label>
+              <Label>Litros {!hasExtraItems && '*'}</Label>
               <Input type="number" value={liters} onChange={e => setLiters(e.target.value)} placeholder="Ex: 1000" />
               {selectedCombo && Number(liters) > (selectedCombo.current_fuel || 0) && (
                 <p className="text-xs text-destructive mt-1">Quantidade maior que o disponível!</p>
               )}
             </div>
             <div><Label>Operador *</Label><Input value={operatorName} onChange={e => setOperatorName(e.target.value)} placeholder="Nome" /></div>
-            <div><Label>Horímetro / Hodômetro *</Label><Input type="number" value={hourMeter} onChange={e => setHourMeter(e.target.value)} placeholder="Ex: 1500" /></div>
+            <div><Label>Horímetro / Hodômetro {!hasExtraItems && '*'}</Label><Input type="number" value={hourMeter} onChange={e => setHourMeter(e.target.value)} placeholder="Ex: 1500" /></div>
           </div>
           <div className="mt-4">
-            <PhotoUpload label="Foto do Abastecimento" required onUploaded={setPhotoUrl} acceptFiles />
+            <PhotoUpload label="Foto do Abastecimento" required={!hasExtraItems} onUploaded={setPhotoUrl} acceptFiles />
           </div>
           <div className="mt-4">
             <Label>Itens Extras (gelo, gasolina galão, etc.)</Label>

@@ -63,6 +63,7 @@ export default function FuelSupplyPage() {
       notes: form.notes || null,
       responsible_name: form.responsible_name,
       photo_url: photoUrl || null,
+      extra_items: extraItems.filter(i => i.name.trim()) as any,
     });
 
     setLoading(false);
@@ -72,6 +73,7 @@ export default function FuelSupplyPage() {
       fetchData();
       setForm({ combo_equipment_id: '', liters: '', invoice_number: '', supplier: '', date: new Date().toISOString().split('T')[0], notes: '', responsible_name: '' });
       setPhotoUrl('');
+      setExtraItems([]);
       setTimeout(() => setSaved(false), 3000);
     }
   };

@@ -111,6 +111,11 @@ export interface DBFuelRecord {
   created_at: string;
 }
 
+export interface FuelSupplyExtraItem {
+  name: string;
+  quantity: string;
+}
+
 export interface DBFuelSupplyRecord {
   id: string;
   combo_equipment_id: string;
@@ -120,6 +125,7 @@ export interface DBFuelSupplyRecord {
   date: string;
   notes?: string;
   responsible_name: string;
+  extra_items?: FuelSupplyExtraItem[];
   created_at: string;
 }
 

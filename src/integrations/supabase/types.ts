@@ -209,6 +209,7 @@ export type Database = {
           combo_equipment_id: string
           created_at: string
           date: string
+          extra_items: Json
           id: string
           invoice_number: string | null
           liters: number
@@ -221,6 +222,7 @@ export type Database = {
           combo_equipment_id: string
           created_at?: string
           date?: string
+          extra_items?: Json
           id?: string
           invoice_number?: string | null
           liters: number
@@ -233,6 +235,7 @@ export type Database = {
           combo_equipment_id?: string
           created_at?: string
           date?: string
+          extra_items?: Json
           id?: string
           invoice_number?: string | null
           liters?: number

@@ -157,6 +157,19 @@ export default function FuelSupplyPage() {
                 <Input value={form.responsible_name} onChange={e => setForm({ ...form, responsible_name: e.target.value })} placeholder="Nome do responsável" />
               </div>
               <div>
+                <Label>Itens Extras (gelo, gasolina galão, etc.)</Label>
+                {extraItems.map((item, idx) => (
+                  <div key={idx} className="flex gap-2 mt-2">
+                    <Input value={item.name} onChange={e => { const items = [...extraItems]; items[idx] = { ...items[idx], name: e.target.value }; setExtraItems(items); }} placeholder="Item (ex: Saco de gelo)" className="flex-1" />
+                    <Input value={item.quantity} onChange={e => { const items = [...extraItems]; items[idx] = { ...items[idx], quantity: e.target.value }; setExtraItems(items); }} placeholder="Qtd" className="w-20" />
+                    <button type="button" onClick={() => setExtraItems(extraItems.filter((_, i) => i !== idx))} className="text-muted-foreground hover:text-destructive p-1"><X className="w-4 h-4" /></button>
+                  </div>
+                ))}
+                <Button type="button" variant="outline" size="sm" className="mt-2 gap-1" onClick={() => setExtraItems([...extraItems, { name: '', quantity: '' }])}>
+                  <Plus className="w-3 h-3" /> Adicionar item
+                </Button>
+              </div>
+              <div>
                 <Label>Observações</Label>
                 <Textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Observações opcionais..." rows={2} />
               </div>

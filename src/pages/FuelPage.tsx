@@ -238,8 +238,13 @@ export default function FuelPage() {
                         <span className="ml-2 inline-flex items-center gap-1 text-primary font-semibold">⏱ {r.hour_meter}h</span>
                       ) : (r as any)._fallbackHourMeter ? (
                         <span className="ml-2 inline-flex items-center gap-1 text-muted-foreground">⏱ {(r as any)._fallbackHourMeter}h (checklist)</span>
-                      ) : null}
+                       ) : null}
                     </p>
+                    {(r as any).extra_items && (r as any).extra_items.length > 0 && (
+                      <p className="text-xs mt-0.5">
+                        {(r as any).extra_items.map((it: any, i: number) => <span key={i} className="inline-block bg-secondary rounded px-1.5 py-0.5 mr-1 mb-0.5">{it.name}{it.quantity ? ` (${it.quantity})` : ''}</span>)}
+                      </p>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     {r.photo_url && <Image className="w-3.5 h-3.5 text-muted-foreground" />}
@@ -316,9 +321,18 @@ export default function FuelPage() {
                     <p className="text-muted-foreground text-xs">Horímetro</p>
                     <p className="font-medium">{detailRecord.hour_meter ? `${detailRecord.hour_meter}h` : '—'}</p>
                   </div>
-                  <div>
-                    <p className="text-muted-foreground text-xs">Data</p>
-                    <p className="font-medium">{detailRecord.date}</p>
+                   <div>
+                     <p className="text-muted-foreground text-xs">Data</p>
+                     <p className="font-medium">{detailRecord.date}</p>
+                   </div>
+                   {(detailRecord as any).extra_items && (detailRecord as any).extra_items.length > 0 && (
+                     <div className="col-span-2">
+                       <p className="text-muted-foreground text-xs">Itens Extras</p>
+                       <div className="flex flex-wrap gap-1 mt-1">
+                         {(detailRecord as any).extra_items.map((it: any, i: number) => <span key={i} className="inline-block bg-secondary rounded px-2 py-1 text-sm">{it.name}{it.quantity ? ` (${it.quantity})` : ''}</span>)}
+                       </div>
+                     </div>
+                   )}
                   </div>
                   <div className="col-span-2">
                     <p className="text-muted-foreground text-xs">Operador</p>
@@ -354,6 +368,19 @@ export default function FuelPage() {
             <div><Label>Operador *</Label><Input value={editForm.operator_name} onChange={e => setEditForm({...editForm, operator_name: e.target.value})} /></div>
             <div><Label>Data</Label><Input type="date" value={editForm.date} onChange={e => setEditForm({...editForm, date: e.target.value})} /></div>
             <div><Label>Horímetro</Label><Input type="number" value={editForm.hour_meter} onChange={e => setEditForm({...editForm, hour_meter: e.target.value})} placeholder="Ex: 1500" /></div>
+            <div>
+              <Label>Itens Extras</Label>
+              {editExtraItems.map((item, idx) => (
+                <div key={idx} className="flex gap-2 mt-2">
+                  <Input value={item.name} onChange={e => { const items = [...editExtraItems]; items[idx] = { ...items[idx], name: e.target.value }; setEditExtraItems(items); }} placeholder="Item" className="flex-1" />
+                  <Input value={item.quantity} onChange={e => { const items = [...editExtraItems]; items[idx] = { ...items[idx], quantity: e.target.value }; setEditExtraItems(items); }} placeholder="Qtd" className="w-20" />
+                  <button type="button" onClick={() => setEditExtraItems(editExtraItems.filter((_, i) => i !== idx))} className="text-muted-foreground hover:text-destructive p-1"><X className="w-4 h-4" /></button>
+                </div>
+              ))}
+              <Button type="button" variant="outline" size="sm" className="mt-2 gap-1" onClick={() => setEditExtraItems([...editExtraItems, { name: '', quantity: '' }])}>
+                <Plus className="w-3 h-3" /> Adicionar item
+              </Button>
+            </div>
             <Button onClick={handleSaveEdit} disabled={!editForm.liters || !editForm.operator_name} className="w-full">Salvar Alterações</Button>
           </div>
         </DialogContent>

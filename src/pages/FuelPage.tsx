@@ -321,23 +321,22 @@ export default function FuelPage() {
                     <p className="text-muted-foreground text-xs">Horímetro</p>
                     <p className="font-medium">{detailRecord.hour_meter ? `${detailRecord.hour_meter}h` : '—'}</p>
                   </div>
-                   <div>
-                     <p className="text-muted-foreground text-xs">Data</p>
-                     <p className="font-medium">{detailRecord.date}</p>
-                   </div>
-                   {(detailRecord as any).extra_items && (detailRecord as any).extra_items.length > 0 && (
-                     <div className="col-span-2">
-                       <p className="text-muted-foreground text-xs">Itens Extras</p>
-                       <div className="flex flex-wrap gap-1 mt-1">
-                         {(detailRecord as any).extra_items.map((it: any, i: number) => <span key={i} className="inline-block bg-secondary rounded px-2 py-1 text-sm">{it.name}{it.quantity ? ` (${it.quantity})` : ''}</span>)}
-                       </div>
-                     </div>
-                   )}
+                  <div>
+                    <p className="text-muted-foreground text-xs">Data</p>
+                    <p className="font-medium">{detailRecord.date}</p>
                   </div>
                   <div className="col-span-2">
                     <p className="text-muted-foreground text-xs">Operador</p>
                     <p className="font-medium">{detailRecord.operator_name}</p>
                   </div>
+                  {(detailRecord as any).extra_items && (detailRecord as any).extra_items.length > 0 && (
+                    <div className="col-span-2">
+                      <p className="text-muted-foreground text-xs">Itens Extras</p>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {(detailRecord as any).extra_items.map((it: any, i: number) => <span key={i} className="inline-block bg-secondary rounded px-2 py-1 text-sm">{it.name}{it.quantity ? ` (${it.quantity})` : ''}</span>)}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 {detailRecord.photo_url && (
                   <div>

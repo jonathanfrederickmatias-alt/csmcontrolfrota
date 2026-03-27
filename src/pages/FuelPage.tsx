@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { DBEquipment, DBFuelRecord } from "@/lib/supabase-types";
+import { DBEquipment, DBFuelRecord, FuelSupplyExtraItem } from "@/lib/supabase-types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Fuel, CheckCircle, Droplets, Loader2, Plus, Edit2, Trash2, Eye, Image, FileText } from "lucide-react";
+import { Fuel, CheckCircle, Droplets, Loader2, Plus, Edit2, Trash2, Eye, Image, FileText, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -27,11 +27,12 @@ export default function FuelPage() {
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [photoUrl, setPhotoUrl] = useState('');
-
+  const [extraItems, setExtraItems] = useState<FuelSupplyExtraItem[]>([]);
   // Detail & Edit state
   const [detailRecord, setDetailRecord] = useState<DBFuelRecord | null>(null);
   const [editRecord, setEditRecord] = useState<DBFuelRecord | null>(null);
   const [editForm, setEditForm] = useState({ liters: '', operator_name: '', date: '', hour_meter: '' });
+  const [editExtraItems, setEditExtraItems] = useState<FuelSupplyExtraItem[]>([]);
 
   const fetchData = async () => {
     const [eqRes, frRes] = await Promise.all([
@@ -91,18 +92,20 @@ export default function FuelPage() {
       operator_name: operatorName,
       photo_url: photoUrl || null,
       hour_meter: hourMeter ? Number(hourMeter) : null,
+      extra_items: extraItems.filter(i => i.name.trim()),
     } as any);
     setSaving(false);
     setSaved(true);
     fetchData();
     setTimeout(() => {
       setSaved(false);
-      setComboId(''); setTargetId(''); setLiters(''); setOperatorName(''); setPhotoUrl(''); setHourMeter('');
+      setComboId(''); setTargetId(''); setLiters(''); setOperatorName(''); setPhotoUrl(''); setHourMeter(''); setExtraItems([]);
     }, 2000);
   };
 
   const openEdit = (r: DBFuelRecord) => {
     setEditRecord(r);
+    setEditExtraItems(((r as any).extra_items || []) as FuelSupplyExtraItem[]);
     setEditForm({ liters: String(r.liters), operator_name: r.operator_name, date: r.date, hour_meter: r.hour_meter ? String(r.hour_meter) : '' });
   };
 
@@ -113,6 +116,7 @@ export default function FuelPage() {
       operator_name: editForm.operator_name,
       date: editForm.date,
       hour_meter: editForm.hour_meter ? Number(editForm.hour_meter) : null,
+      extra_items: editExtraItems.filter(i => i.name.trim()),
     } as any).eq('id', editRecord.id);
     toast.success('Registro atualizado!');
     setEditRecord(null);

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Truck, CheckCircle, Plus, Droplets, Edit2, Trash2 } from 'lucide-react';
+import { Truck, CheckCircle, Plus, Droplets, Edit2, Trash2, X } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Textarea } from '@/components/ui/textarea';
@@ -23,6 +23,7 @@ export default function FuelSupplyPage() {
   const [saved, setSaved] = useState(false);
 
   const [photoUrl, setPhotoUrl] = useState('');
+  const [extraItems, setExtraItems] = useState<FuelSupplyExtraItem[]>([]);
   const [form, setForm] = useState({
     combo_equipment_id: '',
     liters: '',
@@ -35,6 +36,7 @@ export default function FuelSupplyPage() {
 
   // Edit state
   const [editRecord, setEditRecord] = useState<DBFuelSupplyRecord | null>(null);
+  const [editExtraItems, setEditExtraItems] = useState<FuelSupplyExtraItem[]>([]);
   const [editForm, setEditForm] = useState({ liters: '', invoice_number: '', supplier: '', date: '', notes: '', responsible_name: '' });
 
   const fetchData = async () => {

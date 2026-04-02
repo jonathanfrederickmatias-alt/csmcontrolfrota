@@ -71,6 +71,9 @@ export default function MaintenancePage() {
   const [planFilter, setPlanFilter] = useState('all');
   const [requestFilter, setRequestFilter] = useState('all');
   const [osFilter, setOsFilter] = useState('all');
+  const [planStatusFilter, setPlanStatusFilter] = useState('all');
+  const [requestStatusFilter, setRequestStatusFilter] = useState('all');
+  const [osStatusFilter, setOsStatusFilter] = useState('all');
   // Photo dialog state
   const [photoDialog, setPhotoDialog] = useState<{ requestId: string; targetStatus: 'in_progress' | 'done'; label: string } | null>(null);
   const [photoUrl, setPhotoUrl] = useState('');

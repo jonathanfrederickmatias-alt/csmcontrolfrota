@@ -25,6 +25,7 @@ import QRMaintenanceRequest from "@/pages/qr/QRMaintenanceRequest";
 import QREquipamento from "@/pages/qr/QREquipamento";
 import QRMechanicOS from "@/pages/qr/QRMechanicOS";
 import QRPrintPage from "@/pages/QRPrintPage";
+import MechanicDashboardPage from "@/pages/MechanicDashboardPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -55,6 +56,7 @@ const App = () => (
                     <Route path="/checklist" element={<ChecklistPage />} />
                     <Route path="/checklists" element={<ChecklistListPage />} />
                     <Route path="/manutencao" element={<MaintenancePage />} />
+                    <Route path="/mecanico" element={<MechanicDashboardPage />} />
                     <Route path="/abastecimento" element={<FuelPage />} />
                     <Route path="/reabastecimento" element={<FuelSupplyPage />} />
                     <Route path="/seguros" element={<SegurosPage />} />

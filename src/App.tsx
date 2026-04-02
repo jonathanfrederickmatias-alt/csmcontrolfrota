@@ -25,6 +25,7 @@ import QRMaintenanceRequest from "@/pages/qr/QRMaintenanceRequest";
 import QREquipamento from "@/pages/qr/QREquipamento";
 import QRMechanicOS from "@/pages/qr/QRMechanicOS";
 import QRPrintPage from "@/pages/QRPrintPage";
+import MechanicDashboardPage from "@/pages/MechanicDashboardPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();

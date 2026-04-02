@@ -71,6 +71,9 @@ export default function MaintenancePage() {
   const [planFilter, setPlanFilter] = useState('all');
   const [requestFilter, setRequestFilter] = useState('all');
   const [osFilter, setOsFilter] = useState('all');
+  const [planStatusFilter, setPlanStatusFilter] = useState('all');
+  const [requestStatusFilter, setRequestStatusFilter] = useState('all');
+  const [osStatusFilter, setOsStatusFilter] = useState('all');
   // Photo dialog state
   const [photoDialog, setPhotoDialog] = useState<{ requestId: string; targetStatus: 'in_progress' | 'done'; label: string } | null>(null);
   const [photoUrl, setPhotoUrl] = useState('');
@@ -256,10 +259,16 @@ export default function MaintenancePage() {
     return order[a.status] - order[b.status];
   });
 
-  const filteredPlans = planFilter === 'all' ? sortedPlans : sortedPlans.filter(p => p.equipment_id === planFilter);
-  const filteredRequests = requestFilter === 'all' ? requests : requests.filter(r => r.equipment_id === requestFilter);
+  const filteredPlans = sortedPlans
+    .filter(p => planFilter === 'all' || p.equipment_id === planFilter)
+    .filter(p => planStatusFilter === 'all' || p.status === planStatusFilter);
+  const filteredRequests = requests
+    .filter(r => requestFilter === 'all' || r.equipment_id === requestFilter)
+    .filter(r => requestStatusFilter === 'all' || r.status === requestStatusFilter);
   const filteredHistory = historyFilter === 'all' ? history : history.filter(h => h.equipment_id === historyFilter);
-  const filteredOrders = osFilter === 'all' ? workOrders : workOrders.filter(o => o.equipment_id === osFilter);
+  const filteredOrders = workOrders
+    .filter(o => osFilter === 'all' || o.equipment_id === osFilter)
+    .filter(o => osStatusFilter === 'all' || o.status === osStatusFilter);
 
   const handleOsStatusChange = async (os: DBWorkOrder, newStatus: string) => {
     if (newStatus === 'done') {
@@ -431,13 +440,24 @@ export default function MaintenancePage() {
         {/* ===== ORDENS DE SERVIÇO ===== */}
         <TabsContent value="os" className="space-y-4 mt-4">
           <div className="flex items-center justify-between gap-3 flex-wrap">
-            <Select value={osFilter} onValueChange={setOsFilter}>
-              <SelectTrigger className="w-64"><SelectValue placeholder="Filtrar por equipamento" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os equipamentos</SelectItem>
-                {equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eqLabel(eq)}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <div className="flex gap-2 flex-wrap">
+              <Select value={osFilter} onValueChange={setOsFilter}>
+                <SelectTrigger className="w-64"><SelectValue placeholder="Filtrar por equipamento" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os equipamentos</SelectItem>
+                  {equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eqLabel(eq)}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={osStatusFilter} onValueChange={setOsStatusFilter}>
+                <SelectTrigger className="w-48"><SelectValue placeholder="Filtrar por status" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os status</SelectItem>
+                  <SelectItem value="open">Aberta</SelectItem>
+                  <SelectItem value="in_progress">Em andamento</SelectItem>
+                  <SelectItem value="done">Concluída</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="flex gap-2 flex-wrap">
               <Button size="sm" variant="outline" className="gap-1.5" onClick={() => {
                 const wb = XLSX.utils.book_new();
@@ -619,13 +639,24 @@ export default function MaintenancePage() {
         {/* ===== PLANOS ===== */}
         <TabsContent value="plans" className="space-y-4 mt-4">
           <div className="flex items-center justify-between gap-3 flex-wrap">
-            <Select value={planFilter} onValueChange={setPlanFilter}>
-              <SelectTrigger className="w-64"><SelectValue placeholder="Filtrar por equipamento" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os equipamentos</SelectItem>
-                {equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eqLabel(eq)}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <div className="flex gap-2 flex-wrap">
+              <Select value={planFilter} onValueChange={setPlanFilter}>
+                <SelectTrigger className="w-64"><SelectValue placeholder="Filtrar por equipamento" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os equipamentos</SelectItem>
+                  {equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eqLabel(eq)}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={planStatusFilter} onValueChange={setPlanStatusFilter}>
+                <SelectTrigger className="w-48"><SelectValue placeholder="Filtrar por status" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os status</SelectItem>
+                  <SelectItem value="ok">OK</SelectItem>
+                  <SelectItem value="approaching">Próxima</SelectItem>
+                  <SelectItem value="overdue">Atrasada</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="flex gap-2 flex-wrap">
               <Button size="sm" variant="outline" className="gap-1.5" onClick={() => {
                 const wb = XLSX.utils.book_new();
@@ -737,13 +768,24 @@ export default function MaintenancePage() {
         {/* ===== PEDIDOS ===== */}
         <TabsContent value="requests" className="space-y-4 mt-4">
           <div className="flex items-center justify-between gap-3 flex-wrap">
-            <Select value={requestFilter} onValueChange={setRequestFilter}>
-              <SelectTrigger className="w-64"><SelectValue placeholder="Filtrar por equipamento" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os equipamentos</SelectItem>
-                {equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eqLabel(eq)}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <div className="flex gap-2 flex-wrap">
+              <Select value={requestFilter} onValueChange={setRequestFilter}>
+                <SelectTrigger className="w-64"><SelectValue placeholder="Filtrar por equipamento" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os equipamentos</SelectItem>
+                  {equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eqLabel(eq)}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={requestStatusFilter} onValueChange={setRequestStatusFilter}>
+                <SelectTrigger className="w-48"><SelectValue placeholder="Filtrar por status" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os status</SelectItem>
+                  <SelectItem value="open">Aberto</SelectItem>
+                  <SelectItem value="in_progress">Em andamento</SelectItem>
+                  <SelectItem value="done">Concluído</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="flex gap-2 flex-wrap">
               <Button size="sm" variant="outline" className="gap-1.5" onClick={() => {
                 const wb = XLSX.utils.book_new();

@@ -259,10 +259,16 @@ export default function MaintenancePage() {
     return order[a.status] - order[b.status];
   });
 
-  const filteredPlans = planFilter === 'all' ? sortedPlans : sortedPlans.filter(p => p.equipment_id === planFilter);
-  const filteredRequests = requestFilter === 'all' ? requests : requests.filter(r => r.equipment_id === requestFilter);
+  const filteredPlans = sortedPlans
+    .filter(p => planFilter === 'all' || p.equipment_id === planFilter)
+    .filter(p => planStatusFilter === 'all' || p.status === planStatusFilter);
+  const filteredRequests = requests
+    .filter(r => requestFilter === 'all' || r.equipment_id === requestFilter)
+    .filter(r => requestStatusFilter === 'all' || r.status === requestStatusFilter);
   const filteredHistory = historyFilter === 'all' ? history : history.filter(h => h.equipment_id === historyFilter);
-  const filteredOrders = osFilter === 'all' ? workOrders : workOrders.filter(o => o.equipment_id === osFilter);
+  const filteredOrders = workOrders
+    .filter(o => osFilter === 'all' || o.equipment_id === osFilter)
+    .filter(o => osStatusFilter === 'all' || o.status === osStatusFilter);
 
   const handleOsStatusChange = async (os: DBWorkOrder, newStatus: string) => {
     if (newStatus === 'done') {

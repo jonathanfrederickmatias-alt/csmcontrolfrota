@@ -344,7 +344,19 @@ export default function FuelPage() {
       )}
 
       <div className="glass-card rounded-xl p-6">
-        <h2 className="text-lg font-bold mb-4">Histórico de Abastecimentos</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold">Histórico de Abastecimentos</h2>
+          {records.length > 0 && (
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={handleExportPDF}>
+                <Download className="w-3.5 h-3.5" /> PDF
+              </Button>
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={handleExportExcel}>
+                <Download className="w-3.5 h-3.5" /> Excel
+              </Button>
+            </div>
+          )}
+        </div>
         {records.length === 0 ? (
           <p className="text-muted-foreground text-sm">Nenhum abastecimento registrado.</p>
         ) : (

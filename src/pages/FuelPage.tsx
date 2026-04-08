@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Fuel, CheckCircle, Droplets, Loader2, Plus, Edit2, Trash2, Eye, Image, FileText, X } from "lucide-react";
+import { Fuel, CheckCircle, Droplets, Loader2, Plus, Edit2, Trash2, Eye, Image, FileText, X, Download } from "lucide-react";
+import { jsPDF } from 'jspdf';
+import * as XLSX from 'xlsx';
 import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -129,6 +131,124 @@ export default function FuelPage() {
   const hasFuel = comboId && targetId && liters && Number(liters) > 0 && hourMeter && Number(hourMeter) > 0 && photoUrl;
   const canSave = operatorName && (hasFuel || hasExtraItems);
 
+  const getExportData = () => {
+    return records.map(r => {
+      const combo = equipments.find(e => e.id === r.combo_equipment_id);
+      const target = equipments.find(e => e.id === r.target_equipment_id);
+      const extras = ((r as any).extra_items || []) as FuelSupplyExtraItem[];
+      return {
+        Data: new Date(r.date + 'T12:00:00').toLocaleDateString('pt-BR'),
+        Comboio: combo?.name || '—',
+        Equipamento: target?.name || '—',
+        Litros: r.liters,
+        Horímetro: r.hour_meter || '',
+        Operador: r.operator_name,
+        'Itens Extras': extras.map(it => `${it.name}${it.quantity ? ` (${it.quantity})` : ''}`).join(', ') || '',
+      };
+    });
+  };
+
+  const handleExportExcel = () => {
+    const data = getExportData();
+    if (data.length === 0) return toast.error('Nenhum registro para exportar.');
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Abastecimentos');
+    // Auto column widths
+    const colWidths = Object.keys(data[0]).map(key => ({
+      wch: Math.max(key.length, ...data.map(r => String((r as any)[key] || '').length)) + 2
+    }));
+    ws['!cols'] = colWidths;
+    XLSX.writeFile(wb, `abastecimentos_${new Date().toISOString().split('T')[0]}.xlsx`);
+    toast.success('Excel exportado!');
+  };
+
+  const handleExportPDF = async () => {
+    const data = getExportData();
+    if (data.length === 0) return toast.error('Nenhum registro para exportar.');
+
+    const pdf = new jsPDF('l', 'mm', 'a4');
+    const pageWidth = 297;
+    const margin = 12;
+    const contentWidth = pageWidth - margin * 2;
+
+    // Header
+    pdf.setFillColor(25, 75, 155);
+    pdf.rect(0, 0, pageWidth, 20, 'F');
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFontSize(14);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('Histórico de Abastecimentos', margin, 13);
+    pdf.setFontSize(8);
+    pdf.setFont('helvetica', 'normal');
+    const now = new Date();
+    pdf.text(`Emitido em: ${now.toLocaleDateString('pt-BR')} ${now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`, pageWidth - margin, 13, { align: 'right' });
+
+    let y = 28;
+    const cols = ['Data', 'Comboio', 'Equipamento', 'Litros', 'Horímetro', 'Operador', 'Itens Extras'];
+    const colW = [22, 50, 50, 20, 24, 40, contentWidth - 206];
+    const colX = [margin];
+    for (let i = 1; i < colW.length; i++) colX.push(colX[i - 1] + colW[i - 1]);
+
+    // Table header
+    pdf.setFillColor(230, 235, 245);
+    pdf.rect(margin, y, contentWidth, 7, 'F');
+    pdf.setTextColor(100, 110, 130);
+    pdf.setFontSize(7);
+    pdf.setFont('helvetica', 'bold');
+    cols.forEach((c, i) => pdf.text(c, colX[i] + 2, y + 5));
+    y += 7;
+
+    // Rows
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(30, 35, 50);
+    data.forEach((row, idx) => {
+      if (y > pdf.internal.pageSize.getHeight() - 18) {
+        pdf.addPage();
+        y = 15;
+        // Repeat header
+        pdf.setFillColor(230, 235, 245);
+        pdf.rect(margin, y, contentWidth, 7, 'F');
+        pdf.setTextColor(100, 110, 130);
+        pdf.setFontSize(7);
+        pdf.setFont('helvetica', 'bold');
+        cols.forEach((c, i) => pdf.text(c, colX[i] + 2, y + 5));
+        y += 7;
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(30, 35, 50);
+      }
+
+      if (idx % 2 === 1) {
+        pdf.setFillColor(245, 247, 250);
+        pdf.rect(margin, y, contentWidth, 6.5, 'F');
+      }
+
+      pdf.setFontSize(7);
+      const values = [row.Data, row.Comboio, row.Equipamento, String(row.Litros), String(row.Horímetro), row.Operador, row['Itens Extras']];
+      values.forEach((v, i) => {
+        let text = v || '—';
+        // Clip text to fit column
+        while (text.length > 1 && pdf.getTextWidth(text) > colW[i] - 4) text = text.slice(0, -1) + '…';
+        pdf.text(text, colX[i] + 2, y + 4.5);
+      });
+      y += 6.5;
+    });
+
+    // Footer
+    const totalPages = pdf.getNumberOfPages();
+    for (let p = 1; p <= totalPages; p++) {
+      pdf.setPage(p);
+      const ph = pdf.internal.pageSize.getHeight();
+      pdf.setFontSize(7);
+      pdf.setTextColor(100, 110, 130);
+      pdf.text(`Página ${p} de ${totalPages}`, pageWidth - margin, ph - 5, { align: 'right' });
+      pdf.text(`Total: ${data.length} registros — ${data.reduce((s, r) => s + Number(r.Litros), 0).toLocaleString('pt-BR')}L`, margin, ph - 5);
+    }
+
+    pdf.save(`abastecimentos_${new Date().toISOString().split('T')[0]}.pdf`);
+    toast.success('PDF exportado!');
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-8">
@@ -224,7 +344,19 @@ export default function FuelPage() {
       )}
 
       <div className="glass-card rounded-xl p-6">
-        <h2 className="text-lg font-bold mb-4">Histórico de Abastecimentos</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold">Histórico de Abastecimentos</h2>
+          {records.length > 0 && (
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={handleExportPDF}>
+                <Download className="w-3.5 h-3.5" /> PDF
+              </Button>
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={handleExportExcel}>
+                <Download className="w-3.5 h-3.5" /> Excel
+              </Button>
+            </div>
+          )}
+        </div>
         {records.length === 0 ? (
           <p className="text-muted-foreground text-sm">Nenhum abastecimento registrado.</p>
         ) : (

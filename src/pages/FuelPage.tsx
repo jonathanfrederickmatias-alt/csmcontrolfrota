@@ -40,7 +40,7 @@ export default function FuelPage() {
   const fetchData = async () => {
     const [eqRes, frRes] = await Promise.all([
       supabase.from('equipments').select('*').order('name'),
-      supabase.from('fuel_records').select('*').order('created_at', { ascending: false }).limit(50),
+      supabase.from('fuel_records').select('*').gte('date', new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]).order('created_at', { ascending: false }),
     ]);
     setEquipments((eqRes.data || []) as DBEquipment[]);
     const fuelData = (frRes.data || []) as DBFuelRecord[];

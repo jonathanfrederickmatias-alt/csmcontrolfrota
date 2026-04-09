@@ -122,6 +122,8 @@ export default function ReportsPage() {
     filteredFuel.forEach(r => {
       const hm = Number((r as any).hour_meter);
       if (!hm || hm <= 0) return;
+      // Exclude Arla from efficiency calculation
+      if ((r as any).fuel_type && (r as any).fuel_type.toLowerCase() === 'arla') return;
       if (!allFuelByEq[r.target_equipment_id]) allFuelByEq[r.target_equipment_id] = [];
       allFuelByEq[r.target_equipment_id].push({ date: r.date, hour_meter: hm, liters: Number(r.liters) });
     });

@@ -384,7 +384,10 @@ export default function FuelPage() {
               return (
                 <div key={r.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 cursor-pointer hover:bg-secondary/80 transition-colors" onClick={() => setDetailRecord(r)}>
                   <div>
-                    <p className="text-sm font-medium">{combo?.name} → {target?.name}</p>
+                    <p className="text-sm font-medium">
+                      {combo?.name} → {target?.name}
+                      {(r as any).fuel_type && <span className="ml-2 text-xs bg-primary/10 text-primary rounded px-1.5 py-0.5">{(r as any).fuel_type}</span>}
+                    </p>
                     <p className="text-xs text-muted-foreground">
                       {r.operator_name} — {new Date(r.date + 'T12:00:00').toLocaleDateString('pt-BR')}
                       {r.hour_meter ? (
@@ -476,10 +479,16 @@ export default function FuelPage() {
                       <p className="font-bold text-lg text-accent">{detailRecord.liters}L</p>
                     </div>
                   )}
-                  {detailRecord.hour_meter && (
+                   {detailRecord.hour_meter && (
                     <div>
                       <p className="text-muted-foreground text-xs">Horímetro</p>
                       <p className="font-medium">{detailRecord.hour_meter}h</p>
+                    </div>
+                  )}
+                  {(detailRecord as any).fuel_type && (
+                    <div>
+                      <p className="text-muted-foreground text-xs">Combustível</p>
+                      <p className="font-medium">{(detailRecord as any).fuel_type}</p>
                     </div>
                   )}
                   <div>
@@ -528,6 +537,19 @@ export default function FuelPage() {
             <div><Label>Operador *</Label><Input value={editForm.operator_name} onChange={e => setEditForm({...editForm, operator_name: e.target.value})} /></div>
             <div><Label>Data</Label><Input type="date" value={editForm.date} onChange={e => setEditForm({...editForm, date: e.target.value})} /></div>
             <div><Label>Horímetro</Label><Input type="number" value={editForm.hour_meter} onChange={e => setEditForm({...editForm, hour_meter: e.target.value})} placeholder="Ex: 1500" /></div>
+            <div>
+              <Label>Tipo de Combustível</Label>
+              <Select value={editForm.fuel_type} onValueChange={v => setEditForm({...editForm, fuel_type: v})}>
+                <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Diesel S10">Diesel S10</SelectItem>
+                  <SelectItem value="Diesel S500">Diesel S500</SelectItem>
+                  <SelectItem value="Arla">Arla</SelectItem>
+                  <SelectItem value="Gasolina">Gasolina</SelectItem>
+                  <SelectItem value="Álcool">Álcool</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div>
               <Label>Itens Extras</Label>
               {editExtraItems.map((item, idx) => (

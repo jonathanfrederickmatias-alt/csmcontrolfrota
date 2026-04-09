@@ -159,6 +159,7 @@ export type Database = {
           created_at: string
           date: string
           extra_items: Json
+          fuel_type: string | null
           hour_meter: number | null
           id: string
           liters: number
@@ -171,6 +172,7 @@ export type Database = {
           created_at?: string
           date?: string
           extra_items?: Json
+          fuel_type?: string | null
           hour_meter?: number | null
           id?: string
           liters: number
@@ -183,6 +185,7 @@ export type Database = {
           created_at?: string
           date?: string
           extra_items?: Json
+          fuel_type?: string | null
           hour_meter?: number | null
           id?: string
           liters?: number

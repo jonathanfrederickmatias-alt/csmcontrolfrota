@@ -1,0 +1,1 @@
+ALTER TABLE public.fuel_records ADD COLUMN fuel_type text NULL;

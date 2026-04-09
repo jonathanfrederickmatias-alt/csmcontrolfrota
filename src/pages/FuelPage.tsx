@@ -324,6 +324,19 @@ export default function FuelPage() {
             </div>
             <div><Label>Operador *</Label><Input value={operatorName} onChange={e => setOperatorName(e.target.value)} placeholder="Nome" /></div>
             <div><Label>Horímetro / Hodômetro {!hasExtraItems && '*'}</Label><Input type="number" value={hourMeter} onChange={e => setHourMeter(e.target.value)} placeholder="Ex: 1500" /></div>
+            <div>
+              <Label>Tipo de Combustível</Label>
+              <Select value={fuelType} onValueChange={setFuelType}>
+                <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Diesel S10">Diesel S10</SelectItem>
+                  <SelectItem value="Diesel S500">Diesel S500</SelectItem>
+                  <SelectItem value="Arla">Arla</SelectItem>
+                  <SelectItem value="Gasolina">Gasolina</SelectItem>
+                  <SelectItem value="Álcool">Álcool</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <div className="mt-4">
             <PhotoUpload label="Foto do Abastecimento" required={!hasExtraItems} onUploaded={setPhotoUrl} acceptFiles />

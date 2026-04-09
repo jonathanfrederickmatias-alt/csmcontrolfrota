@@ -30,10 +30,11 @@ export default function FuelPage() {
   const [saving, setSaving] = useState(false);
   const [photoUrl, setPhotoUrl] = useState('');
   const [extraItems, setExtraItems] = useState<FuelSupplyExtraItem[]>([]);
+  const [fuelType, setFuelType] = useState('');
   // Detail & Edit state
   const [detailRecord, setDetailRecord] = useState<DBFuelRecord | null>(null);
   const [editRecord, setEditRecord] = useState<DBFuelRecord | null>(null);
-  const [editForm, setEditForm] = useState({ liters: '', operator_name: '', date: '', hour_meter: '' });
+  const [editForm, setEditForm] = useState({ liters: '', operator_name: '', date: '', hour_meter: '', fuel_type: '' });
   const [editExtraItems, setEditExtraItems] = useState<FuelSupplyExtraItem[]>([]);
 
   const fetchData = async () => {
@@ -91,6 +92,7 @@ export default function FuelPage() {
       operator_name: operatorName,
       photo_url: photoUrl || null,
       extra_items: extraItems.filter(i => i.name.trim()),
+      fuel_type: fuelType || null,
     };
     if (comboId) record.combo_equipment_id = comboId;
     if (targetId) record.target_equipment_id = targetId;
@@ -103,14 +105,14 @@ export default function FuelPage() {
     fetchData();
     setTimeout(() => {
       setSaved(false);
-      setComboId(''); setTargetId(''); setLiters(''); setOperatorName(''); setPhotoUrl(''); setHourMeter(''); setExtraItems([]);
+      setComboId(''); setTargetId(''); setLiters(''); setOperatorName(''); setPhotoUrl(''); setHourMeter(''); setExtraItems([]); setFuelType('');
     }, 2000);
   };
 
   const openEdit = (r: DBFuelRecord) => {
     setEditRecord(r);
     setEditExtraItems(((r as any).extra_items || []) as FuelSupplyExtraItem[]);
-    setEditForm({ liters: String(r.liters), operator_name: r.operator_name, date: r.date, hour_meter: r.hour_meter ? String(r.hour_meter) : '' });
+    setEditForm({ liters: String(r.liters), operator_name: r.operator_name, date: r.date, hour_meter: r.hour_meter ? String(r.hour_meter) : '', fuel_type: (r as any).fuel_type || '' });
   };
 
   const handleSaveEdit = async () => {
@@ -121,6 +123,7 @@ export default function FuelPage() {
       date: editForm.date,
       hour_meter: editForm.hour_meter ? Number(editForm.hour_meter) : null,
       extra_items: editExtraItems.filter(i => i.name.trim()),
+      fuel_type: editForm.fuel_type || null,
     } as any).eq('id', editRecord.id);
     toast.success('Registro atualizado!');
     setEditRecord(null);
@@ -140,6 +143,7 @@ export default function FuelPage() {
         Data: new Date(r.date + 'T12:00:00').toLocaleDateString('pt-BR'),
         Comboio: combo?.name || '—',
         Equipamento: target?.name || '—',
+        Combustível: (r as any).fuel_type || '—',
         Litros: r.liters,
         Horímetro: r.hour_meter || '',
         Operador: r.operator_name,
@@ -185,8 +189,8 @@ export default function FuelPage() {
     pdf.text(`Emitido em: ${now.toLocaleDateString('pt-BR')} ${now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`, pageWidth - margin, 13, { align: 'right' });
 
     let y = 28;
-    const cols = ['Data', 'Comboio', 'Equipamento', 'Litros', 'Horímetro', 'Operador', 'Itens Extras'];
-    const colW = [22, 50, 50, 20, 24, 40, contentWidth - 206];
+    const cols = ['Data', 'Comboio', 'Equipamento', 'Combustível', 'Litros', 'Horímetro', 'Operador', 'Itens Extras'];
+    const colW = [22, 45, 45, 28, 18, 22, 38, contentWidth - 218];
     const colX = [margin];
     for (let i = 1; i < colW.length; i++) colX.push(colX[i - 1] + colW[i - 1]);
 
@@ -224,7 +228,7 @@ export default function FuelPage() {
       }
 
       pdf.setFontSize(7);
-      const values = [row.Data, row.Comboio, row.Equipamento, String(row.Litros), String(row.Horímetro), row.Operador, row['Itens Extras']];
+      const values = [row.Data, row.Comboio, row.Equipamento, row['Combustível'], String(row.Litros), String(row.Horímetro), row.Operador, row['Itens Extras']];
       values.forEach((v, i) => {
         let text = v || '—';
         // Clip text to fit column
@@ -320,6 +324,19 @@ export default function FuelPage() {
             </div>
             <div><Label>Operador *</Label><Input value={operatorName} onChange={e => setOperatorName(e.target.value)} placeholder="Nome" /></div>
             <div><Label>Horímetro / Hodômetro {!hasExtraItems && '*'}</Label><Input type="number" value={hourMeter} onChange={e => setHourMeter(e.target.value)} placeholder="Ex: 1500" /></div>
+            <div>
+              <Label>Tipo de Combustível</Label>
+              <Select value={fuelType} onValueChange={setFuelType}>
+                <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Diesel S10">Diesel S10</SelectItem>
+                  <SelectItem value="Diesel S500">Diesel S500</SelectItem>
+                  <SelectItem value="Arla">Arla</SelectItem>
+                  <SelectItem value="Gasolina">Gasolina</SelectItem>
+                  <SelectItem value="Álcool">Álcool</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <div className="mt-4">
             <PhotoUpload label="Foto do Abastecimento" required={!hasExtraItems} onUploaded={setPhotoUrl} acceptFiles />
@@ -367,7 +384,10 @@ export default function FuelPage() {
               return (
                 <div key={r.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 cursor-pointer hover:bg-secondary/80 transition-colors" onClick={() => setDetailRecord(r)}>
                   <div>
-                    <p className="text-sm font-medium">{combo?.name} → {target?.name}</p>
+                    <p className="text-sm font-medium">
+                      {combo?.name} → {target?.name}
+                      {(r as any).fuel_type && <span className="ml-2 text-xs bg-primary/10 text-primary rounded px-1.5 py-0.5">{(r as any).fuel_type}</span>}
+                    </p>
                     <p className="text-xs text-muted-foreground">
                       {r.operator_name} — {new Date(r.date + 'T12:00:00').toLocaleDateString('pt-BR')}
                       {r.hour_meter ? (
@@ -459,10 +479,16 @@ export default function FuelPage() {
                       <p className="font-bold text-lg text-accent">{detailRecord.liters}L</p>
                     </div>
                   )}
-                  {detailRecord.hour_meter && (
+                   {detailRecord.hour_meter && (
                     <div>
                       <p className="text-muted-foreground text-xs">Horímetro</p>
                       <p className="font-medium">{detailRecord.hour_meter}h</p>
+                    </div>
+                  )}
+                  {(detailRecord as any).fuel_type && (
+                    <div>
+                      <p className="text-muted-foreground text-xs">Combustível</p>
+                      <p className="font-medium">{(detailRecord as any).fuel_type}</p>
                     </div>
                   )}
                   <div>
@@ -511,6 +537,19 @@ export default function FuelPage() {
             <div><Label>Operador *</Label><Input value={editForm.operator_name} onChange={e => setEditForm({...editForm, operator_name: e.target.value})} /></div>
             <div><Label>Data</Label><Input type="date" value={editForm.date} onChange={e => setEditForm({...editForm, date: e.target.value})} /></div>
             <div><Label>Horímetro</Label><Input type="number" value={editForm.hour_meter} onChange={e => setEditForm({...editForm, hour_meter: e.target.value})} placeholder="Ex: 1500" /></div>
+            <div>
+              <Label>Tipo de Combustível</Label>
+              <Select value={editForm.fuel_type} onValueChange={v => setEditForm({...editForm, fuel_type: v})}>
+                <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Diesel S10">Diesel S10</SelectItem>
+                  <SelectItem value="Diesel S500">Diesel S500</SelectItem>
+                  <SelectItem value="Arla">Arla</SelectItem>
+                  <SelectItem value="Gasolina">Gasolina</SelectItem>
+                  <SelectItem value="Álcool">Álcool</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div>
               <Label>Itens Extras</Label>
               {editExtraItems.map((item, idx) => (

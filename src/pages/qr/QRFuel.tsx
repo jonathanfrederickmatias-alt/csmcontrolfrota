@@ -27,6 +27,7 @@ export default function QRFuel() {
   const [saving, setSaving] = useState(false);
   const [photoUrl, setPhotoUrl] = useState('');
   const [extraItems, setExtraItems] = useState<FuelSupplyExtraItem[]>([]);
+  const [fuelType, setFuelType] = useState('');
 
   useEffect(() => {
     supabase.from('equipments').select('*').order('name').then(({ data }) => {
@@ -52,6 +53,7 @@ export default function QRFuel() {
       operator_name: operatorName,
       photo_url: photoUrl || null,
       extra_items: extraItems.filter(i => i.name.trim()),
+      fuel_type: fuelType || null,
     };
     if (comboId) record.combo_equipment_id = comboId;
     if (targetId) record.target_equipment_id = targetId;
@@ -158,6 +160,21 @@ export default function QRFuel() {
             </select>
           </div>
         )}
+        <div>
+          <Label>Tipo de Combustível</Label>
+          <select
+            value={fuelType}
+            onChange={e => setFuelType(e.target.value)}
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 mt-1"
+          >
+            <option value="">Selecionar...</option>
+            <option value="Diesel S10">Diesel S10</option>
+            <option value="Diesel S500">Diesel S500</option>
+            <option value="Arla">Arla</option>
+            <option value="Gasolina">Gasolina</option>
+            <option value="Álcool">Álcool</option>
+          </select>
+        </div>
         <div>
           <Label>Litros *</Label>
           <Input type="number" inputMode="decimal" value={liters} onChange={e => setLiters(e.target.value)} placeholder="Ex: 200" />

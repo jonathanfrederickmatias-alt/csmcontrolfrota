@@ -54,6 +54,7 @@ export default function EquipmentPage() {
       currentFuel: eq.current_fuel?.toString() || '',
       hourMeter: eq.current_hour_meter?.toString() || '0',
       year: eq.year?.toString() || '',
+      chassis: eq.chassis || '',
     });
     setOpen(true);
     setSelectedEq(null);

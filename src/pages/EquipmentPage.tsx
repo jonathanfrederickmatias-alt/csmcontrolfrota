@@ -266,6 +266,12 @@ export default function EquipmentPage() {
                       <p className="font-semibold text-foreground">{selectedEq.year}</p>
                     </div>
                   )}
+                  {selectedEq.chassis && (
+                    <div className="bg-secondary/50 rounded-lg p-3">
+                      <p className="text-xs text-muted-foreground">Chassi/Série</p>
+                      <p className="font-mono font-semibold text-foreground">{selectedEq.chassis}</p>
+                    </div>
+                  )}
                   {selectedEq.type === 'combo' && selectedEq.fuel_capacity && (
                     <div className="col-span-2 bg-secondary/50 rounded-lg p-3">
                       <p className="text-xs text-muted-foreground">Combustível</p>

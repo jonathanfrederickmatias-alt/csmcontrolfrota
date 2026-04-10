@@ -300,10 +300,18 @@ export default function EquipmentPage() {
         <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
       ) : (
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as OwnershipType)}>
-          <TabsList className="mb-6">
-            <TabsTrigger value="own">Próprios</TabsTrigger>
-            <TabsTrigger value="third_party">Terceiros</TabsTrigger>
-          </TabsList>
+          <div className="flex items-center gap-4 mb-6 flex-wrap">
+            <TabsList>
+              <TabsTrigger value="own">Próprios</TabsTrigger>
+              <TabsTrigger value="third_party">Terceiros</TabsTrigger>
+            </TabsList>
+            <Input
+              placeholder="Buscar por nome ou placa..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="max-w-xs"
+            />
+          </div>
           <TabsContent value="own">
             {renderEquipmentGrid(filteredEquipments)}
           </TabsContent>

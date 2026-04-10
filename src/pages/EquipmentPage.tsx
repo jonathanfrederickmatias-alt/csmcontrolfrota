@@ -74,6 +74,7 @@ export default function EquipmentPage() {
         fuel_capacity: form.fuelCapacity ? Number(form.fuelCapacity) : null,
         current_fuel: form.currentFuel ? Number(form.currentFuel) : 0,
         year: form.year ? Number(form.year) : null,
+        chassis: form.chassis || null,
       }).eq('id', editingId);
       if (error) toast.error("Erro ao atualizar");
       else toast.success("Equipamento atualizado!");
@@ -89,6 +90,7 @@ export default function EquipmentPage() {
         fuel_capacity: form.fuelCapacity ? Number(form.fuelCapacity) : null,
         current_fuel: form.currentFuel ? Number(form.currentFuel) : 0,
         year: form.year ? Number(form.year) : null,
+        chassis: form.chassis || null,
         status: 'active',
         ownership: activeTab,
       });

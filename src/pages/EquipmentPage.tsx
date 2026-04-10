@@ -194,7 +194,7 @@ export default function EquipmentPage() {
               <div><Label>Marca</Label><Input value={form.brand} onChange={e => setForm({...form, brand: e.target.value})} /></div>
               <div><Label>Centro de Custo</Label><Input value={form.costCenter} onChange={e => setForm({...form, costCenter: e.target.value})} /></div>
               <div><Label>Ano</Label><Input type="number" value={form.year} onChange={e => setForm({...form, year: e.target.value})} placeholder="Ex: 2024" /></div>
-              <div><Label>Chassi/Série</Label><Input value={form.chassis} onChange={e => setForm({...form, chassis: e.target.value})} placeholder="Ex: 9BW..." /></div>
+              <div><Label>Chassi</Label><Input value={form.chassis} onChange={e => setForm({...form, chassis: e.target.value})} placeholder="Ex: 9BW..." /></div>
               {editingId && (
                 <div><Label>Horímetro</Label><Input type="number" value={form.hourMeter} onChange={e => setForm({...form, hourMeter: e.target.value})} /></div>
               )}
@@ -268,7 +268,7 @@ export default function EquipmentPage() {
                   )}
                   {selectedEq.chassis && (
                     <div className="bg-secondary/50 rounded-lg p-3">
-                      <p className="text-xs text-muted-foreground">Chassi/Série</p>
+                      <p className="text-xs text-muted-foreground">Chassi</p>
                       <p className="font-mono font-semibold text-foreground">{selectedEq.chassis}</p>
                     </div>
                   )}

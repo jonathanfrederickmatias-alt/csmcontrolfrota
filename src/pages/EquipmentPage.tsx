@@ -34,7 +34,9 @@ export default function EquipmentPage() {
 
   useEffect(() => { fetchData(); }, []);
 
-  const filteredEquipments = equipments.filter(eq => (eq.ownership || 'own') === activeTab);
+  const filteredEquipments = equipments
+    .filter(eq => (eq.ownership || 'own') === activeTab)
+    .filter(eq => !search || eq.name.toLowerCase().includes(search.toLowerCase()) || eq.plate?.toLowerCase().includes(search.toLowerCase()));
 
   const openNew = () => {
     setEditingId(null);

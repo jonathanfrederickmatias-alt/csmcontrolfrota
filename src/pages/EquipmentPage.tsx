@@ -18,6 +18,7 @@ const emptyForm = { name: '', type: 'machine' as EqType, plate: '', model: '', b
 export default function EquipmentPage() {
   const [equipments, setEquipments] = useState<DBEquipment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -33,7 +34,9 @@ export default function EquipmentPage() {
 
   useEffect(() => { fetchData(); }, []);
 
-  const filteredEquipments = equipments.filter(eq => (eq.ownership || 'own') === activeTab);
+  const filteredEquipments = equipments
+    .filter(eq => (eq.ownership || 'own') === activeTab)
+    .filter(eq => !search || eq.name.toLowerCase().includes(search.toLowerCase()) || eq.plate?.toLowerCase().includes(search.toLowerCase()));
 
   const openNew = () => {
     setEditingId(null);
@@ -297,10 +300,18 @@ export default function EquipmentPage() {
         <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
       ) : (
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as OwnershipType)}>
-          <TabsList className="mb-6">
-            <TabsTrigger value="own">Próprios</TabsTrigger>
-            <TabsTrigger value="third_party">Terceiros</TabsTrigger>
-          </TabsList>
+          <div className="flex items-center gap-4 mb-6 flex-wrap">
+            <TabsList>
+              <TabsTrigger value="own">Próprios</TabsTrigger>
+              <TabsTrigger value="third_party">Terceiros</TabsTrigger>
+            </TabsList>
+            <Input
+              placeholder="Buscar por nome ou placa..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="max-w-xs"
+            />
+          </div>
           <TabsContent value="own">
             {renderEquipmentGrid(filteredEquipments)}
           </TabsContent>

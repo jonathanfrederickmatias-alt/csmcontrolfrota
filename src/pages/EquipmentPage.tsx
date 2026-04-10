@@ -144,6 +144,7 @@ export default function EquipmentPage() {
             {eq.plate && <p className="text-xs text-muted-foreground">Placa/Série: {eq.plate}</p>}
             {eq.model && <p className="text-xs text-muted-foreground">Modelo: {eq.model}</p>}
             {eq.brand && <p className="text-xs text-muted-foreground">Marca: {eq.brand}</p>}
+            {eq.chassis && <p className="text-xs text-muted-foreground">Chassi: {eq.chassis}</p>}
             {eq.year && <p className="text-xs text-muted-foreground">Ano: {eq.year}</p>}
             <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
               <div>
@@ -193,6 +194,7 @@ export default function EquipmentPage() {
               <div><Label>Marca</Label><Input value={form.brand} onChange={e => setForm({...form, brand: e.target.value})} /></div>
               <div><Label>Centro de Custo</Label><Input value={form.costCenter} onChange={e => setForm({...form, costCenter: e.target.value})} /></div>
               <div><Label>Ano</Label><Input type="number" value={form.year} onChange={e => setForm({...form, year: e.target.value})} placeholder="Ex: 2024" /></div>
+              <div><Label>Chassi/Série</Label><Input value={form.chassis} onChange={e => setForm({...form, chassis: e.target.value})} placeholder="Ex: 9BW..." /></div>
               {editingId && (
                 <div><Label>Horímetro</Label><Input type="number" value={form.hourMeter} onChange={e => setForm({...form, hourMeter: e.target.value})} /></div>
               )}

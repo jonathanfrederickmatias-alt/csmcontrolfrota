@@ -8,14 +8,24 @@ const corsHeaders = {
 
 type AiDecision = {
   equipmentId: string;
+  summary: string;
+  failureRisk: number;
   recommendation: string;
   reason: string;
-  priority: "high" | "medium" | "low";
+  priority: "critical" | "high" | "medium" | "low";
   maintenanceType: "preventive" | "corrective";
   suggestedParts: string[];
   downtimeHours: number;
+  consumptionStatus: string;
+  consumptionDeviationPercent: number;
+  costAnalysis: string;
+  problemsIdentified: string[];
+  possibleCauses: string[];
+  recommendedActions: string[];
   operationalImpact?: string;
   technicalReason?: string;
+  anomalyFlags?: string[];
+  equipmentClassification: "good" | "medium" | "bad";
   autoCreateOS: boolean;
 };
 
@@ -52,26 +62,41 @@ serve(async (req) => {
       });
     }
 
-    const prompt = `Analise a frota e gere até 5 decisões automáticas de manutenção.
+    const prompt = `Analise a frota e gere até 5 avaliações operacionais, práticas e objetivas para tomada de decisão.
 Retorne SOMENTE JSON válido no formato {"decisions": Array<Decision>}.
 
 Cada Decision deve conter:
 - equipmentId: string
+- summary: resumo geral em até 3 linhas
+- failureRisk: number entre 0 e 100
 - recommendation: string curta, objetiva e acionável
 - reason: string explicando o risco operacional
-- priority: "high" | "medium" | "low"
+- priority: "critical" | "high" | "medium" | "low"
 - maintenanceType: "preventive" | "corrective"
 - suggestedParts: string[]
 - downtimeHours: number
+- consumptionStatus: string com status do consumo
+- consumptionDeviationPercent: number
+- costAnalysis: string com análise simples de custo
+- problemsIdentified: string[]
+- possibleCauses: string[]
+- recommendedActions: string[]
 - operationalImpact: string curta com impacto na operação
 - technicalReason: string curta com motivo técnico
+- anomalyFlags: string[] com inconsistências, suspeitas ou fraudes detectadas
+- equipmentClassification: "good" | "medium" | "bad"
 - autoCreateOS: boolean
 
 Regras de decisão:
 - considerar horímetro atual vs última manutenção
+- considerar km atual quando aplicável
 - considerar histórico de falhas e recorrência
 - considerar consumo recente anormal
+- calcular desvio percentual de consumo quando houver base
+- avaliar custo operacional e impacto financeiro aproximado
+- sinalizar suspeita se houver dados incoerentes, consumo anormal ou horímetro inconsistente
 - considerar criticidade do equipamento
+- marcar priority = "critical" quando houver risco alto de parada ou impacto direto na produção
 - sugerir OS automática quando a ação for clara
 - usar linguagem operacional em pt-BR
 
@@ -89,7 +114,7 @@ ${JSON.stringify({ equipments, maintenancePlans, maintenanceHistory, fuelRecords
         messages: [
           {
             role: "system",
-            content: "Você é um especialista nível concessionária em manutenção de equipamentos pesados. Responda apenas com JSON válido.",
+             content: "Você é um especialista em gestão de frota pesada, manutenção de equipamentos, operação de obra rodoviária e controle de custos. Gere uma avaliação objetiva para decisão operacional e responda apenas com JSON válido.",
           },
           {
             role: "user",

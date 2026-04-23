@@ -204,6 +204,8 @@ export default function Dashboard() {
   });
   const [aiDecisions, setAiDecisions] = useState<AIMaintenanceDecisionPayload[]>([]);
   const [aiLoading, setAiLoading] = useState(false);
+  const [aiErrorMessage, setAiErrorMessage] = useState<string | null>(null);
+  const [aiHasGenerated, setAiHasGenerated] = useState(false);
   const [creatingAiDecisionId, setCreatingAiDecisionId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -253,57 +255,75 @@ export default function Dashboard() {
     fetchData();
   }, [fetchData]);
 
-  useEffect(() => {
-    const loadAiDecisions = async () => {
-      if (data.equipments.length === 0) {
-        setAiDecisions([]);
-        return;
-      }
+  const loadAiDecisions = useCallback(async () => {
+    if (data.equipments.length === 0) {
+      setAiDecisions([]);
+      setAiHasGenerated(true);
+      setAiErrorMessage(null);
+      return;
+    }
 
-      setAiLoading(true);
-      const { data: response, error } = await supabase.functions.invoke("maintenance-ai-decisions", {
-        body: {
-          equipments: data.equipments,
-          maintenancePlans: data.plans,
-          maintenanceHistory: data.maintenanceHistory,
-          fuelRecords: data.fuelRecords,
-          workOrders: data.workOrders,
-        },
-      });
+    setAiLoading(true);
+    setAiErrorMessage(null);
+    setAiHasGenerated(true);
 
-      if (error) {
-        toast({ title: "Erro ao gerar decisões automáticas", description: error.message, variant: "destructive" });
-        setAiDecisions([]);
-      } else {
-        const items = Array.isArray(response?.decisions) ? response.decisions : [];
-        setAiDecisions(
-          items
-            .filter((item: any) => item?.equipmentId && item?.recommendation)
-            .map((item: any) => {
-              const equipment = data.equipments.find((entry: any) => entry.id === item.equipmentId);
-              return {
-                id: `${item.equipmentId}-${item.priority}-${item.maintenanceType}`,
-                equipmentId: item.equipmentId,
-                equipmentName: equipment?.name || "Equipamento",
-                recommendation: item.recommendation,
-                reason: item.reason || "Sem justificativa detalhada.",
-                priority: item.priority === "high" || item.priority === "medium" || item.priority === "low" ? item.priority : "medium",
-                maintenanceType: item.maintenanceType === "corrective" ? "corrective" : "preventive",
-                suggestedParts: Array.isArray(item.suggestedParts) ? item.suggestedParts.filter(Boolean) : [],
-                downtimeHours: Number(item.downtimeHours || 0),
-                operationalImpact: item.operationalImpact || `Impacto estimado de ${Number(item.downtimeHours || 0).toFixed(1)}h na disponibilidade operacional.`,
-                technicalReason: item.technicalReason || item.reason || "Sem justificativa detalhada.",
-                autoCreateOS: item.autoCreateOS !== false,
-              } satisfies AIMaintenanceDecisionPayload;
-            })
-            .slice(0, 5),
-        );
-      }
+    const { data: response, error } = await supabase.functions.invoke("maintenance-ai-decisions", {
+      body: {
+        equipments: data.equipments,
+        maintenancePlans: data.plans,
+        maintenanceHistory: data.maintenanceHistory,
+        fuelRecords: data.fuelRecords,
+        workOrders: data.workOrders,
+      },
+    });
 
+    if (error) {
+      const friendlyMessage = error.message.includes("payment_required") || error.message.includes("Not enough credits")
+        ? "A análise operacional está temporariamente indisponível porque o crédito de IA do workspace acabou. Recarregue os créditos para gerar novas avaliações."
+        : "Não foi possível gerar a avaliação operacional agora.";
+      setAiDecisions([]);
+      setAiErrorMessage(friendlyMessage);
+      toast({ title: "Análise operacional indisponível", description: friendlyMessage, variant: "destructive" });
       setAiLoading(false);
-    };
+      return;
+    }
 
-    loadAiDecisions();
+    const items = Array.isArray(response?.decisions) ? response.decisions : [];
+    setAiDecisions(
+      items
+        .filter((item: any) => item?.equipmentId && item?.recommendation)
+        .map((item: any) => {
+          const equipment = data.equipments.find((entry: any) => entry.id === item.equipmentId);
+          const priority = item.priority === "critical" || item.priority === "high" || item.priority === "medium" || item.priority === "low" ? item.priority : "medium";
+          const classification = item.equipmentClassification === "good" || item.equipmentClassification === "medium" || item.equipmentClassification === "bad" ? item.equipmentClassification : "medium";
+          return {
+            id: `${item.equipmentId}-${priority}-${item.maintenanceType}`,
+            equipmentId: item.equipmentId,
+            equipmentName: equipment?.name || "Equipamento",
+            summary: item.summary || item.reason || item.recommendation,
+            failureRisk: Math.max(0, Math.min(100, Number(item.failureRisk || 0))),
+            recommendation: item.recommendation,
+            reason: item.reason || "Sem justificativa detalhada.",
+            priority,
+            maintenanceType: item.maintenanceType === "corrective" ? "corrective" : "preventive",
+            suggestedParts: Array.isArray(item.suggestedParts) ? item.suggestedParts.filter(Boolean) : [],
+            downtimeHours: Number(item.downtimeHours || 0),
+            consumptionStatus: item.consumptionStatus || "Dentro do esperado",
+            consumptionDeviationPercent: Number(item.consumptionDeviationPercent || 0),
+            costAnalysis: item.costAnalysis || "Sem pressão financeira relevante no momento.",
+            problemsIdentified: Array.isArray(item.problemsIdentified) ? item.problemsIdentified.filter(Boolean) : [],
+            possibleCauses: Array.isArray(item.possibleCauses) ? item.possibleCauses.filter(Boolean) : [],
+            recommendedActions: Array.isArray(item.recommendedActions) ? item.recommendedActions.filter(Boolean) : [item.recommendation],
+            operationalImpact: item.operationalImpact || `Impacto estimado de ${Number(item.downtimeHours || 0).toFixed(1)}h na disponibilidade operacional.`,
+            technicalReason: item.technicalReason || item.reason || "Sem justificativa detalhada.",
+            anomalyFlags: Array.isArray(item.anomalyFlags) ? item.anomalyFlags.filter(Boolean) : [],
+            equipmentClassification: classification,
+            autoCreateOS: item.autoCreateOS !== false,
+          } satisfies AIMaintenanceDecisionPayload;
+        })
+        .slice(0, 5),
+    );
+    setAiLoading(false);
   }, [data.equipments, data.fuelRecords, data.maintenanceHistory, data.plans, data.workOrders]);
 
   const handleCreateAiWorkOrder = useCallback(async (item: AIMaintenanceDecisionPayload) => {
@@ -971,7 +991,10 @@ export default function Dashboard() {
         <AIMaintenanceDecisionsSection
           items={aiDecisions}
           loading={aiLoading}
+          errorMessage={aiErrorMessage}
+          hasGenerated={aiHasGenerated}
           creatingId={creatingAiDecisionId}
+          onRefresh={loadAiDecisions}
           onCreateWorkOrder={handleCreateAiWorkOrder}
         />
       </div>

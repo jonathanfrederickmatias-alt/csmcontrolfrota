@@ -60,7 +60,7 @@ type WorkOrderUpdatePayload = {
   technical_observations: string | null;
   notes: string | null;
   execution_meter: number;
-  parts: unknown;
+  parts: Array<Record<string, string | number | null>>;
   part_code: string | null;
   photo_start_url: string | null;
   photo_end_url: string | null;
@@ -295,7 +295,13 @@ export function WorkOrderExecutionView({
     technical_observations: execution.technicalObservations || null,
     notes: execution.technicalObservations || null,
     execution_meter: currentMeterValue,
-    parts: cleanedParts as unknown,
+    parts: cleanedParts.map((part) => ({
+      code: part.code || "",
+      description: part.description || "",
+      quantity: Number(part.quantity || 0),
+      unit_price: Number(part.unit_price || 0),
+      total_price: Number(part.total_price || getPartTotal(part)),
+    })),
     part_code: cleanedParts.map((part) => part.code).filter(Boolean).join(", ") || null,
     photo_start_url: evidence.photoStartUrl || null,
     photo_end_url: evidence.photoEndUrl || null,

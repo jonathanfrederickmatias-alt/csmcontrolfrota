@@ -11,6 +11,7 @@ import {
   Package, CheckSquare, SquareIcon, ArrowLeft, Clock, AlertTriangle
 } from "lucide-react";
 import PhotoUpload from "@/components/PhotoUpload";
+import { WorkOrderExecutionView } from "@/components/mechanic/WorkOrderExecutionView";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -68,16 +69,17 @@ const statusColors: Record<string, string> = {
 export default function MechanicDashboardPage() {
   const [orders, setOrders] = useState<WorkOrder[]>([]);
   const [equipments, setEquipments] = useState<Record<string, DBEquipment>>({});
+  const [obras, setObras] = useState<Record<string, { id: string; name: string; location?: string | null }>>({});
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('pending');
   const [selectedOS, setSelectedOS] = useState<WorkOrder | null>(null);
 
   const fetchData = async () => {
     setLoading(true);
-    const { data: woData } = await supabase
-      .from('work_orders')
-      .select('*')
-      .order('created_at', { ascending: false });
+    const [{ data: woData }, { data: obraData }] = await Promise.all([
+      supabase.from('work_orders').select('*').order('created_at', { ascending: false }),
+      supabase.from('obras').select('id, name, location'),
+    ]);
 
     const workOrders = (woData || []) as unknown as WorkOrder[];
     setOrders(workOrders);
@@ -93,6 +95,9 @@ export default function MechanicDashboardPage() {
       (eqData || []).forEach(eq => { eqMap[eq.id] = eq as unknown as DBEquipment; });
       setEquipments(eqMap);
     }
+    const obraMap: Record<string, { id: string; name: string; location?: string | null }> = {};
+    (obraData || []).forEach((obra) => { obraMap[obra.id] = obra; });
+    setObras(obraMap);
     setLoading(false);
   };
 
@@ -106,9 +111,10 @@ export default function MechanicDashboardPage() {
 
   if (selectedOS) {
     return (
-      <OSDetailView
-        os={selectedOS}
+      <WorkOrderExecutionView
+        initialOS={selectedOS as unknown as any}
         equipment={equipments[selectedOS.equipment_id] || null}
+        obra={obras[equipments[selectedOS.equipment_id]?.obra_id || ''] || null}
         onBack={() => { setSelectedOS(null); fetchData(); }}
       />
     );

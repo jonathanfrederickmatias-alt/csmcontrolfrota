@@ -30,7 +30,12 @@ import {
   RecommendationItem,
   RecommendedActionsSection,
 } from "@/components/dashboard/OperationalCommandCenterSections";
+import {
+  AIMaintenanceDecision,
+  AIMaintenanceDecisionsSection,
+} from "@/components/dashboard/AIMaintenanceDecisionsSection";
 import { Camera, MessageSquare, ShieldCheck, ShieldX } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
 type DashboardData = {
   equipments: any[];
@@ -41,6 +46,7 @@ type DashboardData = {
   requests: any[];
   combos: any[];
   workOrders: any[];
+  maintenanceHistory: any[];
 };
 
 type EfficiencySegment = {
@@ -86,6 +92,8 @@ type StatsSummary = {
   recommendations: RecommendationItem[];
   lowFuelCombos: any[];
 };
+
+type AIMaintenanceDecisionPayload = AIMaintenanceDecision;
 
 const priorityWeights: Record<string, number> = {
   urgent: 4,
@@ -181,7 +189,11 @@ export default function Dashboard() {
     requests: [],
     combos: [],
     workOrders: [],
+    maintenanceHistory: [],
   });
+  const [aiDecisions, setAiDecisions] = useState<AIMaintenanceDecisionPayload[]>([]);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [creatingAiDecisionId, setCreatingAiDecisionId] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     setIsRefreshing(true);
@@ -190,7 +202,7 @@ export default function Dashboard() {
     sixtyDaysAgo.setDate(today.getDate() - 60);
     const cutoffDate = sixtyDaysAgo.toISOString().split("T")[0];
 
-    const [eqRes, clRes, plRes, frRes, fsRes, reqRes, woRes] = await Promise.all([
+    const [eqRes, clRes, plRes, frRes, fsRes, reqRes, woRes, histRes] = await Promise.all([
       supabase.from("equipments").select("*"),
       supabase.from("checklists").select("*").order("created_at", { ascending: false }).limit(200),
       supabase.from("maintenance_plans").select("*"),
@@ -198,6 +210,7 @@ export default function Dashboard() {
       supabase.from("fuel_supply_records").select("*").gte("date", cutoffDate).order("date", { ascending: false }).limit(300),
       supabase.from("maintenance_requests").select("*").order("created_at", { ascending: false }).limit(100),
       supabase.from("work_orders").select("*").order("created_at", { ascending: false }).limit(100),
+      supabase.from("maintenance_history").select("*").order("executed_at", { ascending: false }).limit(300),
     ]);
 
     const equipments = eqRes.data || [];
@@ -210,12 +223,108 @@ export default function Dashboard() {
       requests: reqRes.data || [],
       combos: equipments.filter((equipment: any) => equipment.type === "combo"),
       workOrders: woRes.data || [],
+      maintenanceHistory: histRes.data || [],
     });
     setIsRefreshing(false);
   }, []);
 
   useEffect(() => {
     fetchData();
+  }, [fetchData]);
+
+  useEffect(() => {
+    const loadAiDecisions = async () => {
+      if (data.equipments.length === 0) {
+        setAiDecisions([]);
+        return;
+      }
+
+      setAiLoading(true);
+      const { data: response, error } = await supabase.functions.invoke("maintenance-ai-decisions", {
+        body: {
+          equipments: data.equipments,
+          maintenancePlans: data.plans,
+          maintenanceHistory: data.maintenanceHistory,
+          fuelRecords: data.fuelRecords,
+          workOrders: data.workOrders,
+        },
+      });
+
+      if (error) {
+        toast({ title: "Erro ao gerar decisões automáticas", description: error.message, variant: "destructive" });
+        setAiDecisions([]);
+      } else {
+        const items = Array.isArray(response?.decisions) ? response.decisions : [];
+        setAiDecisions(
+          items
+            .filter((item: any) => item?.equipmentId && item?.recommendation)
+            .map((item: any) => {
+              const equipment = data.equipments.find((entry: any) => entry.id === item.equipmentId);
+              return {
+                id: `${item.equipmentId}-${item.priority}-${item.maintenanceType}`,
+                equipmentId: item.equipmentId,
+                equipmentName: equipment?.name || "Equipamento",
+                recommendation: item.recommendation,
+                reason: item.reason || "Sem justificativa detalhada.",
+                priority: item.priority === "high" || item.priority === "medium" || item.priority === "low" ? item.priority : "medium",
+                maintenanceType: item.maintenanceType === "corrective" ? "corrective" : "preventive",
+                suggestedParts: Array.isArray(item.suggestedParts) ? item.suggestedParts.filter(Boolean) : [],
+                downtimeHours: Number(item.downtimeHours || 0),
+                autoCreateOS: item.autoCreateOS !== false,
+              } satisfies AIMaintenanceDecisionPayload;
+            })
+            .slice(0, 5),
+        );
+      }
+
+      setAiLoading(false);
+    };
+
+    loadAiDecisions();
+  }, [data.equipments, data.fuelRecords, data.maintenanceHistory, data.plans, data.workOrders]);
+
+  const handleCreateAiWorkOrder = useCallback(async (item: AIMaintenanceDecisionPayload) => {
+    setCreatingAiDecisionId(item.id);
+
+    const mappedPriority = item.priority === "high" ? "urgent" : item.priority === "medium" ? "high" : "medium";
+    const description = `${item.recommendation}${item.suggestedParts.length > 0 ? ` | Peças sugeridas: ${item.suggestedParts.join(", ")}` : ""}${item.downtimeHours > 0 ? ` | Parada estimada: ${item.downtimeHours.toFixed(1)}h` : ""}`;
+
+    const { data: requestData, error: requestError } = await supabase
+      .from("maintenance_requests")
+      .insert({
+        equipment_id: item.equipmentId,
+        description,
+        priority: mappedPriority,
+        operator_name: "IA Operacional",
+        status: "open",
+        notes: item.reason,
+      })
+      .select()
+      .single();
+
+    if (requestError || !requestData) {
+      toast({ title: "Erro ao criar pedido automático", description: requestError?.message, variant: "destructive" });
+      setCreatingAiDecisionId(null);
+      return;
+    }
+
+    const { error: workOrderError } = await supabase.from("work_orders").insert({
+      equipment_id: item.equipmentId,
+      maintenance_request_id: requestData.id,
+      description,
+      priority: mappedPriority,
+      status: "open",
+      notes: item.reason,
+    });
+
+    if (workOrderError) {
+      toast({ title: "Erro ao criar OS automática", description: workOrderError.message, variant: "destructive" });
+    } else {
+      toast({ title: "OS automática criada", description: `${item.equipmentName} entrou na fila operacional.` });
+      fetchData();
+    }
+
+    setCreatingAiDecisionId(null);
   }, [fetchData]);
 
   const today = new Date().toISOString().split("T")[0];
@@ -716,6 +825,13 @@ export default function Dashboard() {
         <PriorityRankingSection items={stats.priorityRanking as PriorityRankingItem[]} />
         <RecommendedActionsSection items={stats.recommendations} />
       </div>
+
+      <AIMaintenanceDecisionsSection
+        items={aiDecisions}
+        loading={aiLoading}
+        creatingId={creatingAiDecisionId}
+        onCreateWorkOrder={handleCreateAiWorkOrder}
+      />
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.2fr_0.8fr]">
         <MaintenancePriorityList items={maintenanceList} onOpenAll={() => navigate("/manutencao")} />

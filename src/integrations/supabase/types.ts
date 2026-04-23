@@ -69,6 +69,7 @@ export type Database = {
           brand: string | null
           chassis: string | null
           cost_center: string | null
+          cost_per_hour: number
           created_at: string
           current_fuel: number | null
           current_hour_meter: number
@@ -88,6 +89,7 @@ export type Database = {
           brand?: string | null
           chassis?: string | null
           cost_center?: string | null
+          cost_per_hour?: number
           created_at?: string
           current_fuel?: number | null
           current_hour_meter?: number
@@ -107,6 +109,7 @@ export type Database = {
           brand?: string | null
           chassis?: string | null
           cost_center?: string | null
+          cost_per_hour?: number
           created_at?: string
           current_fuel?: number | null
           current_hour_meter?: number

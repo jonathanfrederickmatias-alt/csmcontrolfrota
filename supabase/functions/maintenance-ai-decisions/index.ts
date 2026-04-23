@@ -14,8 +14,27 @@ type AiDecision = {
   maintenanceType: "preventive" | "corrective";
   suggestedParts: string[];
   downtimeHours: number;
+  operationalImpact?: string;
+  technicalReason?: string;
   autoCreateOS: boolean;
 };
+
+function extractJsonObject(raw: string) {
+  const cleaned = raw
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/i, "")
+    .replace(/```$/i, "")
+    .trim();
+
+  const firstBrace = cleaned.indexOf("{");
+  const lastBrace = cleaned.lastIndexOf("}");
+
+  if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
+    throw new Error("AI response did not contain valid JSON object");
+  }
+
+  return JSON.parse(cleaned.slice(firstBrace, lastBrace + 1));
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -44,6 +63,8 @@ Cada Decision deve conter:
 - maintenanceType: "preventive" | "corrective"
 - suggestedParts: string[]
 - downtimeHours: number
+- operationalImpact: string curta com impacto na operação
+- technicalReason: string curta com motivo técnico
 - autoCreateOS: boolean
 
 Regras de decisão:
@@ -89,7 +110,7 @@ ${JSON.stringify({ equipments, maintenancePlans, maintenanceHistory, fuelRecords
 
     const payload = await aiResponse.json();
     const content = payload?.choices?.[0]?.message?.content;
-    const parsed = typeof content === "string" ? JSON.parse(content) : content;
+    const parsed = typeof content === "string" ? extractJsonObject(content) : content;
     const decisions = Array.isArray(parsed?.decisions) ? parsed.decisions : [];
 
     return new Response(JSON.stringify({ decisions }), {

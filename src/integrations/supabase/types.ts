@@ -569,14 +569,24 @@ export type Database = {
       }
       work_orders: {
         Row: {
+          cause_identified: string | null
           completed_at: string | null
           created_at: string
           description: string
           equipment_id: string
+          execution_meter: number
+          final_status:
+            | Database["public"]["Enums"]["work_order_final_status"]
+            | null
           id: string
           invoice_number: string | null
           labor_cost: number | null
+          machine_released: boolean
+          maintenance_plan_id: string | null
           maintenance_request_id: string
+          maintenance_type:
+            | Database["public"]["Enums"]["maintenance_execution_type"]
+            | null
           mechanic_name: string | null
           notes: string | null
           os_number: number
@@ -589,17 +599,28 @@ export type Database = {
           service_executed: string | null
           started_at: string | null
           status: string
+          technical_observations: string | null
           updated_at: string
         }
         Insert: {
+          cause_identified?: string | null
           completed_at?: string | null
           created_at?: string
           description: string
           equipment_id: string
+          execution_meter?: number
+          final_status?:
+            | Database["public"]["Enums"]["work_order_final_status"]
+            | null
           id?: string
           invoice_number?: string | null
           labor_cost?: number | null
+          machine_released?: boolean
+          maintenance_plan_id?: string | null
           maintenance_request_id: string
+          maintenance_type?:
+            | Database["public"]["Enums"]["maintenance_execution_type"]
+            | null
           mechanic_name?: string | null
           notes?: string | null
           os_number?: number
@@ -612,17 +633,28 @@ export type Database = {
           service_executed?: string | null
           started_at?: string | null
           status?: string
+          technical_observations?: string | null
           updated_at?: string
         }
         Update: {
+          cause_identified?: string | null
           completed_at?: string | null
           created_at?: string
           description?: string
           equipment_id?: string
+          execution_meter?: number
+          final_status?:
+            | Database["public"]["Enums"]["work_order_final_status"]
+            | null
           id?: string
           invoice_number?: string | null
           labor_cost?: number | null
+          machine_released?: boolean
+          maintenance_plan_id?: string | null
           maintenance_request_id?: string
+          maintenance_type?:
+            | Database["public"]["Enums"]["maintenance_execution_type"]
+            | null
           mechanic_name?: string | null
           notes?: string | null
           os_number?: number
@@ -635,6 +667,7 @@ export type Database = {
           service_executed?: string | null
           started_at?: string | null
           status?: string
+          technical_observations?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -643,6 +676,13 @@ export type Database = {
             columns: ["equipment_id"]
             isOneToOne: false
             referencedRelation: "equipments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_orders_maintenance_plan_id_fkey"
+            columns: ["maintenance_plan_id"]
+            isOneToOne: false
+            referencedRelation: "maintenance_plans"
             referencedColumns: ["id"]
           },
           {
@@ -673,6 +713,12 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "gestor" | "mecanico" | "abastecedor"
+      maintenance_execution_type: "preventiva" | "corretiva"
+      work_order_final_status:
+        | "concluida"
+        | "aguardando_peca"
+        | "servico_externo"
+        | "maquina_parada"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -801,6 +847,13 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "gestor", "mecanico", "abastecedor"],
+      maintenance_execution_type: ["preventiva", "corretiva"],
+      work_order_final_status: [
+        "concluida",
+        "aguardando_peca",
+        "servico_externo",
+        "maquina_parada",
+      ],
     },
   },
 } as const

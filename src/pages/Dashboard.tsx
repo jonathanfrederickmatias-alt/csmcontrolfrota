@@ -2,16 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, ClipboardCheck, PauseCircle, Truck, Wrench } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { calculateMaintenanceStatus } from "@/lib/maintenance-utils";
 import {
   ChecklistOverviewItem,
-  ComboFuelItem,
-  ConsumptionInsightItem,
-  CriticalAlertsPanel,
   DashboardHero,
   DashboardKpiItem,
   EmptyOperationalState,
@@ -19,11 +15,21 @@ import {
   MaintenancePriorityItem,
   MaintenancePriorityList,
   ChecklistOverviewSection,
-  ComboFuelSection,
-  ConsumptionInsightsBlock,
   WorkOrdersOperationalBlock,
   WorkOrderStatusItem,
 } from "@/components/dashboard/OperationalDashboardSections";
+import {
+  ActionableAlertItem,
+  ActionableAlertsPanel,
+  ConsumptionDetailedItem,
+  ConsumptionOperationsSection,
+  FuelOperationsSection,
+  FuelOpsItem,
+  PriorityRankingItem,
+  PriorityRankingSection,
+  RecommendationItem,
+  RecommendedActionsSection,
+} from "@/components/dashboard/OperationalCommandCenterSections";
 import { Camera, MessageSquare, ShieldCheck, ShieldX } from "lucide-react";
 
 type DashboardData = {
@@ -31,9 +37,15 @@ type DashboardData = {
   checklists: any[];
   plans: any[];
   fuelRecords: any[];
+  fuelSupplyRecords: any[];
   requests: any[];
   combos: any[];
   workOrders: any[];
+};
+
+type EfficiencySegment = {
+  label: string;
+  metric: number;
 };
 
 const priorityWeights: Record<string, number> = {
@@ -58,12 +70,33 @@ function inferWaitingParts(order: any) {
   return /(aguardando peça|aguardando peca|peça pendente|peca pendente|falta peça|falta peca)/.test(text);
 }
 
-function buildSystemSummary({ overdueCount, abnormalCount, openOrders, criticalOrders, stoppedCount }: {
+function formatDateLabel(value?: string | null) {
+  if (!value) return "sem registro";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "sem registro";
+  return parsed.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+}
+
+function isRealisticMetric(type: "truck" | "equipment", metric: number) {
+  if (!Number.isFinite(metric) || metric <= 0) return false;
+  if (type === "truck") return metric >= 0.5 && metric <= 6.5;
+  return metric >= 0.5 && metric <= 80;
+}
+
+function buildSystemSummary({
+  overdueCount,
+  abnormalCount,
+  openOrders,
+  criticalOrders,
+  stoppedCount,
+  recommendedCount,
+}: {
   overdueCount: number;
   abnormalCount: number;
   openOrders: number;
   criticalOrders: number;
   stoppedCount: number;
+  recommendedCount: number;
 }) {
   const segments = [
     `${overdueCount} equipamento${overdueCount === 1 ? "" : "s"} com manutenção atrasada`,
@@ -79,7 +112,20 @@ function buildSystemSummary({ overdueCount, abnormalCount, openOrders, criticalO
     segments.push(`${stoppedCount} equipamento${stoppedCount === 1 ? "" : "s"} parado${stoppedCount === 1 ? "" : "s"}`);
   }
 
-  return `Hoje existem ${segments.join(", ")}.`;
+  return `Hoje existem ${segments.join(", ")} e ${recommendedCount} ação${recommendedCount === 1 ? "" : "ões"} recomendada${recommendedCount === 1 ? "" : "s"} para o turno.`;
+}
+
+function getConsumptionVariation(type: "truck" | "equipment", currentMetric: number, averageMetric: number) {
+  if (!averageMetric) return 0;
+  return type === "truck"
+    ? ((averageMetric - currentMetric) / averageMetric) * 100
+    : ((currentMetric - averageMetric) / averageMetric) * 100;
+}
+
+function getPriorityDescriptor(priority: string) {
+  if (priority === "urgent" || priority === "high") return "Crítica";
+  if (priority === "medium") return "Alta atenção";
+  return "Monitorar";
 }
 
 export default function Dashboard() {
@@ -92,6 +138,7 @@ export default function Dashboard() {
     checklists: [],
     plans: [],
     fuelRecords: [],
+    fuelSupplyRecords: [],
     requests: [],
     combos: [],
     workOrders: [],
@@ -99,11 +146,17 @@ export default function Dashboard() {
 
   const fetchData = useCallback(async () => {
     setIsRefreshing(true);
-    const [eqRes, clRes, plRes, frRes, reqRes, woRes] = await Promise.all([
+    const today = new Date();
+    const sixtyDaysAgo = new Date(today);
+    sixtyDaysAgo.setDate(today.getDate() - 60);
+    const cutoffDate = sixtyDaysAgo.toISOString().split("T")[0];
+
+    const [eqRes, clRes, plRes, frRes, fsRes, reqRes, woRes] = await Promise.all([
       supabase.from("equipments").select("*"),
       supabase.from("checklists").select("*").order("created_at", { ascending: false }).limit(200),
       supabase.from("maintenance_plans").select("*"),
-      supabase.from("fuel_records").select("*").order("created_at", { ascending: false }).limit(200),
+      supabase.from("fuel_records").select("*").gte("date", cutoffDate).order("date", { ascending: false }).limit(1000),
+      supabase.from("fuel_supply_records").select("*").gte("date", cutoffDate).order("date", { ascending: false }).limit(300),
       supabase.from("maintenance_requests").select("*").order("created_at", { ascending: false }).limit(100),
       supabase.from("work_orders").select("*").order("created_at", { ascending: false }).limit(100),
     ]);
@@ -114,6 +167,7 @@ export default function Dashboard() {
       checklists: clRes.data || [],
       plans: plRes.data || [],
       fuelRecords: frRes.data || [],
+      fuelSupplyRecords: fsRes.data || [],
       requests: reqRes.data || [],
       combos: equipments.filter((equipment: any) => equipment.type === "combo"),
       workOrders: woRes.data || [],
@@ -134,7 +188,7 @@ export default function Dashboard() {
 
   const equipmentMap = useMemo(
     () => Object.fromEntries(data.equipments.map((equipment: any) => [equipment.id, equipment])),
-    [data.equipments]
+    [data.equipments],
   );
 
   const stats = useMemo(() => {
@@ -180,95 +234,165 @@ export default function Dashboard() {
     const fuelMetrics = data.fuelRecords.reduce((acc: Record<string, any[]>, record: any) => {
       const targetId = record.target_equipment_id;
       const hourMeter = Number(record.hour_meter || 0);
+      const liters = Number(record.liters || 0);
       const fuelType = String(record.fuel_type || "").toLowerCase();
-      if (!targetId || !hourMeter || fuelType === "arla") return acc;
+      if (!targetId || !hourMeter || liters <= 0 || fuelType === "arla") return acc;
       if (!acc[targetId]) acc[targetId] = [];
       acc[targetId].push({
         date: record.date,
         created_at: record.created_at,
         hour_meter: hourMeter,
-        liters: Number(record.liters || 0),
+        liters,
       });
       return acc;
     }, {});
 
-    const equipmentEfficiency = Object.entries(fuelMetrics)
+    const consumptionInsights = Object.entries(fuelMetrics)
       .map(([equipmentId, records]) => {
         const equipment = equipmentMap[equipmentId];
-        if (!equipment || records.length < 2) return null;
+        if (!equipment || records.length < 3) return null;
 
+        const metricType = equipment.type === "truck" ? "truck" : "equipment";
         const sortedRecords = [...records].sort(
-          (a: any, b: any) => a.date.localeCompare(b.date) || a.created_at.localeCompare(b.created_at)
+          (a: any, b: any) => a.date.localeCompare(b.date) || a.created_at.localeCompare(b.created_at),
         );
 
-        let liters = 0;
-        let delta = 0;
-
-        for (let index = 1; index < sortedRecords.length; index += 1) {
-          const current = sortedRecords[index];
+        const segments = sortedRecords.reduce((acc: EfficiencySegment[], current: any, index: number) => {
+          if (index === 0) return acc;
           const previous = sortedRecords[index - 1];
-          const difference = current.hour_meter - previous.hour_meter;
-          if (difference > 0 && current.liters > 0) {
-            liters += current.liters;
-            delta += difference;
-          }
-        }
+          const delta = current.hour_meter - previous.hour_meter;
+          if (delta <= 0 || current.liters <= 0) return acc;
+          const metric = metricType === "truck" ? delta / current.liters : current.liters / delta;
+          if (!isRealisticMetric(metricType, metric)) return acc;
+          acc.push({
+            label: formatDateLabel(current.date),
+            metric,
+          });
+          return acc;
+        }, []);
 
-        if (!delta || !liters) return null;
+        if (segments.length < 2) return null;
 
-        const metric = equipment.type === "truck" ? delta / liters : liters / delta;
+        const currentSegment = segments[segments.length - 1];
+        const historicalSegments = segments.slice(0, -1);
+        const historicalAverage = historicalSegments.reduce((sum, item) => sum + item.metric, 0) / historicalSegments.length;
+        if (!historicalAverage || !isRealisticMetric(metricType, currentSegment.metric)) return null;
+
+        const variation = getConsumptionVariation(metricType, currentSegment.metric, historicalAverage);
+        if (variation <= 0) return null;
+
         return {
-          equipmentId,
+          id: equipmentId,
           equipmentName: equipment.name,
-          type: equipment.type === "truck" ? "truck" : "equipment",
-          metric,
-          unit: equipment.type === "truck" ? "km/L" : "L/h",
-        };
-      })
-      .filter(Boolean) as Array<{ equipmentId: string; equipmentName: string; type: "truck" | "equipment"; metric: number; unit: string }>;
-
-    const groupAverage = equipmentEfficiency.reduce(
-      (acc, item) => {
-        acc[item.type].sum += item.metric;
-        acc[item.type].count += 1;
-        return acc;
-      },
-      {
-        truck: { sum: 0, count: 0 },
-        equipment: { sum: 0, count: 0 },
-      }
-    );
-
-    const consumptionInsights = equipmentEfficiency
-      .map((item) => {
-        const averageBase = groupAverage[item.type];
-        const average = averageBase.count ? averageBase.sum / averageBase.count : 0;
-        if (!average) return null;
-
-        if (item.type === "truck") {
-          const variation = ((average - item.metric) / average) * 100;
-          if (variation < 15) return null;
-          return {
-            id: item.equipmentId,
-            equipmentName: item.equipmentName,
-            variationPercent: variation,
-            metricLabel: `${item.metric.toFixed(2)} ${item.unit} frente à média de ${average.toFixed(2)} ${item.unit}`,
-            severity: variation >= 30 ? "critical" : "warning",
-          } satisfies ConsumptionInsightItem;
-        }
-
-        const variation = ((item.metric - average) / average) * 100;
-        if (variation < 15) return null;
-        return {
-          id: item.equipmentId,
-          equipmentName: item.equipmentName,
           variationPercent: variation,
-          metricLabel: `${item.metric.toFixed(2)} ${item.unit} frente à média de ${average.toFixed(2)} ${item.unit}`,
-          severity: variation >= 30 ? "critical" : "warning",
-        } satisfies ConsumptionInsightItem;
+          metricLabel: `${currentSegment.metric.toFixed(2)} ${metricType === "truck" ? "km/L" : "L/h"} frente à média histórica de ${historicalAverage.toFixed(2)} ${metricType === "truck" ? "km/L" : "L/h"}`,
+          severity: variation > 30 ? "critical" : "warning",
+          currentMetric: currentSegment.metric,
+          averageMetric: historicalAverage,
+          unit: metricType === "truck" ? "km/L" : "L/h",
+          points: segments.slice(-6).map((segment) => ({
+            label: segment.label,
+            current: Number(segment.metric.toFixed(2)),
+            average: Number(historicalAverage.toFixed(2)),
+          })),
+        } satisfies ConsumptionDetailedItem;
       })
       .filter(Boolean)
       .sort((a: any, b: any) => b.variationPercent - a.variationPercent);
+
+    const priorityRanking = [
+      ...criticalOrders
+        .filter((order: any) => equipmentMap[order.equipment_id]?.status !== "active")
+        .map((order: any) => ({
+          id: `p1-${order.id}`,
+          title: `${equipmentMap[order.equipment_id]?.name || "Equipamento"} parado com OS #${order.os_number}`,
+          description: `${getPriorityDescriptor(order.priority)} · equipamento indisponível e ordem em aberto na oficina.`,
+          priority: "p1" as const,
+          priorityLabel: "Prioridade 1",
+          score: 300 + priorityWeights[order.priority],
+          onClick: () => navigate("/manutencao"),
+        })),
+      ...consumptionInsights.map((item) => ({
+        id: `p2-${item.id}`,
+        title: `${item.equipmentName} com desvio de consumo`,
+        description: `${item.variationPercent.toFixed(0)}% acima do histórico real em ${item.unit}.`,
+        priority: "p2" as const,
+        priorityLabel: "Prioridade 2",
+        score: 200 + item.variationPercent,
+        onClick: () => navigate("/relatorios"),
+      })),
+      ...overdueMaintenance.map((item: any) => ({
+        id: `p3-${item.id}`,
+        title: `${item.equipmentName} com revisão vencida`,
+        description: `${Math.abs(Math.round(item.remaining))} ${item.unit} de atraso no plano preventivo.`,
+        priority: "p3" as const,
+        priorityLabel: "Prioridade 3",
+        score: 100 + Math.abs(item.remaining),
+        onClick: () => navigate("/manutencao"),
+      })),
+    ]
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5)
+      .map(({ score: _score, ...item }) => item);
+
+    const lowFuelCombos = data.combos
+      .map((combo: any) => {
+        const fuelCapacity = Number(combo.fuel_capacity || 0);
+        const lowLevelThreshold = fuelCapacity >= 5000 ? 1000 : fuelCapacity * 0.2;
+        return {
+          ...combo,
+          lowLevelThreshold,
+          currentFuel: Number(combo.current_fuel || 0),
+        };
+      })
+      .filter((combo: any) => combo.currentFuel <= combo.lowLevelThreshold)
+      .sort((a: any, b: any) => a.currentFuel - b.currentFuel);
+
+    const recommendations: RecommendationItem[] = [];
+
+    if (criticalOrders.length > 0) {
+      recommendations.push({
+        id: "rec-critical-os",
+        title: `Atribuir mecânico para ${criticalOrders.length} OS críticas`,
+        description: "Despache a oficina primeiro nos equipamentos que estão travando a frente de obra.",
+        tone: "critical",
+        actionLabel: "Atribuir mecânico",
+        onClick: () => navigate("/mecanico"),
+      });
+    }
+
+    if (overdueMaintenance.length > 0) {
+      recommendations.push({
+        id: "rec-overdue-maintenance",
+        title: `Gerar OS para ${overdueMaintenance.length} manutenção${overdueMaintenance.length === 1 ? "" : "ões"} atrasada${overdueMaintenance.length === 1 ? "" : "s"}`,
+        description: "Antecipe a preventiva antes de transformar o atraso em parada corretiva.",
+        tone: overdueMaintenance.length > 2 ? "critical" : "warning",
+        actionLabel: "Abrir manutenção",
+        onClick: () => navigate("/manutencao"),
+      });
+    }
+
+    if (consumptionInsights[0]) {
+      recommendations.push({
+        id: "rec-consumption",
+        title: `Verificar consumo de ${consumptionInsights[0].equipmentName}`,
+        description: `${consumptionInsights[0].variationPercent.toFixed(0)}% de desvio em relação à média histórica real.`,
+        tone: consumptionInsights[0].severity === "critical" ? "critical" : "warning",
+        actionLabel: "Abrir análise",
+        onClick: () => navigate("/relatorios"),
+      });
+    }
+
+    if (lowFuelCombos[0]) {
+      recommendations.push({
+        id: "rec-low-fuel",
+        title: `Abastecer ${lowFuelCombos[0].name}`,
+        description: `Saldo abaixo de ${Math.round(lowFuelCombos[0].lowLevelThreshold)}L para sustentar a operação.`,
+        tone: "warning",
+        actionLabel: "Registrar abastecimento",
+        onClick: () => navigate("/reabastecimento"),
+      });
+    }
 
     const openRequests = data.requests.filter((request: any) => request.status === "open").length;
     const inProgressRequests = data.requests.filter((request: any) => request.status === "in_progress").length;
@@ -288,53 +412,91 @@ export default function Dashboard() {
       openRequests,
       inProgressRequests,
       activeEquipments,
+      priorityRanking,
+      recommendations: recommendations.slice(0, 4),
+      lowFuelCombos,
     };
-  }, [data.checklists, data.equipments, data.fuelRecords, data.plans, data.requests, data.workOrders, equipmentMap, today]);
+  }, [data.checklists, data.combos, data.equipments, data.fuelRecords, data.plans, data.requests, data.workOrders, equipmentMap, navigate, today]);
 
-  const criticalAlerts = useMemo(
+  const actionableAlerts = useMemo<ActionableAlertItem[]>(
     () => [
       {
         id: "overdue-maintenance",
         label: "Manutenção atrasada",
         value: stats.overdueMaintenance.length,
-        description: "Equipamentos que já ultrapassaram o ponto de revisão.",
-        actionLabel: "Ver detalhes",
-        onClick: () => navigate("/manutencao"),
+        description: "Equipamentos que já ultrapassaram o ponto de revisão e precisam de despacho imediato.",
         icon: AlertTriangle,
         tone: stats.overdueMaintenance.length > 0 ? "critical" : "ok",
+        actions: [
+          {
+            label: "Gerar OS automática",
+            variant: stats.overdueMaintenance.length > 0 ? "destructive" : "outline",
+            onClick: () => navigate("/pedido-manutencao"),
+          },
+          {
+            label: "Programar manutenção",
+            onClick: () => navigate("/manutencao"),
+          },
+        ],
       },
       {
         id: "critical-os",
         label: "OS críticas",
         value: stats.criticalOrders.length,
-        description: "Ordens com prioridade alta ou urgente ainda sem baixa.",
-        actionLabel: "Ver detalhes",
-        onClick: () => navigate("/manutencao"),
+        description: "Ordens com prioridade alta ou urgente que ainda impactam a disponibilidade da frota.",
         icon: Wrench,
         tone: stats.criticalOrders.length > 0 ? "critical" : "ok",
+        actions: [
+          {
+            label: "Atribuir mecânico",
+            variant: stats.criticalOrders.length > 0 ? "destructive" : "outline",
+            onClick: () => navigate("/mecanico"),
+          },
+          {
+            label: "Priorizar",
+            onClick: () => navigate("/manutencao"),
+          },
+        ],
       },
       {
         id: "stopped-equipments",
         label: "Equipamentos parados",
         value: stats.stoppedEquipments.length,
-        description: "Ativos indisponíveis ou em manutenção no momento.",
-        actionLabel: "Ver detalhes",
-        onClick: () => navigate("/equipamentos"),
+        description: "Ativos indisponíveis ou em manutenção, com risco direto à produção em campo.",
         icon: PauseCircle,
         tone: stats.stoppedEquipments.length > 0 ? "critical" : "ok",
+        actions: [
+          {
+            label: "Ver disponibilidade",
+            onClick: () => navigate("/equipamentos"),
+          },
+          {
+            label: "Abrir manutenção",
+            onClick: () => navigate("/manutencao"),
+          },
+        ],
       },
       {
         id: "abnormal-consumption",
         label: "Consumo anormal",
         value: stats.consumptionInsights.length,
-        description: "Equipamentos com desvio relevante no padrão de consumo.",
-        actionLabel: "Ver detalhes",
-        onClick: () => navigate("/relatorios"),
+        description: "Desvio calculado com unidade correta e comparação contra média histórica real dos últimos 60 dias.",
         icon: Truck,
         tone: stats.consumptionInsights.length > 0 ? "critical" : "ok",
+        actions: [
+          {
+            label: "Abrir análise de consumo",
+            variant: stats.consumptionInsights.length > 0 ? "destructive" : "outline",
+            onClick: () => navigate("/relatorios"),
+          },
+          {
+            label: "Comparar histórico",
+            onClick: () => navigate("/abastecimento"),
+          },
+        ],
       },
     ],
-    [navigate, stats.consumptionInsights.length, stats.criticalOrders.length, stats.overdueMaintenance.length, stats.stoppedEquipments.length]
+    [navigate, stats.consumptionInsights.length, stats.criticalOrders.length, stats.overdueMaintenance.length, stats.stoppedEquipments.length],
   );
 
   const kpis = useMemo<DashboardKpiItem[]>(
@@ -364,7 +526,7 @@ export default function Dashboard() {
         onClick: () => navigate("/checklist"),
       },
     ],
-    [data.checklists.length, data.equipments.length, data.workOrders.length, navigate, stats.activeEquipments, stats.activeOrders.length, stats.checklistCounts.critical, stats.criticalOrders.length, stats.stoppedEquipments.length, stats.todayChecklists.length]
+    [data.checklists.length, data.equipments.length, data.workOrders.length, navigate, stats.activeEquipments, stats.activeOrders.length, stats.checklistCounts.critical, stats.criticalOrders.length, stats.stoppedEquipments.length, stats.todayChecklists.length],
   );
 
   const maintenanceList = useMemo<MaintenancePriorityItem[]>(
@@ -378,7 +540,7 @@ export default function Dashboard() {
         planLabel: item.planLabel,
         onOpen: () => navigate("/manutencao"),
       })),
-    [navigate, stats.maintenanceItems]
+    [navigate, stats.maintenanceItems],
   );
 
   const workOrderItems = useMemo<WorkOrderStatusItem[]>(
@@ -420,7 +582,7 @@ export default function Dashboard() {
         onClick: () => navigate("/manutencao"),
       },
     ],
-    [data.workOrders, navigate, stats.criticalOrders.length, stats.inProgressRequests, stats.openRequests, stats.waitingPartsOrders.length]
+    [data.workOrders, navigate, stats.criticalOrders.length, stats.inProgressRequests, stats.openRequests, stats.waitingPartsOrders.length],
   );
 
   const checklistItems = useMemo<ChecklistOverviewItem[]>(
@@ -450,19 +612,30 @@ export default function Dashboard() {
           onClick: () => setSelectedChecklist(checklist),
         } satisfies ChecklistOverviewItem;
       }),
-    [equipmentMap, stats.todayChecklists]
+    [equipmentMap, stats.todayChecklists],
   );
 
-  const comboItems = useMemo<ComboFuelItem[]>(
+  const comboItems = useMemo<FuelOpsItem[]>(
     () =>
-      data.combos.map((combo: any) => ({
-        id: combo.id,
-        name: combo.name,
-        currentFuel: Number(combo.current_fuel || 0),
-        fuelCapacity: Number(combo.fuel_capacity || 0),
-        percentage: combo.fuel_capacity ? (Number(combo.current_fuel || 0) / Number(combo.fuel_capacity)) * 100 : 0,
-      })),
-    [data.combos]
+      data.combos.map((combo: any) => {
+        const fuelCapacity = Number(combo.fuel_capacity || 0);
+        const currentFuel = Number(combo.current_fuel || 0);
+        const lowLevelThreshold = fuelCapacity >= 5000 ? 1000 : fuelCapacity * 0.2;
+        const dispatchesToday = data.fuelRecords.filter((record: any) => record.combo_equipment_id === combo.id && record.date === today).length;
+        const latestSupply = data.fuelSupplyRecords.find((record: any) => record.combo_equipment_id === combo.id);
+
+        return {
+          id: combo.id,
+          name: combo.name,
+          currentFuel,
+          fuelCapacity,
+          percentage: fuelCapacity ? (currentFuel / fuelCapacity) * 100 : 0,
+          dispatchesToday,
+          lastSupplyLabel: latestSupply ? formatDateLabel(latestSupply.date) : "sem registro",
+          lowLevelThreshold,
+        } satisfies FuelOpsItem;
+      }),
+    [data.combos, data.fuelRecords, data.fuelSupplyRecords, today],
   );
 
   const summary = useMemo(
@@ -473,8 +646,9 @@ export default function Dashboard() {
         openOrders: stats.activeOrders.length,
         criticalOrders: stats.criticalOrders.length,
         stoppedCount: stats.stoppedEquipments.length,
+        recommendedCount: stats.recommendations.length,
       }),
-    [stats.activeOrders.length, stats.consumptionInsights.length, stats.criticalOrders.length, stats.overdueMaintenance.length, stats.stoppedEquipments.length]
+    [stats.activeOrders.length, stats.consumptionInsights.length, stats.criticalOrders.length, stats.overdueMaintenance.length, stats.recommendations.length, stats.stoppedEquipments.length],
   );
 
   const hasCriticalItems =
@@ -486,7 +660,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-5">
       <DashboardHero
-        title="Dashboard operacional"
+        title="Central operacional"
         subtitle={todayLabel}
         summary={summary}
         onRefresh={fetchData}
@@ -494,21 +668,30 @@ export default function Dashboard() {
         refreshing={isRefreshing}
       />
 
-      <CriticalAlertsPanel items={criticalAlerts} />
+      <ActionableAlertsPanel items={actionableAlerts} />
       <KpiSummaryGrid items={kpis} />
 
       {!hasCriticalItems && <EmptyOperationalState />}
 
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.25fr_0.95fr]">
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.1fr_0.9fr]">
+        <PriorityRankingSection items={stats.priorityRanking as PriorityRankingItem[]} />
+        <RecommendedActionsSection items={stats.recommendations} />
+      </div>
+
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.2fr_0.8fr]">
         <MaintenancePriorityList items={maintenanceList} onOpenAll={() => navigate("/manutencao")} />
         <WorkOrdersOperationalBlock items={workOrderItems} />
       </div>
 
-      <ConsumptionInsightsBlock items={stats.consumptionInsights} onOpenReports={() => navigate("/relatorios")} />
+      <ConsumptionOperationsSection items={stats.consumptionInsights as ConsumptionDetailedItem[]} onOpenReports={() => navigate("/relatorios")} />
 
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.2fr_0.8fr]">
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.1fr_0.9fr]">
         <ChecklistOverviewSection items={checklistItems} />
-        <ComboFuelSection items={comboItems} onOpenSupply={() => navigate("/reabastecimento")} />
+        <FuelOperationsSection
+          items={comboItems}
+          onRegisterFuel={() => navigate("/abastecimento")}
+          onOpenSupply={() => navigate("/reabastecimento")}
+        />
       </div>
 
       <Dialog open={!!selectedChecklist} onOpenChange={() => setSelectedChecklist(null)}>

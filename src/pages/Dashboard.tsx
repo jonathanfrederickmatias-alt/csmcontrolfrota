@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, ClipboardCheck, PauseCircle, Truck, Wrench } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/AuthContext";
@@ -49,6 +49,7 @@ type DashboardData = {
   checklists: any[];
   plans: any[];
   fuelRecords: any[];
+  fuelPriceSettings: any[];
   fuelSupplyRecords: any[];
   requests: any[];
   combos: any[];
@@ -98,6 +99,7 @@ type StatsSummary = {
   priorityRanking: PriorityRankingItem[];
   recommendations: RecommendationItem[];
   lowFuelCombos: any[];
+  monthlyCost: number;
 };
 
 type AIMaintenanceDecisionPayload = AIMaintenanceDecision;
@@ -184,6 +186,7 @@ function getPriorityDescriptor(priority: string) {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { signOut } = useAuth();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedChecklist, setSelectedChecklist] = useState<any>(null);
@@ -192,6 +195,7 @@ export default function Dashboard() {
     checklists: [],
     plans: [],
     fuelRecords: [],
+    fuelPriceSettings: [],
     fuelSupplyRecords: [],
     requests: [],
     combos: [],
@@ -202,6 +206,14 @@ export default function Dashboard() {
   const [aiLoading, setAiLoading] = useState(false);
   const [creatingAiDecisionId, setCreatingAiDecisionId] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (location.search.includes('focus=ai')) {
+      requestAnimationFrame(() => {
+        document.getElementById('ai-operacional-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
+  }, [location.search]);
+
   const fetchData = useCallback(async () => {
     setIsRefreshing(true);
     const today = new Date();
@@ -209,11 +221,12 @@ export default function Dashboard() {
     sixtyDaysAgo.setDate(today.getDate() - 60);
     const cutoffDate = sixtyDaysAgo.toISOString().split("T")[0];
 
-    const [eqRes, clRes, plRes, frRes, fsRes, reqRes, woRes, histRes] = await Promise.all([
+    const [eqRes, clRes, plRes, frRes, fpsRes, fsRes, reqRes, woRes, histRes] = await Promise.all([
       supabase.from("equipments").select("*"),
       supabase.from("checklists").select("*").order("created_at", { ascending: false }).limit(200),
       supabase.from("maintenance_plans").select("*"),
       supabase.from("fuel_records").select("*").gte("date", cutoffDate).order("date", { ascending: false }).limit(1000),
+      supabase.from("fuel_price_settings").select("*"),
       supabase.from("fuel_supply_records").select("*").gte("date", cutoffDate).order("date", { ascending: false }).limit(300),
       supabase.from("maintenance_requests").select("*").order("created_at", { ascending: false }).limit(100),
       supabase.from("work_orders").select("*").order("created_at", { ascending: false }).limit(100),
@@ -226,6 +239,7 @@ export default function Dashboard() {
       checklists: clRes.data || [],
       plans: plRes.data || [],
       fuelRecords: frRes.data || [],
+      fuelPriceSettings: fpsRes.data || [],
       fuelSupplyRecords: fsRes.data || [],
       requests: reqRes.data || [],
       combos: equipments.filter((equipment: any) => equipment.type === "combo"),
@@ -505,6 +519,16 @@ export default function Dashboard() {
       .filter((combo: any) => combo.currentFuel <= combo.lowLevelThreshold)
       .sort((a: any, b: any) => a.currentFuel - b.currentFuel);
 
+    const currentMonthKey = new Date().toISOString().slice(0, 7);
+    const fuelPriceMap = Object.fromEntries(data.fuelPriceSettings.map((item: any) => [String(item.fuel_type || '').toLowerCase(), Number(item.unit_price || 0)]));
+    const monthlyFuelCost = data.fuelRecords
+      .filter((record: any) => String(record.date || '').startsWith(currentMonthKey))
+      .reduce((sum: number, record: any) => sum + (Number(record.liters || 0) * Number(fuelPriceMap[String(record.fuel_type || '').toLowerCase()] || 0)), 0);
+    const monthlyMaintenanceCost = data.workOrders
+      .filter((order: any) => String(order.completed_at || order.created_at || '').startsWith(currentMonthKey))
+      .reduce((sum: number, order: any) => sum + Number(order.labor_cost || 0) + Number(order.parts_cost || 0), 0);
+    const monthlyCost = monthlyFuelCost + monthlyMaintenanceCost;
+
     const recommendations: RecommendationItem[] = [];
 
     if (criticalOrders.length > 0) {
@@ -572,8 +596,9 @@ export default function Dashboard() {
       priorityRanking,
       recommendations: recommendations.slice(0, 4),
       lowFuelCombos,
+      monthlyCost,
     };
-  }, [data.checklists, data.combos, data.equipments, data.fuelRecords, data.plans, data.requests, data.workOrders, equipmentMap, navigate, today]);
+  }, [data.checklists, data.combos, data.equipments, data.fuelPriceSettings, data.fuelRecords, data.plans, data.requests, data.workOrders, equipmentMap, navigate, today]);
 
   const actionableAlerts = useMemo<ActionableAlertItem[]>(
     () => [
@@ -684,8 +709,17 @@ export default function Dashboard() {
       value: stats.activeEquipments,
       tone: stats.activeEquipments > 0 ? "ok" : "warning",
       detail: `${stats.stoppedEquipments.length} ativos estão indisponíveis agora.`,
+      onClick: () => navigate("/equipamentos"),
     },
-  ], [stats.activeEquipments, stats.consumptionInsights.length, stats.criticalOrders.length, stats.overdueMaintenance.length, stats.stoppedEquipments.length]);
+    {
+      id: "deck-monthly-cost",
+      label: "Custo mensal",
+      value: new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(stats.monthlyCost),
+      tone: stats.monthlyCost > 0 ? "warning" : "ok",
+      detail: "Combina custo de combustível estimado e OS encerradas no mês.",
+      onClick: () => navigate("/relatorios"),
+    },
+  ], [navigate, stats.activeEquipments, stats.consumptionInsights.length, stats.criticalOrders.length, stats.monthlyCost, stats.overdueMaintenance.length, stats.stoppedEquipments.length]);
 
   const commandDeckActions = useMemo<QuickActionItem[]>(() => [
     {
@@ -933,12 +967,14 @@ export default function Dashboard() {
 
       <PriorityRankingSection items={stats.priorityRanking as PriorityRankingItem[]} />
 
-      <AIMaintenanceDecisionsSection
-        items={aiDecisions}
-        loading={aiLoading}
-        creatingId={creatingAiDecisionId}
-        onCreateWorkOrder={handleCreateAiWorkOrder}
-      />
+      <div id="ai-operacional-section">
+        <AIMaintenanceDecisionsSection
+          items={aiDecisions}
+          loading={aiLoading}
+          creatingId={creatingAiDecisionId}
+          onCreateWorkOrder={handleCreateAiWorkOrder}
+        />
+      </div>
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.2fr_0.8fr]">
         <MaintenancePriorityList items={maintenanceList} onOpenAll={() => navigate("/manutencao")} />

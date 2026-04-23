@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { DBEquipment, DBMaintenancePlan, DBMaintenanceRequest, DBMaintenanceHistory, DBWorkOrder } from "@/lib/supabase-types";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,7 @@ import * as XLSX from 'xlsx';
 import { exportMaintenancePlansPDF, exportMaintenanceRequestsPDF, exportMaintenanceHistoryPDF, exportWorkOrdersPDF, PlanHistoryRow } from '@/lib/pdf-export';
 import { calculateMaintenanceStatus } from '@/lib/maintenance-utils';
 import { useUserRoles } from '@/hooks/useUserRoles';
+import { PremiumOsWorkspace } from '@/components/maintenance/PremiumOsWorkspace';
 
 function eqLabel(eq: DBEquipment): string {
   const id = eq.cost_center || eq.plate || '';
@@ -48,6 +50,7 @@ const osStatusConfig = {
 };
 
 export default function MaintenancePage() {
+  const [searchParams] = useSearchParams();
   const { isAdmin, isGestor } = useUserRoles();
   const canEdit = isAdmin || isGestor;
   const [plans, setPlans] = useState<DBMaintenancePlan[]>([]);
@@ -108,6 +111,13 @@ export default function MaintenancePage() {
 
   // Controlled tab
   const [activeTab, setActiveTab] = useState('plans');
+
+  useEffect(() => {
+    const requestedTab = searchParams.get('tab');
+    if (requestedTab && ['os', 'plans', 'requests', 'history'].includes(requestedTab)) {
+      setActiveTab(requestedTab);
+    }
+  }, [searchParams]);
 
   const fetchAll = async () => {
     const [eqRes, plRes, reqRes, histRes, osRes] = await Promise.all([
@@ -439,91 +449,6 @@ export default function MaintenancePage() {
 
         {/* ===== ORDENS DE SERVIÇO ===== */}
         <TabsContent value="os" className="space-y-4 mt-4">
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <div className="flex gap-2 flex-wrap">
-              <Select value={osFilter} onValueChange={setOsFilter}>
-                <SelectTrigger className="w-64"><SelectValue placeholder="Filtrar por equipamento" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os equipamentos</SelectItem>
-                  {equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eqLabel(eq)}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Select value={osStatusFilter} onValueChange={setOsStatusFilter}>
-                <SelectTrigger className="w-48"><SelectValue placeholder="Filtrar por status" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os status</SelectItem>
-                  <SelectItem value="open">Aberta</SelectItem>
-                  <SelectItem value="in_progress">Em andamento</SelectItem>
-                  <SelectItem value="done">Concluída</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex gap-2 flex-wrap">
-              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => {
-                const wb = XLSX.utils.book_new();
-                const data = filteredOrders.map(o => {
-                  const eq = equipments.find(e => e.id === o.equipment_id);
-                  return {
-                    'OS #': o.os_number,
-                    Equipamento: eq ? eqLabel(eq) : '—',
-                    Descrição: o.description,
-                    Prioridade: priorityConfig[o.priority]?.label || o.priority,
-                    Status: osStatusConfig[o.status]?.label || o.status,
-                    Mecânico: o.mechanic_name || '—',
-                    'Data Abertura': new Date(o.created_at).toLocaleDateString('pt-BR'),
-                    Início: o.started_at ? new Date(o.started_at).toLocaleDateString('pt-BR') : '—',
-                    Conclusão: o.completed_at ? new Date(o.completed_at).toLocaleDateString('pt-BR') : '—',
-                  };
-                });
-                const ws = XLSX.utils.json_to_sheet(data);
-                XLSX.utils.book_append_sheet(wb, ws, 'Ordens de Serviço');
-                const filterName = osFilter === 'all' ? '' : `_${equipments.find(e => e.id === osFilter)?.name || ''}`;
-                XLSX.writeFile(wb, `Ordens_Servico${filterName}.xlsx`);
-              }}>
-                <FileSpreadsheet className="w-4 h-4 text-success" /> Excel
-              </Button>
-              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => {
-                const filterName = osFilter === 'all' ? 'Todos' : equipments.find(e => e.id === osFilter)?.name || 'Filtrado';
-                const selectedEq = osFilter !== 'all' ? equipments.find(e => e.id === osFilter) : undefined;
-                const eqDetails = selectedEq ? {
-                  name: selectedEq.name,
-                  plate: selectedEq.plate || undefined,
-                  model: selectedEq.model || undefined,
-                  brand: selectedEq.brand || undefined,
-                  costCenter: selectedEq.cost_center || undefined,
-                  year: selectedEq.year || undefined,
-                  currentHourMeter: selectedEq.current_hour_meter,
-                } : undefined;
-                const rows = filteredOrders.map(o => {
-                  const eq = equipments.find(e => e.id === o.equipment_id);
-                  return {
-                    osNumber: o.os_number,
-                    equipment: eq ? eqLabel(eq) : '—',
-                    description: o.description,
-                    priority: priorityConfig[o.priority]?.label || o.priority,
-                    status: osStatusConfig[o.status]?.label || o.status,
-                    mechanic: o.mechanic_name || '—',
-                    parts: (() => {
-                      const p = Array.isArray((o as any).parts) ? (o as any).parts : [];
-                      if (p.length > 0) return p.map((x: any) => x.code + (x.description ? ` (${x.description})` : '')).join(', ');
-                      return (o as any).part_code || '—';
-                    })(),
-                    date: new Date(o.created_at).toLocaleDateString('pt-BR'),
-                    startedAt: o.started_at ? new Date(o.started_at).toLocaleDateString('pt-BR') : undefined,
-                    completedAt: o.completed_at ? new Date(o.completed_at).toLocaleDateString('pt-BR') : undefined,
-                  };
-                });
-                exportWorkOrdersPDF(rows, filterName, eqDetails);
-              }}>
-                <FileText className="w-4 h-4 text-primary" /> PDF
-              </Button>
-              {canEdit && (
-                <Button size="sm" className="gap-2" onClick={() => setNewOsOpen(true)}>
-                  <Plus className="w-4 h-4" /> Nova OS
-                </Button>
-              )}
-            </div>
-          </div>
           {loading ? (
             <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
           ) : filteredOrders.length === 0 ? (
@@ -532,107 +457,98 @@ export default function MaintenancePage() {
               <p className="text-muted-foreground">Nenhuma OS registrada. As OS são geradas automaticamente ao criar um pedido de manutenção.</p>
             </div>
           ) : (
-            <div className="space-y-3">
-              {filteredOrders.map(os => {
-                const eq = equipments.find(e => e.id === os.equipment_id);
-                const pc = priorityConfig[os.priority] || priorityConfig.medium;
-                const sc = osStatusConfig[os.status] || osStatusConfig.open;
-                return (
-                  <div key={os.id} className="glass-card rounded-xl p-5">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <span className="text-xs font-mono font-bold bg-primary/10 text-primary px-2 py-0.5 rounded">OS #{os.os_number}</span>
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${pc.bg}`}>{pc.label}</span>
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${sc.bg}`}>{sc.label}</span>
-                        </div>
-                        <p className="font-semibold mt-1">{os.description}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{eq ? eqLabel(eq) : '—'} — {new Date(os.created_at).toLocaleDateString('pt-BR')}</p>
-                        {os.mechanic_name && <p className="text-xs text-muted-foreground">Mecânico: {os.mechanic_name}</p>}
-                        {os.started_at && <p className="text-xs text-muted-foreground">Início: {new Date(os.started_at).toLocaleDateString('pt-BR')}</p>}
-                        {os.completed_at && <p className="text-xs text-success">Concluída: {new Date(os.completed_at).toLocaleDateString('pt-BR')}</p>}
-                        {os.notes && <p className="text-xs text-muted-foreground italic mt-1">Obs: {os.notes}</p>}
-                        {(os as any).invoice_number && <p className="text-xs text-muted-foreground mt-1">📄 NF: {(os as any).invoice_number}</p>}
-                        {(os as any).service_executed && <p className="text-xs text-muted-foreground mt-1">🔧 Serviço: {(os as any).service_executed}</p>}
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="mt-2 gap-1.5 text-xs"
-                          onClick={() => {
-                            const url = `${window.location.origin}/qr/mecanico?id=${os.id}`;
-                            window.open(url, '_blank');
-                          }}
-                        >
-                          <Wrench className="w-3.5 h-3.5" /> Tela Mecânico
-                        </Button>
-                        {canEdit && (
-                          <Button size="sm" variant="outline" className="mt-1 gap-1.5 text-xs" onClick={() => openEditOS(os)}>
-                            <Edit2 className="w-3.5 h-3.5" /> Editar
-                          </Button>
-                        )}
-                        {canEdit && (
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button size="sm" variant="outline" className="mt-1 gap-1.5 text-xs text-destructive border-destructive/30 hover:bg-destructive/10">
-                                <Trash2 className="w-3.5 h-3.5" /> Excluir
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Excluir OS #{os.os_number}?</AlertDialogTitle>
-                                <AlertDialogDescription>A ordem de serviço será removida. Você poderá desfazer nos próximos segundos.</AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                <AlertDialogAction onClick={async () => {
-                                  const backup = { ...os };
-                                  await supabase.from('work_orders').delete().eq('id', os.id);
-                                  fetchAll();
-                                  sonnerToast.success('OS excluída!', {
-                                    action: { label: 'Desfazer', onClick: async () => {
-                                      const { id, os_number, ...rest } = backup;
-                                      await supabase.from('work_orders').insert({ ...rest, id, os_number } as any);
-                                      fetchAll();
-                                      sonnerToast.success('OS restaurada!');
-                                    }},
-                                    duration: 8000,
-                                  });
-                                }}>Excluir</AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        )}
-                      </div>
-                      <div className="shrink-0 space-y-2">
-                        {canEdit && (
-                          <>
-                            <Input
-                              placeholder="Nome do mecânico"
-                              className="h-8 text-xs w-40"
-                              defaultValue={os.mechanic_name || ''}
-                              onBlur={e => { if (e.target.value !== (os.mechanic_name || '')) handleOsMechanicChange(os, e.target.value); }}
-                            />
-                            <Select value={os.status} onValueChange={v => handleOsStatusChange(os, v)}>
-                              <SelectTrigger className="h-8 text-xs w-40"><SelectValue /></SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="open">Aberta</SelectItem>
-                                <SelectItem value="in_progress">Em andamento</SelectItem>
-                                <SelectItem value="done">Concluída</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </>
-                        )}
-                        {os.status === 'done' && os.completed_at && (
-                          <span className="text-xs text-muted-foreground">
-                            Concluída em {new Date(os.completed_at).toLocaleDateString('pt-BR')}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            <PremiumOsWorkspace
+              equipments={equipments}
+              filteredOrders={filteredOrders}
+              canEdit={canEdit}
+              osFilter={osFilter}
+              osStatusFilter={osStatusFilter}
+              onOsFilterChange={setOsFilter}
+              onOsStatusFilterChange={setOsStatusFilter}
+              onOpenExecution={(os) => {
+                const url = `${window.location.origin}/qr/mecanico?id=${os.id}`;
+                window.open(url, '_blank');
+              }}
+              onOpenEdit={(os) => openEditOS(os)}
+              onAssignMechanic={(os) => openEditOS(os)}
+              priorityConfig={priorityConfig}
+              osStatusConfig={osStatusConfig}
+              renderToolbar={(
+                <>
+                  <Button size="sm" variant="outline" className="gap-1.5" onClick={() => {
+                    const wb = XLSX.utils.book_new();
+                    const data = filteredOrders.map(o => {
+                      const eq = equipments.find(e => e.id === o.equipment_id);
+                      return {
+                        'OS #': o.os_number,
+                        Equipamento: eq ? eqLabel(eq) : '—',
+                        Descrição: o.description,
+                        Prioridade: priorityConfig[o.priority]?.label || o.priority,
+                        Status: osStatusConfig[o.status]?.label || o.status,
+                        Mecânico: o.mechanic_name || '—',
+                        'Data Abertura': new Date(o.created_at).toLocaleDateString('pt-BR'),
+                        Início: o.started_at ? new Date(o.started_at).toLocaleDateString('pt-BR') : '—',
+                        Conclusão: o.completed_at ? new Date(o.completed_at).toLocaleDateString('pt-BR') : '—',
+                      };
+                    });
+                    const ws = XLSX.utils.json_to_sheet(data);
+                    XLSX.utils.book_append_sheet(wb, ws, 'Ordens de Serviço');
+                    const filterName = osFilter === 'all' ? '' : `_${equipments.find(e => e.id === osFilter)?.name || ''}`;
+                    XLSX.writeFile(wb, `Ordens_Servico${filterName}.xlsx`);
+                  }}>
+                    <FileSpreadsheet className="w-4 h-4 text-success" /> Excel
+                  </Button>
+                  <Button size="sm" variant="outline" className="gap-1.5" onClick={() => {
+                    const filterName = osFilter === 'all' ? 'Todos' : equipments.find(e => e.id === osFilter)?.name || 'Filtrado';
+                    const selectedEq = osFilter !== 'all' ? equipments.find(e => e.id === osFilter) : undefined;
+                    const eqDetails = selectedEq ? {
+                      name: selectedEq.name,
+                      plate: selectedEq.plate || undefined,
+                      model: selectedEq.model || undefined,
+                      brand: selectedEq.brand || undefined,
+                      costCenter: selectedEq.cost_center || undefined,
+                      year: selectedEq.year || undefined,
+                      currentHourMeter: selectedEq.current_hour_meter,
+                    } : undefined;
+                    const rows = filteredOrders.map(o => {
+                      const eq = equipments.find(e => e.id === o.equipment_id);
+                      return {
+                        osNumber: o.os_number,
+                        equipment: eq ? eqLabel(eq) : '—',
+                        description: o.description,
+                        priority: priorityConfig[o.priority]?.label || o.priority,
+                        status: osStatusConfig[o.status]?.label || o.status,
+                        mechanic: o.mechanic_name || '—',
+                        parts: (() => {
+                          const p = Array.isArray((o as any).parts) ? (o as any).parts : [];
+                          if (p.length > 0) return p.map((x: any) => x.code + (x.description ? ` (${x.description})` : '')).join(', ');
+                          return (o as any).part_code || '—';
+                        })(),
+                        date: new Date(o.created_at).toLocaleDateString('pt-BR'),
+                        startedAt: o.started_at ? new Date(o.started_at).toLocaleDateString('pt-BR') : undefined,
+                        completedAt: o.completed_at ? new Date(o.completed_at).toLocaleDateString('pt-BR') : undefined,
+                      };
+                    });
+                    exportWorkOrdersPDF(rows, filterName, eqDetails);
+                  }}>
+                    <FileText className="w-4 h-4 text-primary" /> PDF
+                  </Button>
+                  {canEdit && (
+                    <Button size="sm" variant="outline" className="gap-1.5" onClick={() => {
+                      const url = `${window.location.origin}/qr/mecanico`;
+                      window.open(url, '_blank');
+                    }}>
+                      <Wrench className="w-4 h-4" /> Tela Mecânico
+                    </Button>
+                  )}
+                  {canEdit && (
+                    <Button size="sm" className="gap-2" onClick={() => setNewOsOpen(true)}>
+                      <Plus className="w-4 h-4" /> Nova OS
+                    </Button>
+                  )}
+                </>
+              )}
+            />
           )}
         </TabsContent>
 

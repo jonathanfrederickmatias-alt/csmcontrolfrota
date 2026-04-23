@@ -127,8 +127,19 @@ ${JSON.stringify({ equipments, maintenancePlans, maintenanceHistory, fuelRecords
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
-      return new Response(JSON.stringify({ error: errorText || "AI gateway error" }), {
-        status: aiResponse.status,
+      const isCreditsError = aiResponse.status === 402;
+      const isRateLimitError = aiResponse.status === 429;
+
+      return new Response(JSON.stringify({
+        error: errorText || "AI gateway error",
+        fallback: !(isCreditsError || isRateLimitError),
+        userMessage: isCreditsError
+          ? "A análise operacional está indisponível no momento porque os créditos da IA acabaram."
+          : isRateLimitError
+            ? "A análise operacional atingiu o limite temporário de requisições. Tente novamente em instantes."
+            : "Não foi possível concluir a análise operacional agora.",
+      }), {
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

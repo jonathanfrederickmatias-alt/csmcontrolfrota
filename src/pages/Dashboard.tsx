@@ -1,53 +1,113 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import {
-  Truck, ClipboardCheck, Wrench, AlertTriangle, Fuel, Activity,
-  RefreshCw, TrendingUp, CheckCircle2, XCircle, Droplets, ShieldCheck, ShieldX, Eye, Camera, MessageSquare
-} from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { AlertTriangle, ClipboardCheck, PauseCircle, Truck, Wrench } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { useAuth } from "@/contexts/AuthContext";
-import {
-  PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, Legend, AreaChart, Area
-} from "recharts";
 
-const COLORS = {
-  ok: "hsl(142, 71%, 45%)",
-  warning: "hsl(38, 92%, 50%)",
-  critical: "hsl(0, 72%, 51%)",
-  primary: "hsl(0, 80%, 50%)",
-  muted: "hsl(220, 14%, 30%)",
-  blue: "hsl(210, 70%, 50%)",
-  teal: "hsl(170, 60%, 45%)",
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { calculateMaintenanceStatus } from "@/lib/maintenance-utils";
+import {
+  ChecklistOverviewItem,
+  ComboFuelItem,
+  ConsumptionInsightItem,
+  CriticalAlertsPanel,
+  DashboardHero,
+  DashboardKpiItem,
+  EmptyOperationalState,
+  KpiSummaryGrid,
+  MaintenancePriorityItem,
+  MaintenancePriorityList,
+  ChecklistOverviewSection,
+  ComboFuelSection,
+  ConsumptionInsightsBlock,
+  WorkOrdersOperationalBlock,
+  WorkOrderStatusItem,
+} from "@/components/dashboard/OperationalDashboardSections";
+import { Camera, MessageSquare, ShieldCheck, ShieldX } from "lucide-react";
+
+type DashboardData = {
+  equipments: any[];
+  checklists: any[];
+  plans: any[];
+  fuelRecords: any[];
+  requests: any[];
+  combos: any[];
+  workOrders: any[];
 };
+
+const priorityWeights: Record<string, number> = {
+  urgent: 4,
+  high: 3,
+  medium: 2,
+  low: 1,
+};
+
+function getPlanUnit(type?: string) {
+  return type === "truck" ? "km" : "h";
+}
+
+function formatPlanTiming(remaining: number, unit: string, status: "ok" | "approaching" | "overdue") {
+  if (status === "overdue") return `${Math.abs(Math.round(remaining))} ${unit} de atraso`;
+  if (status === "approaching") return `Faltam ${Math.max(Math.round(remaining), 0)} ${unit}`;
+  return `Próxima em ${Math.max(Math.round(remaining), 0)} ${unit}`;
+}
+
+function inferWaitingParts(order: any) {
+  const text = `${order?.notes || ""} ${order?.service_executed || ""}`.toLowerCase();
+  return /(aguardando peça|aguardando peca|peça pendente|peca pendente|falta peça|falta peca)/.test(text);
+}
+
+function buildSystemSummary({ overdueCount, abnormalCount, openOrders, criticalOrders, stoppedCount }: {
+  overdueCount: number;
+  abnormalCount: number;
+  openOrders: number;
+  criticalOrders: number;
+  stoppedCount: number;
+}) {
+  const segments = [
+    `${overdueCount} equipamento${overdueCount === 1 ? "" : "s"} com manutenção atrasada`,
+    `${abnormalCount} com consumo acima do normal`,
+    `${openOrders} ordem${openOrders === 1 ? "" : "ens"} de serviço em aberto`,
+  ];
+
+  if (criticalOrders > 0) {
+    segments.push(`${criticalOrders} OS crítica${criticalOrders === 1 ? "" : "s"}`);
+  }
+
+  if (stoppedCount > 0) {
+    segments.push(`${stoppedCount} equipamento${stoppedCount === 1 ? "" : "s"} parado${stoppedCount === 1 ? "" : "s"}`);
+  }
+
+  return `Hoje existem ${segments.join(", ")}.`;
+}
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const { signOut } = useAuth();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedChecklist, setSelectedChecklist] = useState<any>(null);
-  const [data, setData] = useState({
-    equipments: [] as any[],
-    checklists: [] as any[],
-    plans: [] as any[],
-    fuelRecords: [] as any[],
-    requests: [] as any[],
-    combos: [] as any[],
-    workOrders: [] as any[],
+  const [data, setData] = useState<DashboardData>({
+    equipments: [],
+    checklists: [],
+    plans: [],
+    fuelRecords: [],
+    requests: [],
+    combos: [],
+    workOrders: [],
   });
 
   const fetchData = useCallback(async () => {
     setIsRefreshing(true);
     const [eqRes, clRes, plRes, frRes, reqRes, woRes] = await Promise.all([
-      supabase.from('equipments').select('*'),
-      supabase.from('checklists').select('*').order('created_at', { ascending: false }).limit(200),
-      supabase.from('maintenance_plans').select('*'),
-      supabase.from('fuel_records').select('*').order('created_at', { ascending: false }).limit(200),
-      supabase.from('maintenance_requests').select('*').order('created_at', { ascending: false }).limit(100),
-      supabase.from('work_orders').select('*').order('created_at', { ascending: false }).limit(100),
+      supabase.from("equipments").select("*"),
+      supabase.from("checklists").select("*").order("created_at", { ascending: false }).limit(200),
+      supabase.from("maintenance_plans").select("*"),
+      supabase.from("fuel_records").select("*").order("created_at", { ascending: false }).limit(200),
+      supabase.from("maintenance_requests").select("*").order("created_at", { ascending: false }).limit(100),
+      supabase.from("work_orders").select("*").order("created_at", { ascending: false }).limit(100),
     ]);
+
     const equipments = eqRes.data || [];
     setData({
       equipments,
@@ -55,423 +115,480 @@ export default function Dashboard() {
       plans: plRes.data || [],
       fuelRecords: frRes.data || [],
       requests: reqRes.data || [],
-      combos: equipments.filter((e: any) => e.type === 'combo'),
+      combos: equipments.filter((equipment: any) => equipment.type === "combo"),
       workOrders: woRes.data || [],
     });
     setIsRefreshing(false);
   }, []);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
-  const today = new Date().toISOString().split('T')[0];
-  const todayStr = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
+  const today = new Date().toISOString().split("T")[0];
+  const todayLabel = new Date().toLocaleDateString("pt-BR", {
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+  });
 
-  // Computed stats
+  const equipmentMap = useMemo(
+    () => Object.fromEntries(data.equipments.map((equipment: any) => [equipment.id, equipment])),
+    [data.equipments]
+  );
+
   const stats = useMemo(() => {
-    const overdue = data.plans.filter((p: any) => p.status === 'overdue');
-    const approaching = data.plans.filter((p: any) => p.status === 'approaching');
-    const okPlans = data.plans.filter((p: any) => p.status === 'ok');
-    const openRequests = data.requests.filter((r: any) => r.status === 'open');
-    const inProgressRequests = data.requests.filter((r: any) => r.status === 'in_progress');
-    const resolvedRequests = data.requests.filter((r: any) => r.status === 'resolved');
-    const activeEquipments = data.equipments.filter((e: any) => e.status === 'active');
-    const inactiveEquipments = data.equipments.filter((e: any) => e.status !== 'active');
-    const todayChecklists = data.checklists.filter((c: any) => c.date === today);
-    const totalFuelToday = data.fuelRecords.filter((f: any) => f.date === today).reduce((s: number, f: any) => s + Number(f.liters), 0);
+    const todayChecklists = data.checklists.filter((checklist: any) => checklist.date === today);
+    const checklistCounts = {
+      ok: data.checklists.filter((checklist: any) => checklist.status === "ok").length,
+      attention: data.checklists.filter((checklist: any) => checklist.status === "attention").length,
+      critical: data.checklists.filter((checklist: any) => checklist.status === "critical").length,
+    };
 
-    // Checklists by status
-    const clOk = data.checklists.filter((c: any) => c.status === 'ok').length;
-    const clAttention = data.checklists.filter((c: any) => c.status === 'attention').length;
-    const clCritical = data.checklists.filter((c: any) => c.status === 'critical').length;
-    const clTotal = clOk + clAttention + clCritical || 1;
-    const checklistScore = ((clOk / clTotal) * 100).toFixed(1);
-
-    // Fuel last 7 days
-    const last7 = Array.from({ length: 7 }, (_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() - (6 - i));
-      return d.toISOString().split('T')[0];
-    });
-    const fuelByDay = last7.map(day => {
-      const liters = data.fuelRecords.filter((f: any) => f.date === day).reduce((s: number, f: any) => s + Number(f.liters), 0);
-      const label = new Date(day + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short' });
-      return { day: label, litros: liters };
-    });
-
-    // Top 5 equipments by fuel consumption
-    const fuelByEquip: Record<string, number> = {};
-    data.fuelRecords.forEach((f: any) => {
-      fuelByEquip[f.target_equipment_id] = (fuelByEquip[f.target_equipment_id] || 0) + Number(f.liters);
-    });
-    const topFuelEquip = Object.entries(fuelByEquip)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([id, liters]) => {
-        const eq = data.equipments.find((e: any) => e.id === id);
-        return { name: eq?.name?.substring(0, 15) || 'N/A', litros: liters };
+    const maintenanceItems = data.plans
+      .map((plan: any) => {
+        const equipment = equipmentMap[plan.equipment_id];
+        if (!equipment) return null;
+        const remaining = Number(plan.next_due_at) - Number(equipment.current_hour_meter || 0);
+        const status = calculateMaintenanceStatus(remaining, equipment.type);
+        return {
+          id: plan.id,
+          equipmentId: equipment.id,
+          equipmentName: equipment.name,
+          currentHourMeter: Number(equipment.current_hour_meter || 0),
+          status,
+          remaining,
+          unit: getPlanUnit(equipment.type),
+          planLabel: `${plan.description} · meta ${Math.round(Number(plan.next_due_at) || 0)} ${getPlanUnit(equipment.type)}`,
+        };
+      })
+      .filter(Boolean)
+      .sort((a: any, b: any) => {
+        const order = { overdue: 0, approaching: 1, ok: 2 };
+        const statusDiff = order[a.status as keyof typeof order] - order[b.status as keyof typeof order];
+        if (statusDiff !== 0) return statusDiff;
+        return a.remaining - b.remaining;
       });
 
-    // OS status
-    const osOpen = data.workOrders.filter((w: any) => w.status === 'open').length;
-    const osProgress = data.workOrders.filter((w: any) => w.status === 'in_progress').length;
-    const osDone = data.workOrders.filter((w: any) => w.status === 'completed').length;
+    const overdueMaintenance = maintenanceItems.filter((item: any) => item.status === "overdue");
+    const approachingMaintenance = maintenanceItems.filter((item: any) => item.status === "approaching");
+    const activeOrders = data.workOrders.filter((order: any) => order.status !== "done");
+    const criticalOrders = activeOrders.filter((order: any) => priorityWeights[order.priority] >= priorityWeights.high);
+    const waitingPartsOrders = activeOrders.filter((order: any) => inferWaitingParts(order));
+    const stoppedEquipments = data.equipments.filter((equipment: any) => equipment.status !== "active");
 
-    // Maintenance trend last 3 months (by week)
-    const now = new Date();
-    const threeMonthsAgo = new Date(now);
-    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-    const weeks: { label: string; pedidos: number; os: number; concluidas: number }[] = [];
-    const weekStart = new Date(threeMonthsAgo);
-    weekStart.setDate(weekStart.getDate() - weekStart.getDay()); // align to Sunday
-    while (weekStart < now) {
-      const weekEnd = new Date(weekStart);
-      weekEnd.setDate(weekEnd.getDate() + 7);
-      const wLabel = `${weekStart.getDate().toString().padStart(2, '0')}/${(weekStart.getMonth() + 1).toString().padStart(2, '0')}`;
-      const pedidos = data.requests.filter((r: any) => {
-        const d = new Date(r.created_at);
-        return d >= weekStart && d < weekEnd;
-      }).length;
-      const os = data.workOrders.filter((w: any) => {
-        const d = new Date(w.created_at);
-        return d >= weekStart && d < weekEnd;
-      }).length;
-      const concluidas = data.workOrders.filter((w: any) => {
-        if (w.status !== 'completed' || !w.completed_at) return false;
-        const d = new Date(w.completed_at);
-        return d >= weekStart && d < weekEnd;
-      }).length;
-      weeks.push({ label: wLabel, pedidos, os, concluidas });
-      weekStart.setDate(weekStart.getDate() + 7);
-    }
+    const fuelMetrics = data.fuelRecords.reduce((acc: Record<string, any[]>, record: any) => {
+      const targetId = record.target_equipment_id;
+      const hourMeter = Number(record.hour_meter || 0);
+      const fuelType = String(record.fuel_type || "").toLowerCase();
+      if (!targetId || !hourMeter || fuelType === "arla") return acc;
+      if (!acc[targetId]) acc[targetId] = [];
+      acc[targetId].push({
+        date: record.date,
+        created_at: record.created_at,
+        hour_meter: hourMeter,
+        liters: Number(record.liters || 0),
+      });
+      return acc;
+    }, {});
+
+    const equipmentEfficiency = Object.entries(fuelMetrics)
+      .map(([equipmentId, records]) => {
+        const equipment = equipmentMap[equipmentId];
+        if (!equipment || records.length < 2) return null;
+
+        const sortedRecords = [...records].sort(
+          (a: any, b: any) => a.date.localeCompare(b.date) || a.created_at.localeCompare(b.created_at)
+        );
+
+        let liters = 0;
+        let delta = 0;
+
+        for (let index = 1; index < sortedRecords.length; index += 1) {
+          const current = sortedRecords[index];
+          const previous = sortedRecords[index - 1];
+          const difference = current.hour_meter - previous.hour_meter;
+          if (difference > 0 && current.liters > 0) {
+            liters += current.liters;
+            delta += difference;
+          }
+        }
+
+        if (!delta || !liters) return null;
+
+        const metric = equipment.type === "truck" ? delta / liters : liters / delta;
+        return {
+          equipmentId,
+          equipmentName: equipment.name,
+          type: equipment.type === "truck" ? "truck" : "equipment",
+          metric,
+          unit: equipment.type === "truck" ? "km/L" : "L/h",
+        };
+      })
+      .filter(Boolean) as Array<{ equipmentId: string; equipmentName: string; type: "truck" | "equipment"; metric: number; unit: string }>;
+
+    const groupAverage = equipmentEfficiency.reduce(
+      (acc, item) => {
+        acc[item.type].sum += item.metric;
+        acc[item.type].count += 1;
+        return acc;
+      },
+      {
+        truck: { sum: 0, count: 0 },
+        equipment: { sum: 0, count: 0 },
+      }
+    );
+
+    const consumptionInsights = equipmentEfficiency
+      .map((item) => {
+        const averageBase = groupAverage[item.type];
+        const average = averageBase.count ? averageBase.sum / averageBase.count : 0;
+        if (!average) return null;
+
+        if (item.type === "truck") {
+          const variation = ((average - item.metric) / average) * 100;
+          if (variation < 15) return null;
+          return {
+            id: item.equipmentId,
+            equipmentName: item.equipmentName,
+            variationPercent: variation,
+            metricLabel: `${item.metric.toFixed(2)} ${item.unit} frente à média de ${average.toFixed(2)} ${item.unit}`,
+            severity: variation >= 30 ? "critical" : "warning",
+          } satisfies ConsumptionInsightItem;
+        }
+
+        const variation = ((item.metric - average) / average) * 100;
+        if (variation < 15) return null;
+        return {
+          id: item.equipmentId,
+          equipmentName: item.equipmentName,
+          variationPercent: variation,
+          metricLabel: `${item.metric.toFixed(2)} ${item.unit} frente à média de ${average.toFixed(2)} ${item.unit}`,
+          severity: variation >= 30 ? "critical" : "warning",
+        } satisfies ConsumptionInsightItem;
+      })
+      .filter(Boolean)
+      .sort((a: any, b: any) => b.variationPercent - a.variationPercent);
+
+    const openRequests = data.requests.filter((request: any) => request.status === "open").length;
+    const inProgressRequests = data.requests.filter((request: any) => request.status === "in_progress").length;
+    const activeEquipments = data.equipments.filter((equipment: any) => equipment.status === "active").length;
 
     return {
-      overdue, approaching, okPlans, openRequests, inProgressRequests, resolvedRequests,
-      activeEquipments, inactiveEquipments, todayChecklists, totalFuelToday,
-      clOk, clAttention, clCritical, checklistScore,
-      fuelByDay, topFuelEquip, osOpen, osProgress, osDone, maintenanceTrend: weeks,
+      todayChecklists,
+      checklistCounts,
+      maintenanceItems,
+      overdueMaintenance,
+      approachingMaintenance,
+      activeOrders,
+      criticalOrders,
+      waitingPartsOrders,
+      stoppedEquipments,
+      consumptionInsights,
+      openRequests,
+      inProgressRequests,
+      activeEquipments,
     };
-  }, [data, today]);
+  }, [data.checklists, data.equipments, data.fuelRecords, data.plans, data.requests, data.workOrders, equipmentMap, today]);
 
-  const urgencyLevel = stats.overdue.length > 0 ? 'critical' : stats.approaching.length > 0 || stats.openRequests.length > 0 ? 'warning' : 'ok';
-
-  // Chart data
-  const checklistDonut = [
-    { name: 'OK', value: stats.clOk, color: COLORS.ok },
-    { name: 'Atenção', value: stats.clAttention, color: COLORS.warning },
-    { name: 'Crítico', value: stats.clCritical, color: COLORS.critical },
-  ].filter(d => d.value > 0);
-
-  const maintenanceDonut = [
-    { name: 'Em dia', value: stats.okPlans.length, color: COLORS.ok },
-    { name: 'Próxima', value: stats.approaching.length, color: COLORS.warning },
-    { name: 'Atrasada', value: stats.overdue.length, color: COLORS.critical },
-  ].filter(d => d.value > 0);
-
-  const equipmentDonut = [
-    { name: 'Ativos', value: stats.activeEquipments.length, color: COLORS.ok },
-    { name: 'Inativos', value: stats.inactiveEquipments.length, color: COLORS.muted },
-  ].filter(d => d.value > 0);
-
-  const osDonut = [
-    { name: 'Aberta', value: stats.osOpen, color: COLORS.warning },
-    { name: 'Andamento', value: stats.osProgress, color: COLORS.blue },
-    { name: 'Concluída', value: stats.osDone, color: COLORS.ok },
-  ].filter(d => d.value > 0);
-
-  const renderDonutChart = (
-    chartData: { name: string; value: number; color: string }[],
-    centerLabel: string,
-    centerValue: string,
-    title: string,
-    onClick?: () => void
-  ) => (
-    <button onClick={onClick} className="glass-card rounded-xl p-5 hover:border-primary/40 transition-all text-left w-full">
-      <h3 className="text-sm font-bold text-foreground mb-3">{title}</h3>
-      <div className="flex items-center gap-4">
-        <div className="relative w-[120px] h-[120px] shrink-0">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={chartData.length > 0 ? chartData : [{ name: '-', value: 1, color: COLORS.muted }]}
-                cx="50%" cy="50%"
-                innerRadius={35} outerRadius={55}
-                dataKey="value" stroke="none"
-              >
-                {(chartData.length > 0 ? chartData : [{ name: '-', value: 1, color: COLORS.muted }]).map((entry, i) => (
-                  <Cell key={i} fill={entry.color} />
-                ))}
-              </Pie>
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-xl font-black font-mono text-foreground">{centerValue}</span>
-            <span className="text-[9px] text-muted-foreground">{centerLabel}</span>
-          </div>
-        </div>
-        <div className="flex flex-col gap-1.5 min-w-0">
-          {chartData.map((d, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: d.color }} />
-              <span className="text-xs text-muted-foreground truncate">{d.name}</span>
-              <span className="text-xs font-mono font-bold text-foreground ml-auto">{d.value}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </button>
+  const criticalAlerts = useMemo(
+    () => [
+      {
+        id: "overdue-maintenance",
+        label: "Manutenção atrasada",
+        value: stats.overdueMaintenance.length,
+        description: "Equipamentos que já ultrapassaram o ponto de revisão.",
+        actionLabel: "Ver detalhes",
+        onClick: () => navigate("/manutencao"),
+        icon: AlertTriangle,
+        tone: stats.overdueMaintenance.length > 0 ? "critical" : "ok",
+      },
+      {
+        id: "critical-os",
+        label: "OS críticas",
+        value: stats.criticalOrders.length,
+        description: "Ordens com prioridade alta ou urgente ainda sem baixa.",
+        actionLabel: "Ver detalhes",
+        onClick: () => navigate("/manutencao"),
+        icon: Wrench,
+        tone: stats.criticalOrders.length > 0 ? "critical" : "ok",
+      },
+      {
+        id: "stopped-equipments",
+        label: "Equipamentos parados",
+        value: stats.stoppedEquipments.length,
+        description: "Ativos indisponíveis ou em manutenção no momento.",
+        actionLabel: "Ver detalhes",
+        onClick: () => navigate("/equipamentos"),
+        icon: PauseCircle,
+        tone: stats.stoppedEquipments.length > 0 ? "critical" : "ok",
+      },
+      {
+        id: "abnormal-consumption",
+        label: "Consumo anormal",
+        value: stats.consumptionInsights.length,
+        description: "Equipamentos com desvio relevante no padrão de consumo.",
+        actionLabel: "Ver detalhes",
+        onClick: () => navigate("/relatorios"),
+        icon: Truck,
+        tone: stats.consumptionInsights.length > 0 ? "critical" : "ok",
+      },
+    ],
+    [navigate, stats.consumptionInsights.length, stats.criticalOrders.length, stats.overdueMaintenance.length, stats.stoppedEquipments.length]
   );
+
+  const kpis = useMemo<DashboardKpiItem[]>(
+    () => [
+      {
+        id: "equipments",
+        label: "Total equipamentos",
+        value: String(data.equipments.length),
+        context: `${stats.activeEquipments} ativos e ${stats.stoppedEquipments.length} parados`,
+        icon: Truck,
+        onClick: () => navigate("/equipamentos"),
+      },
+      {
+        id: "work-orders",
+        label: "Total OS",
+        value: String(data.workOrders.length),
+        context: `${stats.activeOrders.length} abertas/em andamento (${stats.criticalOrders.length} críticas)`,
+        icon: Wrench,
+        onClick: () => navigate("/manutencao"),
+      },
+      {
+        id: "checklists",
+        label: "Checklists",
+        value: String(data.checklists.length),
+        context: `${stats.todayChecklists.length} hoje (${stats.checklistCounts.critical} críticos)`,
+        icon: ClipboardCheck,
+        onClick: () => navigate("/checklist"),
+      },
+    ],
+    [data.checklists.length, data.equipments.length, data.workOrders.length, navigate, stats.activeEquipments, stats.activeOrders.length, stats.checklistCounts.critical, stats.criticalOrders.length, stats.stoppedEquipments.length, stats.todayChecklists.length]
+  );
+
+  const maintenanceList = useMemo<MaintenancePriorityItem[]>(
+    () =>
+      stats.maintenanceItems.slice(0, 8).map((item: any) => ({
+        id: item.id,
+        equipmentName: item.equipmentName,
+        currentHourMeter: item.currentHourMeter,
+        status: item.status,
+        timingLabel: formatPlanTiming(item.remaining, item.unit, item.status),
+        planLabel: item.planLabel,
+        onOpen: () => navigate("/manutencao"),
+      })),
+    [navigate, stats.maintenanceItems]
+  );
+
+  const workOrderItems = useMemo<WorkOrderStatusItem[]>(
+    () => [
+      {
+        id: "os-open",
+        label: "OS abertas",
+        count: data.workOrders.filter((order: any) => order.status === "open").length,
+        description: `${stats.openRequests} pedido${stats.openRequests === 1 ? "" : "s"} aguardando andamento`,
+        icon: Wrench,
+        tone: data.workOrders.some((order: any) => order.status === "open") ? "warning" : "ok",
+        onClick: () => navigate("/manutencao"),
+      },
+      {
+        id: "os-progress",
+        label: "OS em andamento",
+        count: data.workOrders.filter((order: any) => order.status === "in_progress").length,
+        description: `${stats.inProgressRequests} pedido${stats.inProgressRequests === 1 ? "" : "s"} em execução`,
+        icon: Wrench,
+        tone: data.workOrders.some((order: any) => order.status === "in_progress") ? "warning" : "ok",
+        onClick: () => navigate("/manutencao"),
+      },
+      {
+        id: "os-parts",
+        label: "OS aguardando peça",
+        count: stats.waitingPartsOrders.length,
+        description: "Identificadas por observação operacional pendente.",
+        icon: Wrench,
+        tone: stats.waitingPartsOrders.length > 0 ? "warning" : "neutral",
+        onClick: () => navigate("/manutencao"),
+      },
+      {
+        id: "os-critical",
+        label: "OS críticas",
+        count: stats.criticalOrders.length,
+        description: "Prioridade alta ou urgente sem conclusão.",
+        icon: Wrench,
+        tone: stats.criticalOrders.length > 0 ? "critical" : "ok",
+        onClick: () => navigate("/manutencao"),
+      },
+    ],
+    [data.workOrders, navigate, stats.criticalOrders.length, stats.inProgressRequests, stats.openRequests, stats.waitingPartsOrders.length]
+  );
+
+  const checklistItems = useMemo<ChecklistOverviewItem[]>(
+    () =>
+      stats.todayChecklists.map((checklist: any) => {
+        const equipment = equipmentMap[checklist.equipment_id];
+        const nonConformities = Array.isArray(checklist.items)
+          ? checklist.items.filter((item: any) => item.checked === false).length
+          : 0;
+
+        return {
+          id: checklist.id,
+          equipmentName: equipment?.name || "Equipamento",
+          operatorName: checklist.operator_name,
+          typeLabel:
+            checklist.type === "corrective"
+              ? "Corretivo"
+              : checklist.type === "preventive"
+                ? "Preventivo"
+                : "Diário",
+          timeLabel: new Date(checklist.created_at).toLocaleTimeString("pt-BR", {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          status: checklist.status,
+          nonConformities,
+          onClick: () => setSelectedChecklist(checklist),
+        } satisfies ChecklistOverviewItem;
+      }),
+    [equipmentMap, stats.todayChecklists]
+  );
+
+  const comboItems = useMemo<ComboFuelItem[]>(
+    () =>
+      data.combos.map((combo: any) => ({
+        id: combo.id,
+        name: combo.name,
+        currentFuel: Number(combo.current_fuel || 0),
+        fuelCapacity: Number(combo.fuel_capacity || 0),
+        percentage: combo.fuel_capacity ? (Number(combo.current_fuel || 0) / Number(combo.fuel_capacity)) * 100 : 0,
+      })),
+    [data.combos]
+  );
+
+  const summary = useMemo(
+    () =>
+      buildSystemSummary({
+        overdueCount: stats.overdueMaintenance.length,
+        abnormalCount: stats.consumptionInsights.length,
+        openOrders: stats.activeOrders.length,
+        criticalOrders: stats.criticalOrders.length,
+        stoppedCount: stats.stoppedEquipments.length,
+      }),
+    [stats.activeOrders.length, stats.consumptionInsights.length, stats.criticalOrders.length, stats.overdueMaintenance.length, stats.stoppedEquipments.length]
+  );
+
+  const hasCriticalItems =
+    stats.overdueMaintenance.length > 0 ||
+    stats.criticalOrders.length > 0 ||
+    stats.stoppedEquipments.length > 0 ||
+    stats.consumptionInsights.length > 0;
 
   return (
     <div className="space-y-5">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-3xl font-black text-gradient">Dashboard</h1>
-          <p className="text-muted-foreground mt-1 capitalize text-sm">{todayStr}</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={fetchData} className="gap-2">
-            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} /> Atualizar
-          </Button>
-          <Button variant="ghost" size="sm" onClick={signOut} className="text-muted-foreground text-xs">Sair</Button>
-        </div>
+      <DashboardHero
+        title="Dashboard operacional"
+        subtitle={todayLabel}
+        summary={summary}
+        onRefresh={fetchData}
+        onSignOut={signOut}
+        refreshing={isRefreshing}
+      />
+
+      <CriticalAlertsPanel items={criticalAlerts} />
+      <KpiSummaryGrid items={kpis} />
+
+      {!hasCriticalItems && <EmptyOperationalState />}
+
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.25fr_0.95fr]">
+        <MaintenancePriorityList items={maintenanceList} onOpenAll={() => navigate("/manutencao")} />
+        <WorkOrdersOperationalBlock items={workOrderItems} />
       </div>
 
-      {/* Status banner */}
-      {urgencyLevel === 'critical' && (
-        <div className="rounded-xl p-4 bg-destructive/10 border border-destructive/30 flex items-center gap-3">
-          <XCircle className="w-6 h-6 text-destructive shrink-0" />
-          <div>
-            <p className="font-bold text-destructive">Atenção Urgente!</p>
-            <p className="text-sm text-muted-foreground">{stats.overdue.length} manutenção(ões) atrasada(s).</p>
-          </div>
-          <Button size="sm" variant="destructive" className="ml-auto" onClick={() => navigate('/manutencao')}>Ver agora</Button>
-        </div>
-      )}
-      {urgencyLevel === 'warning' && (
-        <div className="rounded-xl p-4 bg-warning/10 border border-warning/30 flex items-center gap-3">
-          <AlertTriangle className="w-6 h-6 text-warning shrink-0" />
-          <p className="font-bold text-warning">Itens requerem atenção. Revise os alertas abaixo.</p>
-        </div>
-      )}
-      {urgencyLevel === 'ok' && (
-        <div className="rounded-xl p-4 bg-success/10 border border-success/30 flex items-center gap-3">
-          <CheckCircle2 className="w-6 h-6 text-success shrink-0" />
-          <p className="font-bold text-success">Tudo sob controle! Frota em dia.</p>
-        </div>
-      )}
+      <ConsumptionInsightsBlock items={stats.consumptionInsights} onOpenReports={() => navigate("/relatorios")} />
 
-      {/* KPI Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        {[
-          { label: 'Equipamentos', value: data.equipments.length, icon: Truck, color: 'text-primary', sub: `${stats.activeEquipments.length} ativos`, to: '/equipamentos' },
-          { label: 'Checklists Hoje', value: stats.todayChecklists.length, icon: ClipboardCheck, color: 'text-success', sub: `Score: ${stats.checklistScore}%`, to: '/checklist' },
-          { label: 'Pedidos Abertos', value: stats.openRequests.length, icon: Activity, color: 'text-warning', sub: `${stats.inProgressRequests.length} em andamento`, to: '/manutencao' },
-          { label: 'Litros Hoje', value: `${stats.totalFuelToday}L`, icon: Fuel, color: 'text-warning', sub: 'abastecidos', to: '/abastecimento' },
-          { label: 'OS Abertas', value: stats.osOpen + stats.osProgress, icon: Wrench, color: 'text-primary', sub: `${stats.osDone} concluídas`, to: '/manutencao' },
-        ].map(card => (
-          <button key={card.label} onClick={() => navigate(card.to)} className="glass-card rounded-xl p-4 text-left hover:border-primary/40 hover:scale-[1.02] transition-all">
-            <div className="flex items-center gap-2 mb-2">
-              <card.icon className={`w-4 h-4 ${card.color}`} />
-              <span className="text-xs text-muted-foreground font-medium">{card.label}</span>
-            </div>
-            <p className={`text-2xl font-black font-mono ${card.color}`}>{card.value}</p>
-            <p className="text-xs text-muted-foreground mt-1">{card.sub}</p>
-          </button>
-        ))}
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.2fr_0.8fr]">
+        <ChecklistOverviewSection items={checklistItems} />
+        <ComboFuelSection items={comboItems} onOpenSupply={() => navigate("/reabastecimento")} />
       </div>
 
-      {/* Donut Charts Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {renderDonutChart(checklistDonut, 'Score', `${stats.checklistScore}%`, 'Pontuação de Checklist', () => navigate('/checklist'))}
-        {renderDonutChart(maintenanceDonut, 'Planos', `${data.plans.length}`, 'Status Manutenção Preventiva', () => navigate('/manutencao'))}
-        {renderDonutChart(equipmentDonut, 'Total', `${data.equipments.length}`, 'Frota de Equipamentos', () => navigate('/equipamentos'))}
-        {renderDonutChart(osDonut, 'Total', `${data.workOrders.length}`, 'Ordens de Serviço', () => navigate('/manutencao'))}
-      </div>
-
-      {/* Bar Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Fuel last 7 days */}
-        <div className="glass-card rounded-xl p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-bold flex items-center gap-2">
-              <Fuel className="w-4 h-4 text-warning" /> Consumo de Combustível (Última Semana)
-            </h3>
-            <button onClick={() => navigate('/abastecimento')} className="text-xs text-primary hover:underline">Ver mais →</button>
-          </div>
-          <div className="h-[220px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={stats.fuelByDay}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 14%, 20%)" />
-                <XAxis dataKey="day" tick={{ fill: 'hsl(220, 10%, 55%)', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: 'hsl(220, 10%, 55%)', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: 'hsl(220, 18%, 14%)', border: '1px solid hsl(220, 14%, 22%)', borderRadius: '8px', color: 'hsl(40, 10%, 92%)' }}
-                  formatter={(value: number) => [`${value}L`, 'Litros']}
-                />
-                <Bar dataKey="litros" fill={COLORS.warning} radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Top 5 equipment fuel consumption */}
-        <div className="glass-card rounded-xl p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-bold flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-primary" /> Top 5 — Maior Consumo (Litros)
-            </h3>
-            <button onClick={() => navigate('/relatorios')} className="text-xs text-primary hover:underline">Relatórios →</button>
-          </div>
-          <div className="h-[220px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={stats.topFuelEquip} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 14%, 20%)" horizontal={false} />
-                <XAxis type="number" tick={{ fill: 'hsl(220, 10%, 55%)', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis type="category" dataKey="name" tick={{ fill: 'hsl(220, 10%, 55%)', fontSize: 11 }} width={100} axisLine={false} tickLine={false} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: 'hsl(220, 18%, 14%)', border: '1px solid hsl(220, 14%, 22%)', borderRadius: '8px', color: 'hsl(40, 10%, 92%)' }}
-                  formatter={(value: number) => [`${value}L`, 'Total']}
-                />
-                <Bar dataKey="litros" fill={COLORS.primary} radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
-
-      {/* Maintenance trend 3 months */}
-      <div className="glass-card rounded-xl p-5">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-bold flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-primary" /> Tendência de Manutenções (Últimos 3 Meses)
-          </h3>
-          <button onClick={() => navigate('/manutencao')} className="text-xs text-primary hover:underline">Manutenção →</button>
-        </div>
-        <div className="h-[260px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={stats.maintenanceTrend}>
-              <defs>
-                <linearGradient id="gradPedidos" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={COLORS.warning} stopOpacity={0.3} />
-                  <stop offset="95%" stopColor={COLORS.warning} stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="gradOS" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={COLORS.blue} stopOpacity={0.3} />
-                  <stop offset="95%" stopColor={COLORS.blue} stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="gradConcluidas" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={COLORS.ok} stopOpacity={0.3} />
-                  <stop offset="95%" stopColor={COLORS.ok} stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 14%, 20%)" />
-              <XAxis dataKey="label" tick={{ fill: 'hsl(220, 10%, 55%)', fontSize: 10 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
-              <YAxis tick={{ fill: 'hsl(220, 10%, 55%)', fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-              <Tooltip contentStyle={{ backgroundColor: 'hsl(220, 18%, 14%)', border: '1px solid hsl(220, 14%, 22%)', borderRadius: '8px', color: 'hsl(40, 10%, 92%)' }} />
-              <Legend iconType="circle" wrapperStyle={{ fontSize: 11 }} />
-              <Area type="monotone" dataKey="pedidos" name="Pedidos" stroke={COLORS.warning} fill="url(#gradPedidos)" strokeWidth={2} />
-              <Area type="monotone" dataKey="os" name="OS Abertas" stroke={COLORS.blue} fill="url(#gradOS)" strokeWidth={2} />
-              <Area type="monotone" dataKey="concluidas" name="Concluídas" stroke={COLORS.ok} fill="url(#gradConcluidas)" strokeWidth={2} />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* Today's Checklists List */}
-      {stats.todayChecklists.length > 0 && (
-        <div className="glass-card rounded-xl p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-bold flex items-center gap-2">
-              <ClipboardCheck className="w-4 h-4 text-success" /> Checklists de Hoje ({stats.todayChecklists.length})
-            </h3>
-            <button onClick={() => navigate('/checklist')} className="text-xs text-primary hover:underline">Ver todos →</button>
-          </div>
-          <div className="space-y-2 max-h-[320px] overflow-y-auto">
-            {stats.todayChecklists.map((cl: any) => {
-              const eq = data.equipments.find((e: any) => e.id === cl.equipment_id);
-              const items = Array.isArray(cl.items) ? cl.items : [];
-              const ncCount = items.filter((i: any) => i.checked === false).length;
-              const statusColor = cl.status === 'ok' ? 'text-success' : cl.status === 'attention' ? 'text-warning' : 'text-destructive';
-              const statusBg = cl.status === 'ok' ? 'bg-success/10 border-success/20' : cl.status === 'attention' ? 'bg-warning/10 border-warning/20' : 'bg-destructive/10 border-destructive/20';
-              const typeLabel = cl.type === 'corrective' ? 'Corretivo' : cl.type === 'preventive' ? 'Preventivo' : 'Diário';
-              const time = new Date(cl.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-              return (
-                <button
-                  key={cl.id}
-                  onClick={() => setSelectedChecklist(cl)}
-                  className={`flex items-center gap-3 p-3 rounded-lg w-full text-left border hover:opacity-80 transition-all ${statusBg}`}
-                >
-                  <Eye className={`w-4 h-4 ${statusColor} shrink-0`} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold truncate">{eq?.name || 'Equipamento'}</p>
-                    <p className="text-xs text-muted-foreground">{cl.operator_name} · {typeLabel} · {time}</p>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {ncCount > 0 && <span className="text-xs font-mono font-bold text-destructive">{ncCount} NC</span>}
-                    <span className={`text-xs font-bold ${statusColor}`}>{cl.status === 'ok' ? 'OK' : cl.status === 'attention' ? 'Atenção' : 'Crítico'}</span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Checklist Detail Dialog */}
       <Dialog open={!!selectedChecklist} onOpenChange={() => setSelectedChecklist(null)}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-h-[85vh] max-w-lg overflow-y-auto">
           {selectedChecklist && (() => {
-            const eq = data.equipments.find((e: any) => e.id === selectedChecklist.equipment_id);
+            const equipment = equipmentMap[selectedChecklist.equipment_id];
             const items = Array.isArray(selectedChecklist.items) ? selectedChecklist.items : [];
-            const typeLabel = selectedChecklist.type === 'corrective' ? 'Corretivo' : selectedChecklist.type === 'preventive' ? 'Preventivo' : 'Diário';
-            const statusColor = selectedChecklist.status === 'ok' ? 'text-success' : selectedChecklist.status === 'attention' ? 'text-warning' : 'text-destructive';
+            const typeLabel =
+              selectedChecklist.type === "corrective"
+                ? "Corretivo"
+                : selectedChecklist.type === "preventive"
+                  ? "Preventivo"
+                  : "Diário";
+            const statusClass =
+              selectedChecklist.status === "ok"
+                ? "text-success"
+                : selectedChecklist.status === "attention"
+                  ? "text-warning"
+                  : "text-destructive";
+
             return (
               <>
                 <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2">
-                    <ClipboardCheck className="w-5 h-5 text-primary" />
-                    Checklist — {eq?.name || 'Equipamento'}
+                  <DialogTitle className="flex items-center gap-2 text-left">
+                    <ClipboardCheck className="h-5 w-5 text-primary" />
+                    Checklist — {equipment?.name || "Equipamento"}
                   </DialogTitle>
                 </DialogHeader>
+
                 <div className="space-y-4">
-                  {/* Info */}
                   <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div className="rounded-lg bg-secondary/40 p-2.5">
+                    <div className="rounded-lg bg-secondary/50 p-3">
                       <p className="text-xs text-muted-foreground">Operador</p>
-                      <p className="font-semibold">{selectedChecklist.operator_name}</p>
+                      <p className="font-semibold text-foreground">{selectedChecklist.operator_name}</p>
                     </div>
-                    <div className="rounded-lg bg-secondary/40 p-2.5">
+                    <div className="rounded-lg bg-secondary/50 p-3">
                       <p className="text-xs text-muted-foreground">Horímetro</p>
-                      <p className="font-semibold font-mono">{selectedChecklist.hour_meter}h</p>
+                      <p className="font-semibold text-foreground">{selectedChecklist.hour_meter}h</p>
                     </div>
-                    <div className="rounded-lg bg-secondary/40 p-2.5">
+                    <div className="rounded-lg bg-secondary/50 p-3">
                       <p className="text-xs text-muted-foreground">Tipo</p>
-                      <p className="font-semibold">{typeLabel}</p>
+                      <p className="font-semibold text-foreground">{typeLabel}</p>
                     </div>
-                    <div className="rounded-lg bg-secondary/40 p-2.5">
+                    <div className="rounded-lg bg-secondary/50 p-3">
                       <p className="text-xs text-muted-foreground">Status</p>
-                      <p className={`font-semibold ${statusColor}`}>{selectedChecklist.status === 'ok' ? 'Conforme' : selectedChecklist.status === 'attention' ? 'Atenção' : 'Crítico'}</p>
+                      <p className={`font-semibold ${statusClass}`}>
+                        {selectedChecklist.status === "ok"
+                          ? "Conforme"
+                          : selectedChecklist.status === "attention"
+                            ? "Atenção"
+                            : "Crítico"}
+                      </p>
                     </div>
                   </div>
 
-                  {/* Items */}
                   {items.length > 0 && (
                     <div>
-                      <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Itens de Verificação</h4>
-                      <div className="space-y-1.5">
-                        {items.map((item: any, idx: number) => (
-                          <div key={item.id || idx} className={`flex items-start gap-2 p-2.5 rounded-lg text-sm ${item.checked === true ? 'bg-success/5' : item.checked === false ? 'bg-destructive/5' : 'bg-secondary/30'}`}>
+                      <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">Itens de verificação</h3>
+                      <div className="space-y-2">
+                        {items.map((item: any, index: number) => (
+                          <div
+                            key={item.id || index}
+                            className={`flex items-start gap-2 rounded-lg p-3 text-sm ${
+                              item.checked === true
+                                ? "bg-success/10"
+                                : item.checked === false
+                                  ? "bg-destructive/10"
+                                  : "bg-secondary/50"
+                            }`}
+                          >
                             {item.checked === true ? (
-                              <ShieldCheck className="w-4 h-4 text-success shrink-0 mt-0.5" />
+                              <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-success" />
                             ) : item.checked === false ? (
-                              <ShieldX className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                              <ShieldX className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
                             ) : (
-                              <div className="w-4 h-4 rounded-full border border-muted-foreground shrink-0 mt-0.5" />
+                              <div className="mt-0.5 h-4 w-4 shrink-0 rounded-full border border-muted-foreground" />
                             )}
-                            <div className="flex-1 min-w-0">
-                              <p className={`font-medium ${item.checked === true ? 'text-success' : item.checked === false ? 'text-destructive' : ''}`}>{item.label}</p>
-                              {item.observation && <p className="text-xs text-muted-foreground mt-0.5">📝 {item.observation}</p>}
+                            <div className="min-w-0 flex-1">
+                              <p className="font-medium text-foreground">{item.label}</p>
+                              {item.observation && <p className="mt-1 text-xs text-muted-foreground">📝 {item.observation}</p>}
                             </div>
                           </div>
                         ))}
@@ -479,25 +596,23 @@ export default function Dashboard() {
                     </div>
                   )}
 
-                  {/* Observations */}
                   {selectedChecklist.observations && (
-                    <div className="rounded-lg bg-secondary/40 p-3">
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <MessageSquare className="w-3.5 h-3.5 text-muted-foreground" />
-                        <p className="text-xs font-bold text-muted-foreground uppercase">Observações Gerais</p>
+                    <div className="rounded-lg bg-secondary/50 p-3">
+                      <div className="mb-1 flex items-center gap-2">
+                        <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                        <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Observações gerais</p>
                       </div>
-                      <p className="text-sm">{selectedChecklist.observations}</p>
+                      <p className="text-sm text-foreground">{selectedChecklist.observations}</p>
                     </div>
                   )}
 
-                  {/* Photo */}
                   {selectedChecklist.photo_url && (
                     <div>
-                      <div className="flex items-center gap-1.5 mb-2">
-                        <Camera className="w-3.5 h-3.5 text-muted-foreground" />
-                        <p className="text-xs font-bold text-muted-foreground uppercase">Foto</p>
+                      <div className="mb-2 flex items-center gap-2">
+                        <Camera className="h-4 w-4 text-muted-foreground" />
+                        <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Foto</p>
                       </div>
-                      <img src={selectedChecklist.photo_url} alt="Foto do checklist" className="rounded-lg w-full max-h-[300px] object-cover" />
+                      <img src={selectedChecklist.photo_url} alt="Foto do checklist" className="w-full rounded-lg object-cover" />
                     </div>
                   )}
                 </div>
@@ -506,94 +621,6 @@ export default function Dashboard() {
           })()}
         </DialogContent>
       </Dialog>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Combo fuel levels */}
-        {data.combos.length > 0 && (
-          <div className="glass-card rounded-xl p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-bold flex items-center gap-2">
-                <Droplets className="w-4 h-4 text-primary" /> Saldo Comboios
-              </h3>
-              <button onClick={() => navigate('/reabastecimento')} className="text-xs text-primary hover:underline">Reabastecer →</button>
-            </div>
-            <div className="space-y-3">
-              {data.combos.map((c: any) => {
-                const pct = c.fuel_capacity ? ((c.current_fuel || 0) / c.fuel_capacity) * 100 : 0;
-                const color = pct > 30 ? 'bg-success' : pct > 10 ? 'bg-warning' : 'bg-destructive';
-                const textColor = pct > 30 ? 'text-success' : pct > 10 ? 'text-warning' : 'text-destructive';
-                return (
-                  <div key={c.id} className="rounded-lg bg-secondary/40 p-3">
-                    <div className="flex items-center justify-between mb-1.5">
-                      <p className="font-semibold text-sm truncate">{c.name}</p>
-                      <span className={`text-sm font-mono font-bold ${textColor}`}>{c.current_fuel || 0}L / {c.fuel_capacity}L</span>
-                    </div>
-                    <div className="w-full bg-secondary rounded-full h-2">
-                      <div className={`h-2 rounded-full transition-all ${color}`} style={{ width: `${Math.min(pct, 100)}%` }} />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Recent alerts */}
-        <div className="glass-card rounded-xl p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-bold flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-warning" /> Alertas Recentes
-            </h3>
-            <button onClick={() => navigate('/manutencao')} className="text-xs text-primary hover:underline">Ver todos →</button>
-          </div>
-          {stats.overdue.length === 0 && stats.approaching.length === 0 && stats.openRequests.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-              <CheckCircle2 className="w-8 h-8 mb-2 text-success" />
-              <p className="text-sm">Nenhum alerta no momento</p>
-            </div>
-          ) : (
-            <div className="space-y-2 max-h-[260px] overflow-y-auto">
-              {stats.overdue.slice(0, 4).map((p: any) => {
-                const eq = data.equipments.find((e: any) => e.id === p.equipment_id);
-                return (
-                  <button key={p.id} onClick={() => navigate('/manutencao')} className="flex items-center gap-3 p-3 rounded-lg w-full text-left bg-destructive/10 border border-destructive/20 hover:bg-destructive/20 transition-colors">
-                    <XCircle className="w-4 h-4 text-destructive shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold truncate text-destructive">{p.description}</p>
-                      <p className="text-xs text-muted-foreground">{eq?.name} — Atrasada</p>
-                    </div>
-                    <span className="text-xs font-mono text-destructive shrink-0">{p.next_due_at}h</span>
-                  </button>
-                );
-              })}
-              {stats.approaching.slice(0, 3).map((p: any) => {
-                const eq = data.equipments.find((e: any) => e.id === p.equipment_id);
-                return (
-                  <button key={p.id} onClick={() => navigate('/manutencao')} className="flex items-center gap-3 p-3 rounded-lg w-full text-left bg-warning/10 border border-warning/20 hover:bg-warning/20 transition-colors">
-                    <AlertTriangle className="w-4 h-4 text-warning shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold truncate text-warning">{p.description}</p>
-                      <p className="text-xs text-muted-foreground">{eq?.name} — Próxima</p>
-                    </div>
-                    <span className="text-xs font-mono text-warning shrink-0">{p.next_due_at}h</span>
-                  </button>
-                );
-              })}
-              {stats.openRequests.slice(0, 3).map((r: any) => {
-                const eq = data.equipments.find((e: any) => e.id === r.equipment_id);
-                return (
-                  <button key={r.id} onClick={() => navigate('/manutencao')} className="flex items-center gap-3 p-3 rounded-lg w-full text-left bg-primary/10 border border-primary/20 hover:bg-primary/20 transition-colors">
-                    <Activity className="w-4 h-4 text-primary shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold truncate text-primary">{r.description}</p>
-                      <p className="text-xs text-muted-foreground">{eq?.name} — Pedido aberto</p>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
     </div>
   );
 }

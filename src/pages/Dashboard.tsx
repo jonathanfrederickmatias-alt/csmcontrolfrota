@@ -201,6 +201,21 @@ function getPriorityDescriptor(priority: string) {
   return "Monitorar";
 }
 
+function getEquipmentDisplayName(equipment?: {
+  name?: string | null;
+  plate?: string | null;
+  cost_center?: string | null;
+  chassis?: string | null;
+}) {
+  if (!equipment) return "Equipamento sem identificação";
+  const baseName = String(equipment.name || "Equipamento sem identificação").trim();
+  const identifier = [equipment.cost_center, equipment.plate, equipment.chassis]
+    .map((value) => String(value || "").trim())
+    .find(Boolean);
+
+  return identifier ? `${baseName} (${identifier})` : baseName;
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -325,7 +340,7 @@ export default function Dashboard() {
           return {
             id: `${item.equipmentId}-${priority}-${item.maintenanceType}`,
             equipmentId: item.equipmentId,
-            equipmentName: equipment?.name || "Equipamento",
+            equipmentName: getEquipmentDisplayName(equipment),
             summary: item.summary || item.reason || item.recommendation,
             failureRisk: Math.max(0, Math.min(100, Number(item.failureRisk || 0))),
             recommendation: item.recommendation,
@@ -435,7 +450,7 @@ export default function Dashboard() {
         return {
           id: plan.id,
           equipmentId: equipment.id,
-          equipmentName: equipment.name,
+          equipmentName: getEquipmentDisplayName(equipment),
           currentHourMeter: Number(equipment.current_hour_meter || 0),
           status,
           remaining,
@@ -510,7 +525,7 @@ export default function Dashboard() {
 
         return {
           id: equipmentId,
-          equipmentName: equipment.name,
+          equipmentName: getEquipmentDisplayName(equipment),
           variationPercent: variation,
           metricLabel: `${currentSegment.metric.toFixed(2)} ${metricType === "truck" ? "km/L" : "L/h"} frente à média histórica de ${historicalAverage.toFixed(2)} ${metricType === "truck" ? "km/L" : "L/h"}`,
           severity: variation > 30 ? "critical" : "warning",
@@ -577,7 +592,7 @@ export default function Dashboard() {
         return {
           id: `anomaly-${equipment.id}`,
           equipmentId: equipment.id,
-          equipmentName: equipment.name,
+          equipmentName: getEquipmentDisplayName(equipment),
           severity,
           anomalyTypes,
           summary: anomalyTypes.includes("hourmeter")
@@ -600,7 +615,7 @@ export default function Dashboard() {
         .filter((order: any) => equipmentMap[order.equipment_id]?.status !== "active")
         .map((order: any) => ({
           id: `p1-${order.id}`,
-          title: `${equipmentMap[order.equipment_id]?.name || "Equipamento"} parado com OS #${order.os_number}`,
+          title: `${getEquipmentDisplayName(equipmentMap[order.equipment_id])} parado com OS #${order.os_number}`,
           description: `${getPriorityDescriptor(order.priority)} · equipamento indisponível e ordem em aberto na oficina.`,
           priority: "p1" as const,
           priorityLabel: "Prioridade 1",
@@ -923,7 +938,7 @@ export default function Dashboard() {
 
         return {
           id: `critical-${order.id}`,
-          equipment: equipment?.name || "Equipamento",
+          equipment: getEquipmentDisplayName(equipment),
           problem: order.description,
           impact: `OS ${order.priority === "urgent" ? "urgente" : "alta"} afetando disponibilidade operacional`,
           downtime: `${downtimeHours}h parado`,
@@ -1053,7 +1068,7 @@ export default function Dashboard() {
 
         return {
           id: checklist.id,
-          equipmentName: equipment?.name || "Equipamento",
+          equipmentName: getEquipmentDisplayName(equipment),
           operatorName: checklist.operator_name,
           typeLabel:
             checklist.type === "corrective"
@@ -1197,7 +1212,7 @@ export default function Dashboard() {
                 <DialogHeader>
                   <DialogTitle className="flex items-center gap-2 text-left">
                     <ClipboardCheck className="h-5 w-5 text-primary" />
-                    Checklist — {equipment?.name || "Equipamento"}
+                    Checklist — {getEquipmentDisplayName(equipment)}
                   </DialogTitle>
                 </DialogHeader>
 

@@ -261,10 +261,10 @@ export function AIMaintenanceDecisionsSection({
                     onClick={() => onCreateWorkOrder(item)}
                     className="h-11 w-full justify-between px-4 sm:w-auto"
                     variant={item.priority === "critical" || item.priority === "high" ? "destructive" : "default"}
-                    disabled={creatingId === item.id || !item.autoCreateOS}
+                    disabled={creatingId === item.id || !item.autoCreateOS || Boolean(item.anomalyFlags?.length)}
                   >
                     <span className="inline-flex items-center gap-2"><Wrench className="h-4 w-4" />
-                    {creatingId === item.id ? "Criando OS..." : item.autoCreateOS ? "Gerar OS agora" : "Ação indisponível"}
+                    {creatingId === item.id ? "Criando OS..." : item.anomalyFlags?.length ? "OS bloqueada por inconsistência" : item.autoCreateOS ? "Gerar OS agora" : "Ação indisponível"}
                     </span>
                   </Button>
                 </div>

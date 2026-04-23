@@ -14,6 +14,7 @@ import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 
 export interface DashboardQuickAction {
@@ -77,6 +78,17 @@ export interface FuelOpsItem {
   dispatchesToday: number;
   lastSupplyLabel: string;
   lowLevelThreshold: number;
+}
+
+export interface EquipmentAnomalyItem {
+  id: string;
+  equipmentName: string;
+  severity: "critical" | "warning";
+  anomalyTypes: Array<"hourmeter" | "consumption" | "data">;
+  summary: string;
+  detail: string;
+  impact: string;
+  blocksAutoOs: boolean;
 }
 
 const toneSurfaceClasses: Record<ActionableAlertItem["tone"] | RecommendationItem["tone"], string> = {
@@ -241,6 +253,95 @@ export function RecommendedActionsSection({ items }: { items: RecommendationItem
           ))
         )}
       </div>
+    </section>
+  );
+}
+
+export function EquipmentAnomaliesSection({
+  items,
+  selectedFilter,
+  onFilterChange,
+  onOpenEquipments,
+}: {
+  items: EquipmentAnomalyItem[];
+  selectedFilter: "all" | "blocked" | "hourmeter" | "consumption";
+  onFilterChange: (filter: "all" | "blocked" | "hourmeter" | "consumption") => void;
+  onOpenEquipments: () => void;
+}) {
+  const filters = [
+    { id: "all", label: "Todos" },
+    { id: "blocked", label: "OS bloqueada" },
+    { id: "hourmeter", label: "Horímetro" },
+    { id: "consumption", label: "Consumo" },
+  ] as const;
+
+  return (
+    <section className="space-y-3">
+      <SectionHeader
+        icon={ShieldAlert}
+        title="Anomalias de dados"
+        description="Destaque operacional para inconsistências de horímetro e consumo antes de gerar OS automática."
+        actionLabel="Ver equipamentos"
+        onAction={onOpenEquipments}
+      />
+
+      <div className="flex flex-wrap gap-2">
+        {filters.map((filter) => (
+          <Button
+            key={filter.id}
+            type="button"
+            variant={selectedFilter === filter.id ? "default" : "outline"}
+            size="sm"
+            className="h-9"
+            onClick={() => onFilterChange(filter.id)}
+          >
+            {filter.label}
+          </Button>
+        ))}
+      </div>
+
+      {items.length === 0 ? (
+        <Card>
+          <CardContent className="p-6 text-sm text-muted-foreground">Nenhuma inconsistência operacional identificada com o filtro atual.</CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+          {items.map((item) => (
+            <Card key={item.id} className={item.severity === "critical" ? toneSurfaceClasses.critical : toneSurfaceClasses.warning}>
+              <CardContent className="space-y-3 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-bold text-foreground">{item.equipmentName}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">{item.summary}</p>
+                  </div>
+                  <Badge variant="outline" className={item.severity === "critical" ? `${toneSurfaceClasses.critical} ${toneTextClasses.critical}` : `${toneSurfaceClasses.warning} ${toneTextClasses.warning}`}>
+                    {item.blocksAutoOs ? "OS bloqueada" : item.severity === "critical" ? "Crítico" : "Atenção"}
+                  </Badge>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {item.anomalyTypes.map((type) => (
+                    <Badge key={`${item.id}-${type}`} variant="outline" className="border-border bg-background/70 text-foreground">
+                      {type === "hourmeter" ? "Horímetro" : type === "consumption" ? "Consumo" : "Dados"}
+                    </Badge>
+                  ))}
+                </div>
+
+                <div className="grid gap-2 text-sm sm:grid-cols-2">
+                  <div className="rounded-lg bg-background/70 p-3 text-muted-foreground">
+                    <span className="block text-[11px] font-bold uppercase tracking-wide">Detalhe</span>
+                    <p className="mt-1">{item.detail}</p>
+                  </div>
+                  <div className="rounded-lg bg-background/70 p-3 text-muted-foreground">
+                    <span className="block text-[11px] font-bold uppercase tracking-wide">Impacto</span>
+                    <p className="mt-1">{item.impact}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </section>
   );
 }

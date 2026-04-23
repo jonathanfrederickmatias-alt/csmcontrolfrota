@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { DBEquipment, DBWorkOrder } from "@/lib/supabase-types";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import {
   Wrench, Loader2, CheckCircle, Clock, AlertTriangle, CalendarClock,
   ChevronRight, Filter, ClipboardList, UserRound, Building2, PlayCircle, ShieldCheck, CircleAlert
@@ -11,6 +12,7 @@ import { WorkOrderExecutionView } from "@/components/mechanic/WorkOrderExecution
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 
 interface WorkOrder {
   id: string;
@@ -64,6 +66,7 @@ export default function MechanicDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('pending');
   const [selectedOS, setSelectedOS] = useState<WorkOrder | null>(null);
+  const [previewOS, setPreviewOS] = useState<WorkOrder | null>(null);
 
   const fetchData = async () => {
     setLoading(true);
@@ -224,21 +227,25 @@ export default function MechanicDashboardPage() {
                   </div>
                   <div className="flex shrink-0 flex-col gap-2 self-center sm:min-w-[190px]">
                     {order.status === 'open' && (
-                      <button onClick={() => setSelectedOS(order)} className="inline-flex h-11 items-center justify-between rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
+                      <Button onClick={() => setSelectedOS(order)} className="h-11 justify-between px-4">
                         <span className="inline-flex items-center gap-2"><PlayCircle className="h-4 w-4" /> Iniciar serviço</span>
                         <ChevronRight className="h-4 w-4" />
-                      </button>
+                      </Button>
                     )}
                     {order.status !== 'open' && (
-                      <button onClick={() => setSelectedOS(order)} className="inline-flex h-11 items-center justify-between rounded-md border border-input bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground">
+                      <Button onClick={() => setSelectedOS(order)} variant="outline" className="h-11 justify-between px-4 text-foreground">
                         <span className="inline-flex items-center gap-2"><Wrench className="h-4 w-4" /> Ver detalhes</span>
                         <ChevronRight className="h-4 w-4" />
-                      </button>
+                      </Button>
                     )}
-                    <button onClick={() => setSelectedOS(order)} className="inline-flex h-11 items-center justify-between rounded-md border border-input bg-background px-4 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground">
+                    <Button onClick={() => setPreviewOS(order)} variant="outline" className="h-11 justify-between px-4 text-muted-foreground">
                       <span className="inline-flex items-center gap-2"><UserRound className="h-4 w-4" /> Atribuir mecânico</span>
                       <ChevronRight className="h-4 w-4" />
-                    </button>
+                    </Button>
+                    <Button onClick={() => setPreviewOS(order)} variant="secondary" className="h-11 justify-between px-4">
+                      <span className="inline-flex items-center gap-2"><ClipboardList className="h-4 w-4" /> Painel lateral</span>
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -246,6 +253,40 @@ export default function MechanicDashboardPage() {
           })}
         </div>
       )}
+
+      <Drawer open={!!previewOS} onOpenChange={(open) => !open && setPreviewOS(null)}>
+        <DrawerContent className="max-h-[88vh]">
+          {previewOS && (
+            <div className="mx-auto w-full max-w-3xl">
+              <DrawerHeader>
+                <DrawerTitle>OS #{previewOS.os_number} · visão operacional</DrawerTitle>
+                <DrawerDescription>Detalhes rápidos sem sair da fila do mecânico.</DrawerDescription>
+              </DrawerHeader>
+              <div className="space-y-4 px-4 pb-6">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Card className="border-border/70 shadow-sm"><CardContent className="p-4"><p className="text-xs uppercase text-muted-foreground">Equipamento</p><p className="mt-2 text-base font-black text-foreground">{equipments[previewOS.equipment_id]?.name || 'Equipamento não localizado'}</p><p className="mt-1 text-sm text-muted-foreground">{previewOS.description}</p></CardContent></Card>
+                  <Card className="border-border/70 shadow-sm"><CardContent className="p-4"><p className="text-xs uppercase text-muted-foreground">Execução</p><div className="mt-2 flex flex-wrap gap-2"><Badge variant="outline" className={statusColors[previewOS.status]}>{statusLabels[previewOS.status] || previewOS.status}</Badge><Badge variant="outline" className="border-border bg-secondary/40 text-foreground">{priorityLabels[previewOS.priority] || previewOS.priority}</Badge></div><p className="mt-3 text-sm text-muted-foreground">Mecânico: {previewOS.mechanic_name || 'Não atribuído'}</p></CardContent></Card>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <Card className="border-border/70 shadow-sm"><CardContent className="p-4"><p className="text-xs uppercase text-muted-foreground">Obra</p><p className="mt-2 text-sm font-semibold text-foreground">{obras[equipments[previewOS.equipment_id]?.obra_id || '']?.name || 'Sem obra'}</p></CardContent></Card>
+                  <Card className="border-border/70 shadow-sm"><CardContent className="p-4"><p className="text-xs uppercase text-muted-foreground">Abertura</p><p className="mt-2 text-sm font-semibold text-foreground">{new Date(previewOS.created_at).toLocaleString('pt-BR')}</p></CardContent></Card>
+                  <Card className="border-border/70 shadow-sm"><CardContent className="p-4"><p className="text-xs uppercase text-muted-foreground">Identificação</p><p className="mt-2 text-sm font-semibold text-foreground">{equipments[previewOS.equipment_id]?.plate || equipments[previewOS.equipment_id]?.cost_center || 'Sem identificação'}</p></CardContent></Card>
+                </div>
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <Button className="h-12 flex-1 justify-between" onClick={() => { setSelectedOS(previewOS); setPreviewOS(null); }}>
+                    <span className="inline-flex items-center gap-2"><PlayCircle className="h-4 w-4" /> Abrir execução</span>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                  <Button variant="outline" className="h-12 flex-1 justify-between" onClick={() => { setSelectedOS(previewOS); setPreviewOS(null); }}>
+                    <span className="inline-flex items-center gap-2"><UserRound className="h-4 w-4" /> Atribuir mecânico</span>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }

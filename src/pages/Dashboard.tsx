@@ -794,8 +794,27 @@ export default function Dashboard() {
           },
         ],
       },
+      {
+        id: "data-anomalies",
+        label: "Dados inconsistentes",
+        value: stats.anomalies.length,
+        description: "Equipamentos com anomalias de horímetro/consumo que exigem validação antes de automações.",
+        icon: AlertTriangle,
+        tone: stats.anomalies.some((item) => item.blocksAutoOs) ? "critical" : stats.anomalies.length > 0 ? "warning" : "ok",
+        actions: [
+          {
+            label: "Filtrar anomalias",
+            variant: stats.anomalies.length > 0 ? "destructive" : "outline",
+            onClick: () => setAnomalyFilter("blocked"),
+          },
+          {
+            label: "Abrir equipamentos",
+            onClick: () => navigate("/equipamentos"),
+          },
+        ],
+      },
     ],
-    [navigate, stats.consumptionInsights.length, stats.criticalOrders.length, stats.overdueMaintenance.length, stats.stoppedEquipments.length],
+    [navigate, stats.anomalies, stats.consumptionInsights.length, stats.criticalOrders.length, stats.overdueMaintenance.length, stats.stoppedEquipments.length],
   );
 
   const commandDeckItems = useMemo<ExecutiveSignalItem[]>(() => [
@@ -821,6 +840,14 @@ export default function Dashboard() {
       detail: "Ativos acima da curva histórica de eficiência.",
     },
     {
+      id: "deck-anomalies",
+      label: "Dados inconsistentes",
+      value: stats.anomalies.length,
+      tone: stats.anomalies.some((item) => item.blocksAutoOs) ? "critical" : stats.anomalies.length > 0 ? "warning" : "ok",
+      detail: "Leituras incoerentes que bloqueiam automações sensíveis.",
+      onClick: () => setAnomalyFilter("blocked"),
+    },
+    {
       id: "deck-active",
       label: "Equipamentos ativos",
       value: stats.activeEquipments,
@@ -836,14 +863,14 @@ export default function Dashboard() {
       detail: "Combina custo de combustível estimado e OS encerradas no mês.",
       onClick: () => navigate("/relatorios"),
     },
-  ], [navigate, stats.activeEquipments, stats.consumptionInsights.length, stats.criticalOrders.length, stats.monthlyCost, stats.overdueMaintenance.length, stats.stoppedEquipments.length]);
+  ], [navigate, stats.activeEquipments, stats.anomalies, stats.consumptionInsights.length, stats.criticalOrders.length, stats.monthlyCost, stats.overdueMaintenance.length, stats.stoppedEquipments.length]);
 
   const commandDeckActions = useMemo<QuickActionItem[]>(() => [
     {
       id: "action-auto-os",
       label: "Gerar OS automática",
       onClick: () => navigate("/pedido-manutencao"),
-      variant: stats.overdueMaintenance.length > 0 ? "destructive" : "outline",
+      variant: stats.anomalies.some((item) => item.blocksAutoOs) ? "outline" : stats.overdueMaintenance.length > 0 ? "destructive" : "outline",
     },
     {
       id: "action-assign-mechanic",
@@ -857,7 +884,27 @@ export default function Dashboard() {
       onClick: () => navigate("/manutencao"),
       variant: "secondary",
     },
-  ], [navigate, stats.overdueMaintenance.length]);
+  ], [navigate, stats.anomalies, stats.overdueMaintenance.length]);
+
+  const filteredAnomalies = useMemo<EquipmentAnomalyItem[]>(() => {
+    return stats.anomalies
+      .filter((item) => {
+        if (anomalyFilter === "blocked") return item.blocksAutoOs;
+        if (anomalyFilter === "hourmeter") return item.anomalyTypes.includes("hourmeter");
+        if (anomalyFilter === "consumption") return item.anomalyTypes.includes("consumption");
+        return true;
+      })
+      .map((item) => ({
+        id: item.id,
+        equipmentName: item.equipmentName,
+        severity: item.severity,
+        anomalyTypes: item.anomalyTypes,
+        summary: item.summary,
+        detail: item.detail,
+        impact: item.impact,
+        blocksAutoOs: item.blocksAutoOs,
+      }));
+  }, [anomalyFilter, stats.anomalies]);
 
   const priorityNowItems = useMemo<PriorityNowItem[]>(() => {
     const operational = [
@@ -1081,6 +1128,13 @@ export default function Dashboard() {
         <PriorityNowSection items={priorityNowItems} />
         <RecommendedActionsSection items={stats.recommendations} />
       </div>
+
+      <EquipmentAnomaliesSection
+        items={filteredAnomalies}
+        selectedFilter={anomalyFilter}
+        onFilterChange={setAnomalyFilter}
+        onOpenEquipments={() => navigate("/equipamentos")}
+      />
 
       <PriorityRankingSection items={stats.priorityRanking as PriorityRankingItem[]} />
 

@@ -55,6 +55,19 @@ type FuelMetricRecord = {
   liters: number;
 };
 
+type MaintenanceStatus = "ok" | "approaching" | "overdue";
+
+type MaintenanceListItem = {
+  id: string;
+  equipmentId: string;
+  equipmentName: string;
+  currentHourMeter: number;
+  status: MaintenanceStatus;
+  remaining: number;
+  unit: string;
+  planLabel: string;
+};
+
 type StatsSummary = {
   todayChecklists: any[];
   checklistCounts: { ok: number; attention: number; critical: number };
@@ -225,7 +238,7 @@ export default function Dashboard() {
       critical: data.checklists.filter((checklist: any) => checklist.status === "critical").length,
     };
 
-    const maintenanceItems = data.plans
+    const maintenanceItems: MaintenanceListItem[] = data.plans
       .map((plan: any) => {
         const equipment = equipmentMap[plan.equipment_id];
         if (!equipment) return null;
@@ -242,16 +255,16 @@ export default function Dashboard() {
           planLabel: `${plan.description} · meta ${Math.round(Number(plan.next_due_at) || 0)} ${getPlanUnit(equipment.type)}`,
         };
       })
-      .filter(Boolean)
-      .sort((a: any, b: any) => {
+      .filter((item): item is MaintenanceListItem => item !== null)
+      .sort((a, b) => {
         const order = { overdue: 0, approaching: 1, ok: 2 };
-        const statusDiff = order[a.status as keyof typeof order] - order[b.status as keyof typeof order];
+        const statusDiff = order[a.status] - order[b.status];
         if (statusDiff !== 0) return statusDiff;
         return a.remaining - b.remaining;
       });
 
-    const overdueMaintenance = maintenanceItems.filter((item: any) => item.status === "overdue");
-    const approachingMaintenance = maintenanceItems.filter((item: any) => item.status === "approaching");
+    const overdueMaintenance = maintenanceItems.filter((item) => item.status === "overdue");
+    const approachingMaintenance = maintenanceItems.filter((item) => item.status === "approaching");
     const activeOrders = data.workOrders.filter((order: any) => order.status !== "done");
     const criticalOrders = activeOrders.filter((order: any) => priorityWeights[order.priority] >= priorityWeights.high);
     const waitingPartsOrders = activeOrders.filter((order: any) => inferWaitingParts(order));

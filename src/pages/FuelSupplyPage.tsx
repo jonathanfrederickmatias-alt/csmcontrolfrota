@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import PhotoUpload from '@/components/PhotoUpload';
 import { toast } from 'sonner';
 import { useUserRoles } from '@/hooks/useUserRoles';
+import { getEquipmentDisplayName, getEquipmentIdentifier } from '@/lib/equipment-display';
 
 export default function FuelSupplyPage() {
   const { isAdmin, isGestor } = useUserRoles();
@@ -123,7 +124,7 @@ export default function FuelSupplyPage() {
                   <SelectTrigger><SelectValue placeholder="Selecionar comboio..." /></SelectTrigger>
                   <SelectContent>
                     {combos.map(c => (
-                      <SelectItem key={c.id} value={c.id}>{c.name} (saldo: {c.current_fuel || 0}L / {c.fuel_capacity}L)</SelectItem>
+                      <SelectItem key={c.id} value={c.id}>{getEquipmentDisplayName(c)} (saldo: {c.current_fuel || 0}L / {c.fuel_capacity}L)</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -187,8 +188,8 @@ export default function FuelSupplyPage() {
                   <div className="flex items-center gap-3 mb-3">
                     <Truck className="w-6 h-6 text-primary" />
                     <div>
-                      <h3 className="font-bold">{c.name}</h3>
-                      <p className="text-xs text-muted-foreground">{c.plate || 'Sem placa'}</p>
+                      <h3 className="font-bold">{getEquipmentDisplayName(c)}</h3>
+                      <p className="text-xs text-muted-foreground">{getEquipmentIdentifier(c) || 'Sem identificação'}</p>
                     </div>
                   </div>
                   <div className="flex items-end justify-between mb-2">
@@ -240,7 +241,7 @@ export default function FuelSupplyPage() {
                          ) : <span className="text-muted-foreground text-xs">—</span>}
                        </td>
                        <td className="py-2 pr-4 font-mono text-xs">{new Date(r.date + 'T12:00:00').toLocaleDateString('pt-BR')}</td>
-                       <td className="py-2 pr-4 font-medium">{combo?.name || '—'}</td>
+                        <td className="py-2 pr-4 font-medium">{combo ? getEquipmentDisplayName(combo) : '—'}</td>
                        <td className="py-2 pr-4 font-mono font-bold text-success">+{r.liters}L</td>
                        <td className="py-2 pr-4 text-muted-foreground">{r.invoice_number || '—'}</td>
                        <td className="py-2 pr-4 text-muted-foreground">{r.supplier || '—'}</td>

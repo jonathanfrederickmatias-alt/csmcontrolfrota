@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { DBEquipment } from "@/lib/supabase-types";
 import { ClipboardCheck, Fuel, Wrench, ChevronRight, Loader2 } from "lucide-react";
 import PublicLayout from "@/components/PublicLayout";
+import { getEquipmentDisplayName, getEquipmentIdentifier, getEquipmentIdentifierLabel } from "@/lib/equipment-display";
 
 export default function QREquipamento() {
   const { id } = useParams<{ id: string }>();
@@ -77,11 +78,11 @@ export default function QREquipamento() {
             {equipment.name.slice(0, 2).toUpperCase()}
           </span>
         </div>
-        <h1 className="text-2xl font-black text-gradient">{equipment.name}</h1>
+        <h1 className="text-2xl font-black text-gradient">{getEquipmentDisplayName(equipment)}</h1>
         {equipment.model && <p className="text-muted-foreground text-sm mt-1">{equipment.model}</p>}
-        {equipment.plate && (
+        {getEquipmentIdentifier(equipment) && (
           <span className="inline-block mt-2 px-3 py-1 rounded-lg bg-secondary text-xs font-mono font-bold">
-            {equipment.plate}
+            {getEquipmentIdentifierLabel(equipment)}: {getEquipmentIdentifier(equipment)}
           </span>
         )}
         {equipment.current_hour_meter > 0 && (

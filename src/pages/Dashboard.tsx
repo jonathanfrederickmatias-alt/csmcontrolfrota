@@ -45,6 +45,7 @@ import {
 } from "@/components/dashboard/PremiumOperationsSections";
 import { Camera, MessageSquare, ShieldCheck, ShieldX } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { getEquipmentDisplayName as formatEquipmentDisplayName } from "@/lib/equipment-display";
 
 type DashboardData = {
   equipments: any[];
@@ -206,14 +207,9 @@ function getEquipmentDisplayName(equipment?: {
   plate?: string | null;
   cost_center?: string | null;
   chassis?: string | null;
+  type?: string | null;
 }) {
-  if (!equipment) return "Equipamento sem identificação";
-  const baseName = String(equipment.name || "Equipamento sem identificação").trim();
-  const identifier = [equipment.cost_center, equipment.plate, equipment.chassis]
-    .map((value) => String(value || "").trim())
-    .find(Boolean);
-
-  return identifier ? `${baseName} (${identifier})` : baseName;
+  return formatEquipmentDisplayName(equipment);
 }
 
 export default function Dashboard() {

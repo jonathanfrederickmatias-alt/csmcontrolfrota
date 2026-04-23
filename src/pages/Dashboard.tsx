@@ -20,6 +20,8 @@ import {
 } from "@/components/dashboard/OperationalDashboardSections";
 import {
   ActionableAlertItem,
+  AIMaintenanceDecision,
+  AIMaintenanceDecisionsSection,
   ActionableAlertsPanel,
   ConsumptionDetailedItem,
   ConsumptionOperationsSection,
@@ -30,7 +32,9 @@ import {
   RecommendationItem,
   RecommendedActionsSection,
 } from "@/components/dashboard/OperationalCommandCenterSections";
+import { AIMaintenanceDecisionsSection as DashboardAIMaintenanceDecisionsSection } from "@/components/dashboard/AIMaintenanceDecisionsSection";
 import { Camera, MessageSquare, ShieldCheck, ShieldX } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
 type DashboardData = {
   equipments: any[];
@@ -41,6 +45,7 @@ type DashboardData = {
   requests: any[];
   combos: any[];
   workOrders: any[];
+  maintenanceHistory: any[];
 };
 
 type EfficiencySegment = {
@@ -86,6 +91,8 @@ type StatsSummary = {
   recommendations: RecommendationItem[];
   lowFuelCombos: any[];
 };
+
+type AIMaintenanceDecisionPayload = AIMaintenanceDecision;
 
 const priorityWeights: Record<string, number> = {
   urgent: 4,

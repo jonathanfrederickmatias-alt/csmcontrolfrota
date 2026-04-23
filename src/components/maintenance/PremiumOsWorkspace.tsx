@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Building2, CalendarClock, ChevronRight, ClipboardList, Eye, PlayCircle, UserRound } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -67,7 +68,7 @@ export function PremiumOsWorkspace({
   osStatusConfig,
   renderToolbar,
 }: PremiumOsWorkspaceProps) {
-  const [selectedOrder, setSelectedOrder] = React.useState<DBWorkOrder | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<DBWorkOrder | null>(null);
 
   const totalOrders = filteredOrders.length;
   const openOrders = filteredOrders.filter((order) => order.status === "open").length;

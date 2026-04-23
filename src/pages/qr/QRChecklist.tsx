@@ -10,6 +10,7 @@ import PublicLayout from "@/components/PublicLayout";
 import { useSearchParams } from "react-router-dom";
 import PhotoUpload from "@/components/PhotoUpload";
 import { toast } from "sonner";
+import { findOpenDuplicateMaintenanceIssue } from "@/lib/maintenance-duplicates";
 
 const defaultItems = [
   "Nível de óleo do motor","Nível de água/refrigerante","Nível de óleo hidráulico",
@@ -137,6 +138,15 @@ export default function QRChecklist() {
   const handleSaveMaintenance = async () => {
     // Photo is optional for maintenance request
     setSavingMaintenance(true);
+    const duplicateIssue = await findOpenDuplicateMaintenanceIssue(selectedEquipment, maintenanceDesc);
+    if (duplicateIssue) {
+      setSavingMaintenance(false);
+      toast.info(duplicateIssue.osNumber
+        ? `Já existe uma OS #${duplicateIssue.osNumber} em aberto para este mesmo problema.`
+        : 'Já existe uma OS em aberto para este mesmo problema.');
+      setMaintenanceSaved(true);
+      return;
+    }
     await supabase.from('maintenance_requests').insert({
       equipment_id: selectedEquipment,
       operator_name: operatorName,

@@ -2,6 +2,11 @@ import { supabase } from "@/integrations/supabase/client";
 
 const normalizeIssueText = (value: string) => value.replace(/\s+/g, " ").trim().toLowerCase();
 
+const matchesIssueDescription = (requestDescription: string, normalizedDescription: string) => {
+  const normalizedRequest = normalizeIssueText(requestDescription || "");
+  return normalizedRequest === normalizedDescription || normalizedRequest.includes(normalizedDescription);
+};
+
 export interface DuplicateMaintenanceIssue {
   requestId: string;
   osNumber: number | null;
@@ -19,7 +24,7 @@ export async function findOpenDuplicateMaintenanceIssue(equipmentId: string, des
 
   if (requestsError) throw requestsError;
 
-  const matchingRequests = (requests || []).filter((request) => normalizeIssueText(request.description || "") === normalizedDescription);
+  const matchingRequests = (requests || []).filter((request) => matchesIssueDescription(request.description || "", normalizedDescription));
   if (matchingRequests.length === 0) return null;
 
   const { data: workOrders, error: workOrdersError } = await supabase

@@ -10,6 +10,7 @@ import PublicLayout from "@/components/PublicLayout";
 import { useSearchParams } from "react-router-dom";
 import PhotoUpload from "@/components/PhotoUpload";
 import { toast } from "sonner";
+import { buildChecklistMaintenanceIssues, type ChecklistMaintenanceIssueDraft, type ChecklistType } from "@/lib/checklist-maintenance";
 import { findOpenDuplicateMaintenanceIssue } from "@/lib/maintenance-duplicates";
 
 const defaultItems = [
@@ -18,8 +19,6 @@ const defaultItems = [
   "Vazamentos visíveis","Cintos e dispositivos de segurança","Extintor de incêndio",
   "Estado geral de limpeza","Funcionamento dos instrumentos do painel",
 ];
-
-type ChecklistType = 'daily' | 'corrective' | 'preventive';
 
 export default function QRChecklist() {
   const [searchParams] = useSearchParams();
@@ -38,7 +37,7 @@ export default function QRChecklist() {
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showMaintenanceForm, setShowMaintenanceForm] = useState(false);
-  const [maintenanceDesc, setMaintenanceDesc] = useState('');
+  const [maintenanceIssues, setMaintenanceIssues] = useState<ChecklistMaintenanceIssueDraft[]>([]);
   const [maintenancePriority, setMaintenancePriority] = useState('medium');
   const [savingMaintenance, setSavingMaintenance] = useState(false);
   const [maintenanceSaved, setMaintenanceSaved] = useState(false);
@@ -110,25 +109,10 @@ export default function QRChecklist() {
 
     setSaving(false);
 
-    const hasObservations = generalObservations.trim().length > 0;
+    const issues = buildChecklistMaintenanceIssues(items, checklistType, generalObservations);
 
-    if (!isConforme || hasObservations) {
-      const parts: string[] = [];
-      const typeLabel = checklistType === 'corrective' ? 'Corretivo' : checklistType === 'preventive' ? 'Preventivo' : 'Diário';
-
-      if (!isConforme) {
-        const failedItems = items.filter(i => i.checked === false).map(i => {
-          const obs = i.observation ? ` (${i.observation})` : '';
-          return `- ${i.label}${obs}`;
-        }).join('\n');
-        parts.push(`Itens não conformes do checklist ${typeLabel}:\n${failedItems}`);
-      }
-
-      if (hasObservations) {
-        parts.push(`Observações Gerais:\n${generalObservations.trim()}`);
-      }
-
-      setMaintenanceDesc(parts.join('\n\n'));
+    if (issues.length > 0) {
+      setMaintenanceIssues(issues);
       setShowMaintenanceForm(true);
     } else {
       setSaved(true);
@@ -138,31 +122,61 @@ export default function QRChecklist() {
   const handleSaveMaintenance = async () => {
     // Photo is optional for maintenance request
     setSavingMaintenance(true);
-    const duplicateIssue = await findOpenDuplicateMaintenanceIssue(selectedEquipment, maintenanceDesc);
-    if (duplicateIssue) {
-      setSavingMaintenance(false);
-      toast.info(duplicateIssue.osNumber
-        ? `Já existe uma OS #${duplicateIssue.osNumber} em aberto para este mesmo problema.`
-        : 'Já existe uma OS em aberto para este mesmo problema.');
-      setMaintenanceSaved(true);
-      return;
+
+    const issuesToCreate: typeof maintenanceIssues = [];
+    let duplicateCount = 0;
+
+    for (const issue of maintenanceIssues) {
+      const duplicateIssue = await findOpenDuplicateMaintenanceIssue(selectedEquipment, issue.description);
+
+      if (duplicateIssue) {
+        duplicateCount += 1;
+        continue;
+      }
+
+      issuesToCreate.push(issue);
     }
-    await supabase.from('maintenance_requests').insert({
-      equipment_id: selectedEquipment,
-      operator_name: operatorName,
-      description: maintenanceDesc,
-      priority: maintenancePriority,
-      status: 'open',
-      photo_start_url: maintenancePhotoUrl || null,
-    });
+
+    if (issuesToCreate.length > 0) {
+      const { error } = await supabase.from('maintenance_requests').insert(
+        issuesToCreate.map((issue) => ({
+          equipment_id: selectedEquipment,
+          operator_name: operatorName,
+          description: issue.description,
+          notes: issue.notes,
+          priority: maintenancePriority,
+          status: 'open',
+          photo_start_url: maintenancePhotoUrl || null,
+        })),
+      );
+
+      if (error) {
+        setSavingMaintenance(false);
+        toast.error('Não foi possível criar as OS do checklist.');
+        return;
+      }
+    }
+
     setSavingMaintenance(false);
+
+    if (duplicateCount > 0) {
+      toast.info(issuesToCreate.length > 0
+        ? `${issuesToCreate.length} OS criada(s) e ${duplicateCount} problema(s) já possuíam OS em aberto.`
+        : 'Todos os problemas já possuem OS em aberto.');
+    }
+
     setMaintenanceSaved(true);
 
-    if (maintenancePriority === 'high' || maintenancePriority === 'urgent') {
+    if ((maintenancePriority === 'high' || maintenancePriority === 'urgent') && issuesToCreate.length > 0) {
       const eq = equipments.find(e => e.id === selectedEquipment);
       try {
         await supabase.functions.invoke('notify-maintenance', {
-          body: { equipment_name: eq?.name || 'Desconhecido', operator_name: operatorName, description: maintenanceDesc, priority: maintenancePriority },
+          body: {
+            equipment_name: eq?.name || 'Desconhecido',
+            operator_name: operatorName,
+            description: issuesToCreate.map((issue) => issue.description).join(' | '),
+            priority: maintenancePriority,
+          },
         });
       } catch (_) { /* silent */ }
     }
@@ -197,8 +211,15 @@ export default function QRChecklist() {
         </div>
         <div className="glass-card rounded-xl p-5 space-y-4">
           <div>
-            <Label>Descrição do Problema *</Label>
-            <Textarea value={maintenanceDesc} onChange={e => setMaintenanceDesc(e.target.value)} rows={6} placeholder="Descreva o que está errado..." className="mt-1" />
+            <Label>OS que serão criadas *</Label>
+            <div className="mt-2 space-y-2 rounded-lg border border-border bg-background/60 p-3">
+              {maintenanceIssues.map((issue, index) => (
+                <div key={issue.id} className="rounded-md border border-border/70 bg-background px-3 py-2 text-sm">
+                  <p className="font-medium text-foreground">{index + 1}. {issue.description}</p>
+                  {issue.notes && <p className="mt-1 whitespace-pre-line text-xs text-muted-foreground">{issue.notes}</p>}
+                </div>
+              ))}
+            </div>
           </div>
           <div>
             <Label>Prioridade</Label>
@@ -212,7 +233,7 @@ export default function QRChecklist() {
           <PhotoUpload label="Foto da Não Conformidade (opcional)" onUploaded={setMaintenancePhotoUrl} />
           <Button
             onClick={handleSaveMaintenance}
-            disabled={!maintenanceDesc || savingMaintenance}
+              disabled={maintenanceIssues.length === 0 || savingMaintenance}
             className="w-full h-12 text-base font-bold bg-warning text-warning-foreground hover:bg-warning/90"
           >
             {savingMaintenance && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}

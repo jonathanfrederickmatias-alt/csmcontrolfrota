@@ -7,18 +7,18 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 
 const allNavItems = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard, roles: ['admin', 'gestor', 'abastecedor'] },
-  { to: "/equipamentos", label: "Equipamentos", icon: Truck, roles: ['admin', 'gestor'] },
-  { to: "/manutencao", label: "OS", icon: FileStack, roles: ['admin', 'gestor', 'abastecedor'] },
-  { to: "/checklist", label: "Checklist", icon: ClipboardCheck, roles: ['admin', 'gestor'] },
-  { to: "/checklists", label: "Checklists Realizados", icon: ClipboardList, roles: ['admin', 'gestor', 'abastecedor'] },
-  { to: "/manutencao", label: "Manutenção", icon: Wrench, roles: ['admin', 'gestor', 'abastecedor'] },
-  { to: "/mecanico", label: "Painel Mecânico", icon: Wrench, roles: ['mecanico'] },
-  { to: "/abastecimento", label: "Consumo", icon: Fuel, roles: ['admin', 'gestor', 'abastecedor'] },
-  { to: "/reabastecimento", label: "Reabastecimento", icon: Droplets, roles: ['admin', 'gestor'] },
-  { to: "/", label: "IA", icon: BrainCircuit, roles: ['admin', 'gestor', 'abastecedor'] },
-  { to: "/seguros", label: "Seguros", icon: ShieldCheck, roles: ['admin', 'gestor'] },
-  { to: "/relatorios", label: "Relatórios", icon: BarChart2, roles: ['admin', 'gestor'] },
+  { to: "/", match: ["/"], label: "Dashboard", icon: LayoutDashboard, roles: ['admin', 'gestor', 'abastecedor'] },
+  { to: "/equipamentos", match: ["/equipamentos"], label: "Equipamentos", icon: Truck, roles: ['admin', 'gestor'] },
+  { to: "/manutencao?tab=os", match: ["/manutencao?tab=os"], label: "OS", icon: FileStack, roles: ['admin', 'gestor', 'abastecedor'] },
+  { to: "/checklist", match: ["/checklist"], label: "Checklist", icon: ClipboardCheck, roles: ['admin', 'gestor'] },
+  { to: "/checklists", match: ["/checklists"], label: "Checklists Realizados", icon: ClipboardList, roles: ['admin', 'gestor', 'abastecedor'] },
+  { to: "/manutencao", match: ["/manutencao", "/manutencao?tab=plans", "/manutencao?tab=requests", "/manutencao?tab=history"], label: "Manutenção", icon: Wrench, roles: ['admin', 'gestor', 'abastecedor'] },
+  { to: "/mecanico", match: ["/mecanico"], label: "Painel Mecânico", icon: Wrench, roles: ['mecanico'] },
+  { to: "/abastecimento", match: ["/abastecimento", "/reabastecimento"], label: "Consumo", icon: Fuel, roles: ['admin', 'gestor', 'abastecedor'] },
+  { to: "/reabastecimento", match: ["/reabastecimento"], label: "Reabastecimento", icon: Droplets, roles: ['admin', 'gestor'] },
+  { to: "/?focus=ai", match: ["/?focus=ai"], label: "IA", icon: BrainCircuit, roles: ['admin', 'gestor', 'abastecedor'] },
+  { to: "/seguros", match: ["/seguros"], label: "Seguros", icon: ShieldCheck, roles: ['admin', 'gestor'] },
+  { to: "/relatorios", match: ["/relatorios"], label: "Relatórios", icon: BarChart2, roles: ['admin', 'gestor'] },
   { to: "/executivo", label: "Dashboard Executivo", icon: BarChart2, roles: ['admin', 'gestor'] },
   { to: "/obras", label: "Obras", icon: Building2, roles: ['admin', 'gestor', 'abastecedor'] },
   { to: "/qrcode", label: "QR Code", icon: QrCode, roles: ['admin', 'gestor'] },
@@ -30,6 +30,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { roles, loading: rolesLoading } = useUserRoles();
   const { signOut } = useAuth();
+  const currentLocation = `${location.pathname}${location.search}`;
 
   // Filter nav items based on user roles; if no roles yet, show nothing (loading)
   const navItems = rolesLoading
@@ -58,7 +59,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
         <nav className="flex-1 space-y-1 overflow-y-auto p-4">
           {navItems.map(item => {
-            const active = location.pathname === item.to;
+            const active = (item.match || [item.to]).includes(currentLocation) || (item.match || [item.to]).includes(location.pathname);
             return (
               <Link
                 key={item.to}
@@ -102,7 +103,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="bg-sidebar w-64 h-full p-4 pt-20 space-y-1 overflow-y-auto flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="flex-1 space-y-1">
               {navItems.map(item => {
-                const active = location.pathname === item.to;
+                const active = (item.match || [item.to]).includes(currentLocation) || (item.match || [item.to]).includes(location.pathname);
                 return (
                   <Link
                     key={item.to}

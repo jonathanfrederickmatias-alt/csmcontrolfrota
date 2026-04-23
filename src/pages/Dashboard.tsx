@@ -938,7 +938,7 @@ export default function Dashboard() {
 
         return {
           id: `critical-${order.id}`,
-          equipment: equipment?.name || "Equipamento",
+          equipment: getEquipmentDisplayName(equipment),
           problem: order.description,
           impact: `OS ${order.priority === "urgent" ? "urgente" : "alta"} afetando disponibilidade operacional`,
           downtime: `${downtimeHours}h parado`,
@@ -1068,7 +1068,7 @@ export default function Dashboard() {
 
         return {
           id: checklist.id,
-          equipmentName: equipment?.name || "Equipamento",
+          equipmentName: getEquipmentDisplayName(equipment),
           operatorName: checklist.operator_name,
           typeLabel:
             checklist.type === "corrective"
@@ -1212,7 +1212,7 @@ export default function Dashboard() {
                 <DialogHeader>
                   <DialogTitle className="flex items-center gap-2 text-left">
                     <ClipboardCheck className="h-5 w-5 text-primary" />
-                    Checklist — {equipment?.name || "Equipamento"}
+                    Checklist — {getEquipmentDisplayName(equipment)}
                   </DialogTitle>
                 </DialogHeader>
 

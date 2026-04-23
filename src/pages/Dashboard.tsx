@@ -34,6 +34,13 @@ import {
   AIMaintenanceDecision,
   AIMaintenanceDecisionsSection,
 } from "@/components/dashboard/AIMaintenanceDecisionsSection";
+import {
+  OperationalCommandDeck,
+  PriorityNowSection,
+  type ExecutiveSignalItem,
+  type PriorityNowItem,
+  type QuickActionItem,
+} from "@/components/dashboard/PremiumOperationsSections";
 import { Camera, MessageSquare, ShieldCheck, ShieldX } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
@@ -270,6 +277,8 @@ export default function Dashboard() {
                 maintenanceType: item.maintenanceType === "corrective" ? "corrective" : "preventive",
                 suggestedParts: Array.isArray(item.suggestedParts) ? item.suggestedParts.filter(Boolean) : [],
                 downtimeHours: Number(item.downtimeHours || 0),
+                operationalImpact: item.operationalImpact || `Impacto estimado de ${Number(item.downtimeHours || 0).toFixed(1)}h na disponibilidade operacional.`,
+                technicalReason: item.technicalReason || item.reason || "Sem justificativa detalhada.",
                 autoCreateOS: item.autoCreateOS !== false,
               } satisfies AIMaintenanceDecisionPayload;
             })
@@ -647,6 +656,101 @@ export default function Dashboard() {
     [navigate, stats.consumptionInsights.length, stats.criticalOrders.length, stats.overdueMaintenance.length, stats.stoppedEquipments.length],
   );
 
+  const commandDeckItems = useMemo<ExecutiveSignalItem[]>(() => [
+    {
+      id: "deck-overdue",
+      label: "Manutenções atrasadas",
+      value: stats.overdueMaintenance.length,
+      tone: stats.overdueMaintenance.length > 0 ? "critical" : "ok",
+      detail: "Preventivas vencidas com risco real de parada corretiva.",
+    },
+    {
+      id: "deck-critical-os",
+      label: "OS críticas",
+      value: stats.criticalOrders.length,
+      tone: stats.criticalOrders.length > 0 ? "critical" : "ok",
+      detail: "Ordens de maior impacto para despacho imediato.",
+    },
+    {
+      id: "deck-consumption",
+      label: "Consumo anormal",
+      value: stats.consumptionInsights.length,
+      tone: stats.consumptionInsights.length > 0 ? "warning" : "ok",
+      detail: "Ativos acima da curva histórica de eficiência.",
+    },
+    {
+      id: "deck-active",
+      label: "Equipamentos ativos",
+      value: stats.activeEquipments,
+      tone: stats.activeEquipments > 0 ? "ok" : "warning",
+      detail: `${stats.stoppedEquipments.length} ativos estão indisponíveis agora.`,
+    },
+  ], [stats.activeEquipments, stats.consumptionInsights.length, stats.criticalOrders.length, stats.overdueMaintenance.length, stats.stoppedEquipments.length]);
+
+  const commandDeckActions = useMemo<QuickActionItem[]>(() => [
+    {
+      id: "action-auto-os",
+      label: "Gerar OS automática",
+      onClick: () => navigate("/pedido-manutencao"),
+      variant: stats.overdueMaintenance.length > 0 ? "destructive" : "outline",
+    },
+    {
+      id: "action-assign-mechanic",
+      label: "Atribuir mecânico",
+      onClick: () => navigate("/mecanico"),
+      variant: "default",
+    },
+    {
+      id: "action-view-priorities",
+      label: "Ver prioridades",
+      onClick: () => navigate("/manutencao"),
+      variant: "secondary",
+    },
+  ], [navigate, stats.overdueMaintenance.length]);
+
+  const priorityNowItems = useMemo<PriorityNowItem[]>(() => {
+    const operational = [
+      ...stats.criticalOrders.slice(0, 3).map((order: any) => {
+        const equipment = equipmentMap[order.equipment_id];
+        const baseDate = order.started_at ? new Date(order.started_at) : new Date(order.created_at);
+        const downtimeHours = Math.max(0, Math.round((Date.now() - baseDate.getTime()) / (1000 * 60 * 60)));
+
+        return {
+          id: `critical-${order.id}`,
+          equipment: equipment?.name || "Equipamento",
+          problem: order.description,
+          impact: `OS ${order.priority === "urgent" ? "urgente" : "alta"} afetando disponibilidade operacional`,
+          downtime: `${downtimeHours}h parado`,
+          tone: "critical" as const,
+          actionLabel: "Abrir execução",
+          onAction: () => navigate("/mecanico"),
+        };
+      }),
+      ...stats.overdueMaintenance.slice(0, 2).map((item: any) => ({
+        id: `overdue-${item.id}`,
+        equipment: item.equipmentName,
+        problem: item.planLabel,
+        impact: `${Math.abs(Math.round(item.remaining))} ${item.unit} de atraso com risco de parada`,
+        downtime: equipmentMap[item.equipmentId]?.status === "active" ? "Risco iminente" : "Indisponível",
+        tone: "warning" as const,
+        actionLabel: "Programar OS",
+        onAction: () => navigate("/manutencao"),
+      })),
+      ...stats.consumptionInsights.slice(0, 2).map((item) => ({
+        id: `consumption-${item.id}`,
+        equipment: item.equipmentName,
+        problem: "Consumo fora do padrão operacional",
+        impact: `${item.variationPercent.toFixed(0)}% acima da média histórica`,
+        downtime: "Impacto financeiro em curso",
+        tone: item.severity === "critical" ? "critical" as const : "action" as const,
+        actionLabel: "Ver análise",
+        onAction: () => navigate("/relatorios"),
+      })),
+    ];
+
+    return operational.slice(0, 6);
+  }, [equipmentMap, navigate, stats.consumptionInsights, stats.criticalOrders, stats.overdueMaintenance]);
+
   const kpis = useMemo<DashboardKpiItem[]>(
     () => [
       {
@@ -816,15 +920,18 @@ export default function Dashboard() {
         refreshing={isRefreshing}
       />
 
+      <OperationalCommandDeck items={commandDeckItems} actions={commandDeckActions} />
       <ActionableAlertsPanel items={actionableAlerts} />
       <KpiSummaryGrid items={kpis} />
 
       {!hasCriticalItems && <EmptyOperationalState />}
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-        <PriorityRankingSection items={stats.priorityRanking as PriorityRankingItem[]} />
+        <PriorityNowSection items={priorityNowItems} />
         <RecommendedActionsSection items={stats.recommendations} />
       </div>
+
+      <PriorityRankingSection items={stats.priorityRanking as PriorityRankingItem[]} />
 
       <AIMaintenanceDecisionsSection
         items={aiDecisions}

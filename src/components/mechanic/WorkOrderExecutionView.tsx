@@ -5,6 +5,7 @@ import {
   Building2,
   CalendarClock,
   CheckCircle2,
+  CircleAlert,
   ClipboardList,
   Cog,
   Gauge,
@@ -260,6 +261,8 @@ export function WorkOrderExecutionView({
   const durationLabel = getDurationLabel(closure.startedAt || os.started_at, closure.completedAt || os.completed_at);
   const doneCount = requestItems.filter((item) => item.done).length;
   const currentMeterValue = Number(execution.executionMeter || 0);
+  const canStart = Boolean(mechanicName && evidence.photoStartUrl);
+  const canComplete = Boolean(evidence.photoEndUrl && closure.completedAt && requestItems.every((item) => item.done));
 
   const syncPart = (index: number, field: keyof WorkOrderPart, value: string | number) => {
     setParts((current) => current.map((part, partIndex) => {
@@ -365,6 +368,45 @@ export function WorkOrderExecutionView({
         <ArrowLeft className="h-4 w-4" /> Voltar para a fila do mecânico
       </Button>
 
+      <div className="grid gap-3 md:grid-cols-3">
+        <div className="rounded-lg border border-primary/20 bg-primary/10 p-4 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wide text-primary">Ação principal</p>
+              <p className="mt-1 text-sm font-semibold text-foreground">Iniciar serviço com rastreabilidade</p>
+            </div>
+            <PlayCircle className="h-5 w-5 text-primary" />
+          </div>
+          <Button className="mt-4 h-12 w-full justify-between px-4" onClick={handleStart} disabled={saving || os.status !== "open" || !canStart}>
+            <span>Iniciar serviço</span>
+            <PlayCircle className="h-4 w-4" />
+          </Button>
+        </div>
+        <div className="rounded-lg border border-success/20 bg-success/10 p-4 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wide text-success">Encerramento</p>
+              <p className="mt-1 text-sm font-semibold text-foreground">Finalizar serviço com checklist completo</p>
+            </div>
+            <CheckCircle2 className="h-5 w-5 text-success" />
+          </div>
+          <Button variant="outline" className="mt-4 h-12 w-full justify-between border-success/30 bg-background px-4 text-foreground hover:bg-success/10" onClick={handleComplete} disabled={saving || os.status === "done" || !canComplete}>
+            <span>Finalizar serviço</span>
+            <CheckCircle2 className="h-4 w-4 text-success" />
+          </Button>
+        </div>
+        <div className="rounded-lg border border-warning/20 bg-warning/10 p-4 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wide text-warning">Checklist obrigatório</p>
+              <p className="mt-1 text-sm font-semibold text-foreground">{doneCount}/{requestItems.length || 0} itens concluídos</p>
+            </div>
+            <CircleAlert className="h-5 w-5 text-warning" />
+          </div>
+          <p className="mt-4 text-sm text-muted-foreground">Fotos inicial/final e itens executados são obrigatórios para uma OS premium rastreável.</p>
+        </div>
+      </div>
+
       <Card className="border-border/70 bg-card/95 shadow-sm">
         <CardHeader className="space-y-4">
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -396,7 +438,8 @@ export function WorkOrderExecutionView({
           </div>
           <div className="rounded-lg border border-border bg-secondary/20 p-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground"><Timer className="h-4 w-4 text-primary" /> Tempo total</div>
-            <p className="mt-2 text-sm font-bold text-foreground">{durationLabel}</p>
+                  <p className="mt-2 text-sm font-bold text-foreground">{durationLabel}</p>
+                  {(closure.startedAt || os.started_at) && os.status === "in_progress" && <p className="mt-1 text-xs text-primary">Cronômetro em execução automática</p>}
           </div>
           <div className="rounded-lg border border-border bg-secondary/20 p-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground"><ReceiptText className="h-4 w-4 text-primary" /> Custo total</div>

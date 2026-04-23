@@ -1,4 +1,4 @@
-import { Bot, Clock3, Sparkles, Wrench } from "lucide-react";
+import { Bot, CircleDollarSign, Clock3, Sparkles, TriangleAlert, Wrench } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,8 @@ export type AIMaintenanceDecision = {
   maintenanceType: "preventive" | "corrective";
   suggestedParts: string[];
   downtimeHours: number;
+  operationalImpact?: string;
+  technicalReason?: string;
   autoCreateOS: boolean;
 };
 
@@ -70,7 +72,7 @@ export function AIMaintenanceDecisionsSection({
           </Card>
         ) : (
           items.map((item) => (
-            <Card key={item.id}>
+            <Card key={item.id} className="border-border/70 bg-card shadow-sm">
               <CardHeader className="gap-3 pb-3">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0">
@@ -84,11 +86,15 @@ export function AIMaintenanceDecisionsSection({
                 </div>
               </CardHeader>
               <CardContent className="space-y-4 pt-0">
-                <div className="rounded-lg bg-secondary/40 p-3 text-sm text-muted-foreground">
-                  {item.reason}
+                <div className="rounded-lg border border-border bg-secondary/30 p-3 text-sm text-muted-foreground">
+                  <div className="mb-2 flex items-center gap-2 text-foreground">
+                    <TriangleAlert className="h-4 w-4 text-primary" />
+                    <span className="font-semibold">Motivo técnico</span>
+                  </div>
+                  {item.technicalReason || item.reason}
                 </div>
 
-                <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+                <div className="grid grid-cols-1 gap-2 text-sm lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-start">
                   <div className="rounded-lg bg-secondary/30 p-3">
                     <div className="mb-2 flex items-center gap-2 text-foreground">
                       <Sparkles className="h-4 w-4 text-primary" />
@@ -97,6 +103,13 @@ export function AIMaintenanceDecisionsSection({
                     <p className="text-muted-foreground">
                       {item.suggestedParts.length > 0 ? item.suggestedParts.join(", ") : "Sem sugestão específica de peças."}
                     </p>
+                  </div>
+                  <div className="rounded-lg bg-secondary/30 p-3 text-muted-foreground">
+                    <div className="mb-2 flex items-center gap-2 text-foreground">
+                      <CircleDollarSign className="h-4 w-4 text-primary" />
+                      <span className="font-semibold">Impacto na operação</span>
+                    </div>
+                    <p>{item.operationalImpact || "Sem impacto adicional informado."}</p>
                   </div>
                   <div className="rounded-lg bg-secondary/30 p-3 text-muted-foreground sm:min-w-[140px]">
                     <div className="mb-2 flex items-center gap-2 text-foreground">
@@ -109,12 +122,13 @@ export function AIMaintenanceDecisionsSection({
 
                 <Button
                   onClick={() => onCreateWorkOrder(item)}
-                  className="w-full sm:w-auto"
+                  className="h-11 w-full justify-between px-4 sm:w-auto"
                   variant={item.priority === "high" ? "destructive" : "default"}
                   disabled={creatingId === item.id || !item.autoCreateOS}
                 >
-                  <Wrench className="mr-2 h-4 w-4" />
+                  <span className="inline-flex items-center gap-2"><Wrench className="h-4 w-4" />
                   {creatingId === item.id ? "Criando OS..." : item.autoCreateOS ? "Criar OS automaticamente" : "Ação indisponível"}
+                  </span>
                 </Button>
               </CardContent>
             </Card>

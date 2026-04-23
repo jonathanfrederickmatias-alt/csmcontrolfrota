@@ -23,6 +23,8 @@ import {
   ActionableAlertsPanel,
   ConsumptionDetailedItem,
   ConsumptionOperationsSection,
+  EquipmentAnomaliesSection,
+  EquipmentAnomalyItem,
   FuelOperationsSection,
   FuelOpsItem,
   PriorityRankingItem,
@@ -69,6 +71,20 @@ type FuelMetricRecord = {
   liters: number;
 };
 
+type EquipmentAnomalyType = "hourmeter" | "consumption" | "data";
+
+type EquipmentAnomalySummary = {
+  id: string;
+  equipmentId: string;
+  equipmentName: string;
+  severity: "critical" | "warning";
+  anomalyTypes: EquipmentAnomalyType[];
+  summary: string;
+  detail: string;
+  impact: string;
+  blocksAutoOs: boolean;
+};
+
 type MaintenanceStatus = "ok" | "approaching" | "overdue";
 
 type MaintenanceListItem = {
@@ -93,6 +109,7 @@ type StatsSummary = {
   waitingPartsOrders: any[];
   stoppedEquipments: any[];
   consumptionInsights: ConsumptionDetailedItem[];
+  anomalies: EquipmentAnomalySummary[];
   openRequests: number;
   inProgressRequests: number;
   activeEquipments: number;
@@ -207,6 +224,7 @@ export default function Dashboard() {
   const [aiErrorMessage, setAiErrorMessage] = useState<string | null>(null);
   const [aiHasGenerated, setAiHasGenerated] = useState(false);
   const [creatingAiDecisionId, setCreatingAiDecisionId] = useState<string | null>(null);
+  const [anomalyFilter, setAnomalyFilter] = useState<"all" | "blocked" | "hourmeter" | "consumption">("all");
 
   useEffect(() => {
     if (location.search.includes('focus=ai')) {
@@ -327,6 +345,16 @@ export default function Dashboard() {
   }, [data.equipments, data.fuelRecords, data.maintenanceHistory, data.plans, data.workOrders]);
 
   const handleCreateAiWorkOrder = useCallback(async (item: AIMaintenanceDecisionPayload) => {
+    if (item.anomalyFlags && item.anomalyFlags.length > 0) {
+      toast({
+        title: "OS automática bloqueada",
+        description: "Corrija as inconsistências de horímetro/consumo antes de gerar a OS automática para este equipamento.",
+        variant: "destructive",
+      });
+      setCreatingAiDecisionId(null);
+      return;
+    }
+
     setCreatingAiDecisionId(item.id);
 
     const mappedPriority = item.priority === "high" ? "urgent" : item.priority === "medium" ? "high" : "medium";
@@ -491,6 +519,74 @@ export default function Dashboard() {
       .filter(Boolean)
       .sort((a: any, b: any) => b.variationPercent - a.variationPercent);
 
+    const anomalies: EquipmentAnomalySummary[] = data.equipments
+      .map((equipment: any) => {
+        const relatedFuel = (fuelMetrics[equipment.id] || []).sort(
+          (a, b) => a.date.localeCompare(b.date) || a.created_at.localeCompare(b.created_at),
+        );
+        const relatedConsumption = consumptionInsights.find((item) => item.id === equipment.id);
+        const anomalyTypes: EquipmentAnomalyType[] = [];
+        const detailParts: string[] = [];
+        const impactParts: string[] = [];
+        let severity: EquipmentAnomalySummary["severity"] = "warning";
+
+        const duplicateHourMeter = relatedFuel.some((record, index) => {
+          if (index === 0) return false;
+          return Number(record.hour_meter) < Number(relatedFuel[index - 1].hour_meter);
+        });
+
+        const stagnantHourMeterWithFuel = relatedFuel.some((record, index) => {
+          if (index === 0) return false;
+          const delta = Number(record.hour_meter) - Number(relatedFuel[index - 1].hour_meter);
+          return delta === 0 && Number(record.liters) >= 20;
+        });
+
+        if (duplicateHourMeter || stagnantHourMeterWithFuel) {
+          anomalyTypes.push("hourmeter");
+          detailParts.push(duplicateHourMeter ? "horímetro regressivo entre abastecimentos" : "abastecimento registrado sem avanço de horímetro");
+          impactParts.push("base de manutenção preventiva comprometida");
+          severity = "critical";
+        }
+
+        if (relatedConsumption) {
+          anomalyTypes.push("consumption");
+          detailParts.push(`${relatedConsumption.variationPercent.toFixed(0)}% de desvio frente ao histórico em ${relatedConsumption.unit}`);
+          impactParts.push("risco de desperdício, falha mecânica ou lançamento incorreto");
+          if (relatedConsumption.variationPercent > 45) {
+            severity = "critical";
+          }
+        }
+
+        if (equipment.current_hour_meter < 0 || !Number.isFinite(Number(equipment.current_hour_meter))) {
+          anomalyTypes.push("data");
+          detailParts.push("horímetro atual inválido no cadastro");
+          impactParts.push("decisão automática sem lastro confiável");
+          severity = "critical";
+        }
+
+        if (anomalyTypes.length === 0) return null;
+
+        return {
+          id: `anomaly-${equipment.id}`,
+          equipmentId: equipment.id,
+          equipmentName: equipment.name,
+          severity,
+          anomalyTypes,
+          summary: anomalyTypes.includes("hourmeter")
+            ? "Inconsistência de leitura operacional detectada"
+            : "Comportamento fora do padrão de consumo detectado",
+          detail: detailParts.join(" · "),
+          impact: impactParts.join(" · "),
+          blocksAutoOs: severity === "critical" || anomalyTypes.includes("hourmeter") || anomalyTypes.includes("data"),
+        } satisfies EquipmentAnomalySummary;
+      })
+      .filter((item): item is EquipmentAnomalySummary => item !== null)
+      .sort((a, b) => {
+        if (a.blocksAutoOs !== b.blocksAutoOs) return a.blocksAutoOs ? -1 : 1;
+        if (a.severity !== b.severity) return a.severity === "critical" ? -1 : 1;
+        return a.equipmentName.localeCompare(b.equipmentName);
+      });
+
     const priorityRanking = [
       ...criticalOrders
         .filter((order: any) => equipmentMap[order.equipment_id]?.status !== "active")
@@ -610,6 +706,7 @@ export default function Dashboard() {
       waitingPartsOrders,
       stoppedEquipments,
       consumptionInsights,
+      anomalies,
       openRequests,
       inProgressRequests,
       activeEquipments,

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, ClipboardCheck, PauseCircle, Truck, Wrench } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/AuthContext";
@@ -186,6 +186,7 @@ function getPriorityDescriptor(priority: string) {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { signOut } = useAuth();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedChecklist, setSelectedChecklist] = useState<any>(null);
@@ -204,6 +205,14 @@ export default function Dashboard() {
   const [aiDecisions, setAiDecisions] = useState<AIMaintenanceDecisionPayload[]>([]);
   const [aiLoading, setAiLoading] = useState(false);
   const [creatingAiDecisionId, setCreatingAiDecisionId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (location.search.includes('focus=ai')) {
+      requestAnimationFrame(() => {
+        document.getElementById('ai-operacional-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
+  }, [location.search]);
 
   const fetchData = useCallback(async () => {
     setIsRefreshing(true);
@@ -958,12 +967,14 @@ export default function Dashboard() {
 
       <PriorityRankingSection items={stats.priorityRanking as PriorityRankingItem[]} />
 
-      <AIMaintenanceDecisionsSection
-        items={aiDecisions}
-        loading={aiLoading}
-        creatingId={creatingAiDecisionId}
-        onCreateWorkOrder={handleCreateAiWorkOrder}
-      />
+      <div id="ai-operacional-section">
+        <AIMaintenanceDecisionsSection
+          items={aiDecisions}
+          loading={aiLoading}
+          creatingId={creatingAiDecisionId}
+          onCreateWorkOrder={handleCreateAiWorkOrder}
+        />
+      </div>
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.2fr_0.8fr]">
         <MaintenancePriorityList items={maintenanceList} onOpenAll={() => navigate("/manutencao")} />

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { DBEquipment, DBMaintenancePlan, DBMaintenanceRequest, DBMaintenanceHistory, DBWorkOrder } from "@/lib/supabase-types";
 import { Button } from "@/components/ui/button";
@@ -49,6 +50,7 @@ const osStatusConfig = {
 };
 
 export default function MaintenancePage() {
+  const [searchParams] = useSearchParams();
   const { isAdmin, isGestor } = useUserRoles();
   const canEdit = isAdmin || isGestor;
   const [plans, setPlans] = useState<DBMaintenancePlan[]>([]);
@@ -109,6 +111,13 @@ export default function MaintenancePage() {
 
   // Controlled tab
   const [activeTab, setActiveTab] = useState('plans');
+
+  useEffect(() => {
+    const requestedTab = searchParams.get('tab');
+    if (requestedTab && ['os', 'plans', 'requests', 'history'].includes(requestedTab)) {
+      setActiveTab(requestedTab);
+    }
+  }, [searchParams]);
 
   const fetchAll = async () => {
     const [eqRes, plRes, reqRes, histRes, osRes] = await Promise.all([

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { Building2, CalendarClock, ChevronRight, ClipboardList, Eye, PlayCircle, UserRound } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -45,7 +45,7 @@ type PremiumOsWorkspaceProps = {
   onAssignMechanic: (order: DBWorkOrder) => void;
   priorityConfig: Record<string, PriorityOption>;
   osStatusConfig: Record<string, StatusOption>;
-  renderToolbar: React.ReactNode;
+  renderToolbar: ReactNode;
 };
 
 function eqLabel(eq: DBEquipment) {

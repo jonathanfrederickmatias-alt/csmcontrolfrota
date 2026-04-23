@@ -920,15 +920,18 @@ export default function Dashboard() {
         refreshing={isRefreshing}
       />
 
+      <OperationalCommandDeck items={commandDeckItems} actions={commandDeckActions} />
       <ActionableAlertsPanel items={actionableAlerts} />
       <KpiSummaryGrid items={kpis} />
 
       {!hasCriticalItems && <EmptyOperationalState />}
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-        <PriorityRankingSection items={stats.priorityRanking as PriorityRankingItem[]} />
+        <PriorityNowSection items={priorityNowItems} />
         <RecommendedActionsSection items={stats.recommendations} />
       </div>
+
+      <PriorityRankingSection items={stats.priorityRanking as PriorityRankingItem[]} />
 
       <AIMaintenanceDecisionsSection
         items={aiDecisions}

@@ -1,6 +1,8 @@
 import { DBEquipment } from "@/lib/supabase-types";
 
-type EquipmentDisplayInput = Pick<DBEquipment, "type" | "name" | "plate" | "chassis" | "cost_center">;
+type EquipmentDisplayInput = Omit<Pick<DBEquipment, "type" | "name" | "plate" | "chassis" | "cost_center">, "type"> & {
+  type?: DBEquipment["type"] | string | null;
+};
 
 function cleanValue(value?: string | null) {
   const normalized = String(value || "").trim();

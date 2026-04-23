@@ -20,8 +20,6 @@ import {
 } from "@/components/dashboard/OperationalDashboardSections";
 import {
   ActionableAlertItem,
-  AIMaintenanceDecision,
-  AIMaintenanceDecisionsSection,
   ActionableAlertsPanel,
   ConsumptionDetailedItem,
   ConsumptionOperationsSection,
@@ -32,7 +30,10 @@ import {
   RecommendationItem,
   RecommendedActionsSection,
 } from "@/components/dashboard/OperationalCommandCenterSections";
-import { AIMaintenanceDecisionsSection as DashboardAIMaintenanceDecisionsSection } from "@/components/dashboard/AIMaintenanceDecisionsSection";
+import {
+  AIMaintenanceDecision,
+  AIMaintenanceDecisionsSection,
+} from "@/components/dashboard/AIMaintenanceDecisionsSection";
 import { Camera, MessageSquare, ShieldCheck, ShieldX } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
@@ -188,7 +189,11 @@ export default function Dashboard() {
     requests: [],
     combos: [],
     workOrders: [],
+    maintenanceHistory: [],
   });
+  const [aiDecisions, setAiDecisions] = useState<AIMaintenanceDecisionPayload[]>([]);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [creatingAiDecisionId, setCreatingAiDecisionId] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     setIsRefreshing(true);
@@ -197,7 +202,7 @@ export default function Dashboard() {
     sixtyDaysAgo.setDate(today.getDate() - 60);
     const cutoffDate = sixtyDaysAgo.toISOString().split("T")[0];
 
-    const [eqRes, clRes, plRes, frRes, fsRes, reqRes, woRes] = await Promise.all([
+    const [eqRes, clRes, plRes, frRes, fsRes, reqRes, woRes, histRes] = await Promise.all([
       supabase.from("equipments").select("*"),
       supabase.from("checklists").select("*").order("created_at", { ascending: false }).limit(200),
       supabase.from("maintenance_plans").select("*"),
@@ -205,6 +210,7 @@ export default function Dashboard() {
       supabase.from("fuel_supply_records").select("*").gte("date", cutoffDate).order("date", { ascending: false }).limit(300),
       supabase.from("maintenance_requests").select("*").order("created_at", { ascending: false }).limit(100),
       supabase.from("work_orders").select("*").order("created_at", { ascending: false }).limit(100),
+      supabase.from("maintenance_history").select("*").order("executed_at", { ascending: false }).limit(300),
     ]);
 
     const equipments = eqRes.data || [];
@@ -217,6 +223,7 @@ export default function Dashboard() {
       requests: reqRes.data || [],
       combos: equipments.filter((equipment: any) => equipment.type === "combo"),
       workOrders: woRes.data || [],
+      maintenanceHistory: histRes.data || [],
     });
     setIsRefreshing(false);
   }, []);

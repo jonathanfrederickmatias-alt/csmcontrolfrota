@@ -1,32 +1,16 @@
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { DBEquipment, DBWorkOrder } from "@/lib/supabase-types";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import {
-  Wrench, Loader2, Play, CheckCircle, Square, Plus, Trash2,
-  Package, CheckSquare, SquareIcon, ArrowLeft, Clock, AlertTriangle
+  Wrench, Loader2, CheckCircle, Clock, AlertTriangle, CalendarClock,
+  ChevronRight, Filter, ClipboardList, UserRound, Building2
 } from "lucide-react";
-import PhotoUpload from "@/components/PhotoUpload";
 import { WorkOrderExecutionView } from "@/components/mechanic/WorkOrderExecutionView";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-
-interface Part {
-  code: string;
-  description: string;
-}
-
-interface RequestItem {
-  id: string;
-  description: string;
-  priority: string;
-  done?: boolean;
-}
 
 interface WorkOrder {
   id: string;
@@ -61,9 +45,9 @@ const statusLabels: Record<string, string> = {
 };
 
 const statusColors: Record<string, string> = {
-  open: 'bg-yellow-500/10 text-yellow-700 border-yellow-500/30',
-  in_progress: 'bg-blue-500/10 text-blue-700 border-blue-500/30',
-  done: 'bg-green-500/10 text-green-700 border-green-500/30',
+  open: 'border-warning/30 bg-warning/10 text-warning',
+  in_progress: 'border-primary/30 bg-primary/10 text-primary',
+  done: 'border-success/30 bg-success/10 text-success',
 };
 
 export default function MechanicDashboardPage() {
@@ -103,11 +87,18 @@ export default function MechanicDashboardPage() {
 
   useEffect(() => { fetchData(); }, []);
 
-  const filteredOrders = orders.filter(o => {
+  const filteredOrders = useMemo(() => orders.filter(o => {
     if (statusFilter === 'pending') return o.status === 'open' || o.status === 'in_progress';
     if (statusFilter === 'all') return true;
     return o.status === statusFilter;
-  });
+  }), [orders, statusFilter]);
+
+  const summary = useMemo(() => ({
+    total: orders.length,
+    open: orders.filter((order) => order.status === 'open').length,
+    inProgress: orders.filter((order) => order.status === 'in_progress').length,
+    done: orders.filter((order) => order.status === 'done').length,
+  }), [orders]);
 
   if (selectedOS) {
     return (
@@ -121,28 +112,46 @@ export default function MechanicDashboardPage() {
   }
 
   return (
-    <div>
-      <div className="flex items-center gap-3 mb-6">
-        <Wrench className="w-7 h-7 text-primary" />
-        <h1 className="text-2xl font-black text-gradient">Painel do Mecânico</h1>
+    <div className="space-y-6">
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-primary/20 bg-primary/10">
+            <Wrench className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-black text-foreground">Painel do Mecânico</h1>
+            <p className="text-sm text-muted-foreground">Fila operacional com leitura rápida, prioridade visual e execução rastreável.</p>
+          </div>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-4">
+          <Card className="border-border/70 bg-card/95 shadow-sm"><CardContent className="p-4"><p className="text-xs uppercase text-muted-foreground">Total</p><p className="mt-2 text-2xl font-black text-foreground">{summary.total}</p></CardContent></Card>
+          <Card className="border-border/70 bg-card/95 shadow-sm"><CardContent className="p-4"><p className="text-xs uppercase text-muted-foreground">Abertas</p><p className="mt-2 text-2xl font-black text-warning">{summary.open}</p></CardContent></Card>
+          <Card className="border-border/70 bg-card/95 shadow-sm"><CardContent className="p-4"><p className="text-xs uppercase text-muted-foreground">Em execução</p><p className="mt-2 text-2xl font-black text-primary">{summary.inProgress}</p></CardContent></Card>
+          <Card className="border-border/70 bg-card/95 shadow-sm sm:col-span-3 xl:col-span-1"><CardContent className="p-4"><p className="text-xs uppercase text-muted-foreground">Concluídas</p><p className="mt-2 text-2xl font-black text-success">{summary.done}</p></CardContent></Card>
+        </div>
       </div>
 
-      <div className="flex items-center gap-3 mb-4">
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-48">
+      <div className="sticky top-0 z-10 rounded-lg border border-border/70 bg-background/95 p-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/80">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+            <Filter className="h-4 w-4 text-primary" />
+            Filtros operacionais
+          </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full sm:w-56">
             <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="pending">Pendentes</SelectItem>
-            <SelectItem value="open">Abertas</SelectItem>
-            <SelectItem value="in_progress">Em andamento</SelectItem>
-            <SelectItem value="done">Concluídas</SelectItem>
-            <SelectItem value="all">Todas</SelectItem>
-          </SelectContent>
-        </Select>
-        <span className="text-sm text-muted-foreground">
-          {filteredOrders.length} OS encontrada{filteredOrders.length !== 1 ? 's' : ''}
-        </span>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="pending">Pendentes</SelectItem>
+              <SelectItem value="open">Abertas</SelectItem>
+              <SelectItem value="in_progress">Em andamento</SelectItem>
+              <SelectItem value="done">Concluídas</SelectItem>
+              <SelectItem value="all">Todas</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <p className="mt-2 text-sm text-muted-foreground">{filteredOrders.length} OS encontrada{filteredOrders.length !== 1 ? 's' : ''}</p>
       </div>
 
       {loading ? (
@@ -155,40 +164,54 @@ export default function MechanicDashboardPage() {
           <p className="text-muted-foreground">Nenhuma OS encontrada.</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {filteredOrders.map(order => {
             const eq = equipments[order.equipment_id];
+            const obra = obras[eq?.obra_id || ''];
             return (
               <button
                 key={order.id}
                 onClick={() => setSelectedOS(order)}
-                className="w-full text-left glass-card rounded-xl p-4 hover:ring-2 hover:ring-primary/30 transition-all"
+                className="w-full rounded-lg border border-border/70 bg-card p-4 text-left shadow-sm transition-all hover:border-primary/30 hover:shadow-md"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-black text-lg">OS #{order.os_number}</span>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0 flex-1 space-y-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant="outline" className="border-border bg-secondary/40 text-foreground">OS #{order.os_number}</Badge>
                       <Badge variant="outline" className={statusColors[order.status]}>
                         {statusLabels[order.status] || order.status}
                       </Badge>
+                      <Badge variant="outline" className="border-border bg-muted text-muted-foreground">
+                        {priorityLabels[order.priority] || order.priority}
+                      </Badge>
                     </div>
-                    <p className="text-sm text-muted-foreground truncate">{order.description}</p>
-                    {eq && <p className="text-xs text-muted-foreground mt-1">Equipamento: <strong>{eq.name}</strong></p>}
+                    <div>
+                      <p className="text-base font-black text-foreground">{eq?.name || 'Equipamento não localizado'}</p>
+                      <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{order.description}</p>
+                    </div>
+
+                    <div className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-2 lg:grid-cols-4">
+                      <div className="flex items-center gap-2"><ClipboardList className="h-3.5 w-3.5 text-primary" /><span>{order.mechanic_name || 'Sem mecânico'}</span></div>
+                      <div className="flex items-center gap-2"><CalendarClock className="h-3.5 w-3.5 text-primary" /><span>{new Date(order.created_at).toLocaleDateString('pt-BR')}</span></div>
+                      <div className="flex items-center gap-2"><Building2 className="h-3.5 w-3.5 text-primary" /><span>{obra?.name || 'Sem obra'}</span></div>
+                      <div className="flex items-center gap-2"><UserRound className="h-3.5 w-3.5 text-primary" /><span>{eq?.plate || eq?.cost_center || 'Sem identificação'}</span></div>
+                    </div>
+
+                    {order.status === 'in_progress' && order.started_at && (
+                      <div className="inline-flex items-center gap-1.5 rounded-md border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs text-primary">
+                        <Clock className="w-3.5 h-3.5" />
+                        Iniciada em {new Date(order.started_at).toLocaleString('pt-BR')}
+                      </div>
+                    )}
                   </div>
-                  <div className="text-right shrink-0">
-                    <span className="text-xs">{priorityLabels[order.priority] || order.priority}</span>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {new Date(order.created_at).toLocaleDateString('pt-BR')}
-                    </p>
+                  <div className="flex shrink-0 items-center gap-3 self-center">
+                    <div className="hidden text-right text-xs text-muted-foreground sm:block">
+                      <p className="font-medium text-foreground">Abrir execução</p>
+                      <p>Detalhes completos da OS</p>
+                    </div>
+                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
                   </div>
                 </div>
-                {order.status === 'in_progress' && order.started_at && (
-                  <div className="flex items-center gap-1.5 mt-2 text-xs text-blue-600">
-                    <Clock className="w-3.5 h-3.5" />
-                    Iniciada em {new Date(order.started_at).toLocaleString('pt-BR')}
-                    {order.mechanic_name && <span>• {order.mechanic_name}</span>}
-                  </div>
-                )}
               </button>
             );
           })}
@@ -197,127 +220,6 @@ export default function MechanicDashboardPage() {
     </div>
   );
 }
-
-// ─── OS Detail / Resolution View ────────────────────────────────────────────
-
-function OSDetailView({
-  os: initialOS,
-  equipment,
-  onBack,
-}: {
-  os: WorkOrder;
-  equipment: DBEquipment | null;
-  onBack: () => void;
-}) {
-  const [os, setOs] = useState(initialOS);
-  const [saving, setSaving] = useState(false);
-  const [mechanicName, setMechanicName] = useState(initialOS.mechanic_name || '');
-  const [parts, setParts] = useState<Part[]>(
-    Array.isArray(initialOS.parts) && initialOS.parts.length > 0
-      ? initialOS.parts
-      : initialOS.part_code
-        ? [{ code: initialOS.part_code, description: '' }]
-        : [{ code: '', description: '' }]
-  );
-  const [notes, setNotes] = useState(initialOS.notes || '');
-  const [photoStartUrl, setPhotoStartUrl] = useState(initialOS.photo_start_url || '');
-  const [photoEndUrl, setPhotoEndUrl] = useState(initialOS.photo_end_url || '');
-  const [requestItems, setRequestItems] = useState<RequestItem[]>([]);
-
-  useEffect(() => {
-    // Fetch request items
-    supabase
-      .from('maintenance_requests')
-      .select('items')
-      .eq('id', os.maintenance_request_id)
-      .single()
-      .then(({ data }) => {
-        if (data && Array.isArray(data.items)) {
-          setRequestItems((data.items as unknown as RequestItem[]).map(item => ({
-            ...item,
-            done: item.done || false,
-          })));
-        }
-      });
-  }, [os.maintenance_request_id]);
-
-  const refreshOS = async () => {
-    const { data } = await supabase.from('work_orders').select('*').eq('id', os.id).single();
-    if (data) {
-      const wo = data as unknown as WorkOrder;
-      setOs(wo);
-      setMechanicName(wo.mechanic_name || '');
-      setNotes(wo.notes || '');
-      setPhotoStartUrl(wo.photo_start_url || '');
-      setPhotoEndUrl(wo.photo_end_url || '');
-      const dbParts = Array.isArray(wo.parts) && wo.parts.length > 0
-        ? wo.parts
-        : wo.part_code ? [{ code: wo.part_code, description: '' }] : [{ code: '', description: '' }];
-      setParts(dbParts);
-    }
-  };
-
-  const addPart = () => setParts(prev => [...prev, { code: '', description: '' }]);
-  const removePart = (index: number) => setParts(prev => prev.filter((_, i) => i !== index));
-  const updatePart = (index: number, field: keyof Part, value: string) => {
-    setParts(prev => prev.map((p, i) => i === index ? { ...p, [field]: value } : p));
-  };
-  const cleanParts = () => parts.filter(p => p.code.trim() || p.description.trim());
-
-  const toggleItemDone = (itemId: string) => {
-    setRequestItems(prev => prev.map(item =>
-      item.id === itemId ? { ...item, done: !item.done } : item
-    ));
-  };
-
-  const doneCount = requestItems.filter(i => i.done).length;
-  const isInProgress = os.status === 'in_progress';
-
-  const saveItemsStatus = async () => {
-    await supabase.from('maintenance_requests').update({
-      items: requestItems as unknown as any,
-    }).eq('id', os.maintenance_request_id);
-  };
-
-  const handleStartService = async () => {
-    if (!mechanicName || !photoStartUrl) return;
-    setSaving(true);
-    await supabase.from('work_orders').update({
-      status: 'in_progress',
-      mechanic_name: mechanicName,
-      photo_start_url: photoStartUrl,
-      started_at: new Date().toISOString(),
-      parts: cleanParts() as unknown as any,
-      part_code: cleanParts().map(p => p.code).filter(Boolean).join(', ') || null,
-      notes: notes || null,
-    }).eq('id', os.id);
-    await saveItemsStatus();
-    setSaving(false);
-    refreshOS();
-  };
-
-  const handleCompleteService = async () => {
-    if (!photoEndUrl) return;
-    setSaving(true);
-    await supabase.from('work_orders').update({
-      status: 'done',
-      photo_end_url: photoEndUrl,
-      completed_at: new Date().toISOString(),
-      parts: cleanParts() as unknown as any,
-      part_code: cleanParts().map(p => p.code).filter(Boolean).join(', ') || null,
-      notes: notes || null,
-    }).eq('id', os.id);
-    const allDoneItems = requestItems.map(i => ({ ...i, done: true }));
-    await supabase.from('maintenance_requests').update({
-      items: allDoneItems as unknown as any,
-    }).eq('id', os.maintenance_request_id);
-    setSaving(false);
-    refreshOS();
-  };
-
-  // ── Done view ──
-  if (os.status === 'done') {
-    const doneParts = Array.isArray(os.parts) ? os.parts : [];
     return (
       <div>
         <Button variant="ghost" onClick={onBack} className="mb-4 gap-2">

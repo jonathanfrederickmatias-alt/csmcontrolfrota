@@ -16,9 +16,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 export interface ExecutiveSignalItem {
   id: string;
   label: string;
-  value: number;
+  value: number | string;
   tone: "critical" | "warning" | "ok";
   detail: string;
+  onClick?: () => void;
 }
 
 export interface QuickActionItem {
@@ -89,7 +90,13 @@ export function OperationalCommandDeck({
           {items.map((item) => {
             const Icon = toneIcon[item.tone];
             return (
-              <div key={item.id} className="bg-card px-4 py-4 sm:px-5">
+              <button
+                key={item.id}
+                type="button"
+                onClick={item.onClick}
+                className="bg-card px-4 py-4 text-left transition-colors hover:bg-secondary/20 disabled:cursor-default disabled:hover:bg-card sm:px-5"
+                disabled={!item.onClick}
+              >
                 <div className="flex items-start justify-between gap-3">
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
@@ -103,7 +110,7 @@ export function OperationalCommandDeck({
                     {item.tone === "critical" ? "Crítico" : item.tone === "warning" ? "Atenção" : "OK"}
                   </Badge>
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>

@@ -1348,6 +1348,278 @@ export async function exportGeneralReportsPDF(data: GeneralReportData) {
   pdf.save(`CSM_Relatorio_Geral_${data.period}_${data.filterName.replace(/\s/g, '_')}.pdf`);
 }
 
+export interface ProfessionalMaintenancePDFData {
+  filterName: string;
+  generatedPeriod: string;
+  rows: Array<{
+    equipmentName: string;
+    obraName: string;
+    date: string;
+    source: string;
+    description: string;
+    parts: string;
+    partsCost: number;
+    laborCost: number;
+    totalCost: number;
+    status: string;
+  }>;
+}
+
+export interface ProfessionalObraPDFData {
+  generatedPeriod: string;
+  rows: Array<{
+    obraName: string;
+    client: string;
+    contractNumber: string;
+    equipmentsUsed: string[];
+    totalFuelLiters: number;
+    totalFuelCost: number;
+    totalMaintenanceCost: number;
+    totalDowntimeHours: number;
+    totalDowntimeCost: number;
+    totalCost: number;
+  }>;
+}
+
+export interface ProfessionalExecutivePDFData {
+  generatedPeriod: string;
+  totalCost: number;
+  totalFuelLiters: number;
+  averageAvailability: number;
+  ranking: Array<{
+    equipmentName: string;
+    obraName: string;
+    fuelCost: number;
+    maintenanceCost: number;
+    downtimeHours: number;
+    downtimeCost: number;
+    totalCost: number;
+    costPerHour: number | null;
+    costPerKm: number | null;
+    availability: number;
+  }>;
+}
+
+export async function exportProfessionalMaintenancePDF(data: ProfessionalMaintenancePDFData) {
+  const logoData = await loadLogoAsBase64();
+  const pdf = new jsPDF('l', 'mm', 'a4');
+  const pageWidth = 297;
+  const margin = 12;
+  const contentWidth = pageWidth - margin * 2;
+
+  pdf.setFillColor(...COLORS.dark);
+  pdf.rect(0, 0, pageWidth, pdf.internal.pageSize.getHeight(), 'F');
+  addHeader(pdf, 'Relatório Profissional de Manutenção por Equipamento', `Filtro: ${data.filterName} | Período: ${data.generatedPeriod}`, logoData);
+
+  const totalCost = data.rows.reduce((sum, row) => sum + row.totalCost, 0);
+  const totalParts = data.rows.reduce((sum, row) => sum + row.partsCost, 0);
+  const totalLabor = data.rows.reduce((sum, row) => sum + row.laborCost, 0);
+  const equipments = new Set(data.rows.map((row) => row.equipmentName)).size;
+  let y = 46;
+  const cardW = (contentWidth - 9) / 4;
+  drawSummaryCard(pdf, margin, y, cardW, 'Equipamentos', String(equipments), COLORS.primary);
+  drawSummaryCard(pdf, margin + cardW + 3, y, cardW, 'Peças', `R$ ${totalParts.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, COLORS.warning);
+  drawSummaryCard(pdf, margin + (cardW + 3) * 2, y, cardW, 'Serviços', `R$ ${totalLabor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, COLORS.success);
+  drawSummaryCard(pdf, margin + (cardW + 3) * 3, y, cardW, 'Custo Total', `R$ ${totalCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, COLORS.danger);
+  y += 30;
+
+  const colW = [32, 42, 18, 58, 56, 20, 20, 20, 7];
+  const colX = [margin];
+  for (let i = 1; i < colW.length; i++) colX.push(colX[i - 1] + colW[i - 1]);
+  const headers = ['Equipamento', 'Obra', 'Data', 'Descrição', 'Peças Trocadas', 'Peças', 'Serviços', 'Total', 'St'];
+
+  pdf.setFillColor(...COLORS.headerBg);
+  pdf.roundedRect(margin, y, contentWidth, 8, 1, 1, 'F');
+  pdf.setFillColor(...COLORS.primary);
+  pdf.rect(margin, y, 3, 8, 'F');
+  pdf.setTextColor(...COLORS.text);
+  pdf.setFontSize(9);
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('Histórico completo e peças trocadas', margin + 6, y + 5.5);
+  y += 10;
+
+  pdf.setFillColor(220, 228, 240);
+  pdf.rect(margin, y, contentWidth, 6, 'F');
+  pdf.setFontSize(6.2);
+  pdf.setTextColor(...COLORS.textMuted);
+  headers.forEach((header, index) => pdf.text(header, colX[index] + 2, y + 4));
+  y += 6;
+
+  data.rows.forEach((row, index) => {
+    pdf.setFontSize(6.3);
+    pdf.setFont('helvetica', 'normal');
+    const descriptionLines = wrapText(pdf, `${row.source} — ${row.description}`, colW[3] - 4);
+    const partLines = wrapText(pdf, row.parts || '—', colW[4] - 4);
+    const rowHeight = Math.max(6.5, Math.max(descriptionLines.length, partLines.length) * 3.3 + 3);
+    y = checkPageBreak(pdf, y, rowHeight);
+    if (index % 2 === 1) {
+      pdf.setFillColor(...COLORS.rowAlt);
+      pdf.rect(margin, y, contentWidth, rowHeight, 'F');
+    }
+
+    pdf.setTextColor(...COLORS.text);
+    pdf.text(clipText(pdf, row.equipmentName, colW[0] - 4), colX[0] + 2, y + 4.5);
+    pdf.text(clipText(pdf, row.obraName, colW[1] - 4), colX[1] + 2, y + 4.5);
+    pdf.text(new Date(row.date).toLocaleDateString('pt-BR'), colX[2] + 2, y + 4.5);
+    descriptionLines.forEach((line, lineIndex) => pdf.text(line, colX[3] + 2, y + 4.5 + lineIndex * 3.3));
+    partLines.forEach((line, lineIndex) => pdf.text(line, colX[4] + 2, y + 4.5 + lineIndex * 3.3));
+
+    const midY = y + rowHeight / 2 + 1;
+    pdf.setTextColor(...COLORS.warning);
+    pdf.text(row.partsCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 }), colX[5] + 2, midY);
+    pdf.setTextColor(...COLORS.success);
+    pdf.text(row.laborCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 }), colX[6] + 2, midY);
+    pdf.setTextColor(...COLORS.primary);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text(row.totalCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 }), colX[7] + 2, midY);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(row.status === 'done' || row.status === 'Executado' ? COLORS.success[0] : COLORS.warning[0], row.status === 'done' || row.status === 'Executado' ? COLORS.success[1] : COLORS.warning[1], row.status === 'done' || row.status === 'Executado' ? COLORS.success[2] : COLORS.warning[2]);
+    pdf.text(row.status === 'done' ? 'OK' : clipText(pdf, row.status, colW[8] - 2), colX[8] + 1, midY);
+    y += rowHeight;
+  });
+
+  const totalPages = pdf.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    pdf.setPage(i);
+    addFooter(pdf, i, totalPages);
+  }
+  pdf.save(`CSM_Relatorio_Manutencao_${data.filterName.replace(/\s/g, '_')}.pdf`);
+}
+
+export async function exportProfessionalObraPDF(data: ProfessionalObraPDFData) {
+  const logoData = await loadLogoAsBase64();
+  const pdf = new jsPDF('l', 'mm', 'a4');
+  const pageWidth = 297;
+  const margin = 12;
+  const contentWidth = pageWidth - margin * 2;
+
+  pdf.setFillColor(...COLORS.dark);
+  pdf.rect(0, 0, pageWidth, pdf.internal.pageSize.getHeight(), 'F');
+  addHeader(pdf, 'Relatório Profissional por Obra', `Consumo, custo e equipamentos utilizados | ${data.generatedPeriod}`, logoData);
+
+  const totalCost = data.rows.reduce((sum, row) => sum + row.totalCost, 0);
+  const totalFuel = data.rows.reduce((sum, row) => sum + row.totalFuelLiters, 0);
+  const totalDowntime = data.rows.reduce((sum, row) => sum + row.totalDowntimeHours, 0);
+  let y = 46;
+  const cardW = (contentWidth - 9) / 4;
+  drawSummaryCard(pdf, margin, y, cardW, 'Obras analisadas', String(data.rows.length), COLORS.primary);
+  drawSummaryCard(pdf, margin + cardW + 3, y, cardW, 'Combustível', `${totalFuel.toLocaleString('pt-BR')} L`, COLORS.warning);
+  drawSummaryCard(pdf, margin + (cardW + 3) * 2, y, cardW, 'Parada', `${totalDowntime.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} h`, COLORS.danger);
+  drawSummaryCard(pdf, margin + (cardW + 3) * 3, y, cardW, 'Custo consolidado', `R$ ${totalCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, COLORS.success);
+  y += 30;
+
+  data.rows.forEach((row) => {
+    y = checkPageBreak(pdf, y, 38);
+    pdf.setFillColor(...COLORS.cardBg);
+    pdf.roundedRect(margin, y, contentWidth, 30, 2, 2, 'F');
+    pdf.setDrawColor(...COLORS.border);
+    pdf.roundedRect(margin, y, contentWidth, 30, 2, 2, 'S');
+    pdf.setFillColor(...COLORS.primary);
+    pdf.rect(margin, y, 4, 30, 'F');
+
+    pdf.setTextColor(...COLORS.text);
+    pdf.setFontSize(10);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text(row.obraName, margin + 8, y + 8);
+    pdf.setFontSize(7.5);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(...COLORS.textMuted);
+    pdf.text(`Cliente: ${row.client} | Contrato: ${row.contractNumber}`, margin + 8, y + 14);
+    pdf.text(`Equipamentos: ${clipText(pdf, row.equipmentsUsed.join(', ') || '—', 165)}`, margin + 8, y + 20);
+
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(...COLORS.primary);
+    pdf.text(`Consumo: ${row.totalFuelLiters.toLocaleString('pt-BR')} L`, margin + 8, y + 26);
+    pdf.text(`Combustível: R$ ${row.totalFuelCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin + 78, y + 26);
+    pdf.text(`Manutenção: R$ ${row.totalMaintenanceCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin + 150, y + 26);
+    pdf.text(`Parada: ${row.totalDowntimeHours.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} h / R$ ${row.totalDowntimeCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin + 215, y + 26, { align: 'right' });
+    pdf.setTextColor(...COLORS.danger);
+    pdf.text(`Total: R$ ${row.totalCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin + contentWidth - 4, y + 8, { align: 'right' });
+    y += 34;
+  });
+
+  const totalPages = pdf.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    pdf.setPage(i);
+    addFooter(pdf, i, totalPages);
+  }
+  pdf.save('CSM_Relatorio_Obras_Executivo.pdf');
+}
+
+export async function exportProfessionalExecutivePDF(data: ProfessionalExecutivePDFData) {
+  const logoData = await loadLogoAsBase64();
+  const pdf = new jsPDF('l', 'mm', 'a4');
+  const pageWidth = 297;
+  const margin = 12;
+  const contentWidth = pageWidth - margin * 2;
+
+  pdf.setFillColor(...COLORS.dark);
+  pdf.rect(0, 0, pageWidth, pdf.internal.pageSize.getHeight(), 'F');
+  addHeader(pdf, 'Relatório Executivo Profissional', `Pronto para apresentação | ${data.generatedPeriod}`, logoData);
+
+  let y = 46;
+  const cardW = (contentWidth - 9) / 4;
+  drawSummaryCard(pdf, margin, y, cardW, 'Custo total', `R$ ${data.totalCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, COLORS.danger);
+  drawSummaryCard(pdf, margin + cardW + 3, y, cardW, 'Consumo total', `${data.totalFuelLiters.toLocaleString('pt-BR')} L`, COLORS.warning);
+  drawSummaryCard(pdf, margin + (cardW + 3) * 2, y, cardW, 'Disponibilidade', `${data.averageAvailability.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`, COLORS.success);
+  drawSummaryCard(pdf, margin + (cardW + 3) * 3, y, cardW, 'Ranking', String(data.ranking.length), COLORS.primary);
+  y += 32;
+
+  pdf.setFillColor(...COLORS.headerBg);
+  pdf.roundedRect(margin, y, contentWidth, 8, 1, 1, 'F');
+  pdf.setFillColor(...COLORS.primary);
+  pdf.rect(margin, y, 3, 8, 'F');
+  pdf.setTextColor(...COLORS.text);
+  pdf.setFontSize(9);
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('Ranking de equipamentos por custo total', margin + 6, y + 5.5);
+  y += 10;
+
+  const colW = [44, 34, 22, 22, 18, 22, 22, 22, 22, 22];
+  const colX = [margin];
+  for (let i = 1; i < colW.length; i++) colX.push(colX[i - 1] + colW[i - 1]);
+  const headers = ['Equipamento', 'Obra', 'Comb.', 'Manut.', 'Parada h', 'Parada R$', 'Total', 'Custo/h', 'Custo/km', 'Disp.'];
+  pdf.setFillColor(220, 228, 240);
+  pdf.rect(margin, y, contentWidth, 6, 'F');
+  pdf.setFontSize(6.2);
+  pdf.setTextColor(...COLORS.textMuted);
+  headers.forEach((header, index) => pdf.text(header, colX[index] + 2, y + 4));
+  y += 6;
+
+  data.ranking.forEach((row, index) => {
+    y = checkPageBreak(pdf, y, 7);
+    if (index % 2 === 1) {
+      pdf.setFillColor(...COLORS.rowAlt);
+      pdf.rect(margin, y, contentWidth, 6.5, 'F');
+    }
+    pdf.setFontSize(6.4);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(...COLORS.text);
+    pdf.text(clipText(pdf, row.equipmentName, colW[0] - 4), colX[0] + 2, y + 4.5);
+    pdf.text(clipText(pdf, row.obraName, colW[1] - 4), colX[1] + 2, y + 4.5);
+    pdf.text(row.fuelCost.toLocaleString('pt-BR', { minimumFractionDigits: 0 }), colX[2] + 2, y + 4.5);
+    pdf.text(row.maintenanceCost.toLocaleString('pt-BR', { minimumFractionDigits: 0 }), colX[3] + 2, y + 4.5);
+    pdf.text(row.downtimeHours.toLocaleString('pt-BR', { maximumFractionDigits: 1 }), colX[4] + 2, y + 4.5);
+    pdf.text(row.downtimeCost.toLocaleString('pt-BR', { minimumFractionDigits: 0 }), colX[5] + 2, y + 4.5);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(...COLORS.primary);
+    pdf.text(row.totalCost.toLocaleString('pt-BR', { minimumFractionDigits: 0 }), colX[6] + 2, y + 4.5);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(...COLORS.textMuted);
+    pdf.text(row.costPerHour !== null ? row.costPerHour.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—', colX[7] + 2, y + 4.5);
+    pdf.text(row.costPerKm !== null ? row.costPerKm.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—', colX[8] + 2, y + 4.5);
+    pdf.text(`${row.availability.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`, colX[9] + 2, y + 4.5);
+    y += 6.5;
+  });
+
+  const totalPages = pdf.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    pdf.setPage(i);
+    addFooter(pdf, i, totalPages);
+  }
+  pdf.save('CSM_Relatorio_Executivo_Profissional.pdf');
+}
+
 // ===== CHECKLIST INDIVIDUAL PDF =====
 export interface ChecklistPDFData {
   equipmentName: string;

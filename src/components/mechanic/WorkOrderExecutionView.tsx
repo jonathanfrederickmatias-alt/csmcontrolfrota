@@ -50,6 +50,29 @@ import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { DBEquipment, DBMaintenancePlan, DBObra, DBWorkOrder, WorkOrderPart } from "@/lib/supabase-types";
 
+type WorkOrderUpdatePayload = {
+  description: string;
+  mechanic_name: string | null;
+  cause_identified: string | null;
+  maintenance_type: DBWorkOrder["maintenance_type"];
+  maintenance_plan_id: string | null;
+  service_executed: string | null;
+  technical_observations: string | null;
+  notes: string | null;
+  execution_meter: number;
+  parts: unknown;
+  part_code: string | null;
+  photo_start_url: string | null;
+  photo_end_url: string | null;
+  labor_cost: number;
+  parts_cost: number;
+  machine_released: boolean;
+  final_status: WorkOrderFinalStatus;
+  status: DBWorkOrder["status"];
+  started_at?: string;
+  completed_at?: string;
+};
+
 type RequestItem = {
   id: string;
   description: string;
@@ -248,7 +271,7 @@ export function WorkOrderExecutionView({
   const refreshOS = async () => {
     const { data } = await supabase.from("work_orders").select("*").eq("id", os.id).single();
     if (data) {
-      setOs(data as DBWorkOrder);
+      setOs(data as unknown as DBWorkOrder);
     }
   };
 
@@ -262,7 +285,7 @@ export function WorkOrderExecutionView({
     if (markAllDone) setRequestItems(nextItems);
   };
 
-  const buildPayload = (status: DBWorkOrder["status"], overrides?: Partial<DBWorkOrder>) => ({
+  const buildPayload = (status: DBWorkOrder["status"], overrides: Partial<WorkOrderUpdatePayload> = {}): WorkOrderUpdatePayload => ({
     description: diagnosis.reportedProblem,
     mechanic_name: mechanicName || null,
     cause_identified: diagnosis.causeIdentified || null,
@@ -272,7 +295,7 @@ export function WorkOrderExecutionView({
     technical_observations: execution.technicalObservations || null,
     notes: execution.technicalObservations || null,
     execution_meter: currentMeterValue,
-    parts: cleanedParts as unknown as never,
+    parts: cleanedParts as unknown,
     part_code: cleanedParts.map((part) => part.code).filter(Boolean).join(", ") || null,
     photo_start_url: evidence.photoStartUrl || null,
     photo_end_url: evidence.photoEndUrl || null,

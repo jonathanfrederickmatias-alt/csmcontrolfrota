@@ -153,7 +153,7 @@ export interface DBWorkOrder {
    parts_cost?: number;
    photo_start_url?: string;
    photo_end_url?: string;
-   parts?: WorkOrderPart[];
+   parts?: unknown;
    part_code?: string;
   started_at?: string;
   completed_at?: string;

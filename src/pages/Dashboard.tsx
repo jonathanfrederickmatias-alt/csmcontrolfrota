@@ -48,6 +48,32 @@ type EfficiencySegment = {
   metric: number;
 };
 
+type FuelMetricRecord = {
+  date: string;
+  created_at: string;
+  hour_meter: number;
+  liters: number;
+};
+
+type StatsSummary = {
+  todayChecklists: any[];
+  checklistCounts: { ok: number; attention: number; critical: number };
+  maintenanceItems: any[];
+  overdueMaintenance: any[];
+  approachingMaintenance: any[];
+  activeOrders: any[];
+  criticalOrders: any[];
+  waitingPartsOrders: any[];
+  stoppedEquipments: any[];
+  consumptionInsights: ConsumptionDetailedItem[];
+  openRequests: number;
+  inProgressRequests: number;
+  activeEquipments: number;
+  priorityRanking: PriorityRankingItem[];
+  recommendations: RecommendationItem[];
+  lowFuelCombos: any[];
+};
+
 const priorityWeights: Record<string, number> = {
   urgent: 4,
   high: 3,
@@ -191,7 +217,7 @@ export default function Dashboard() {
     [data.equipments],
   );
 
-  const stats = useMemo(() => {
+  const stats = useMemo<StatsSummary>(() => {
     const todayChecklists = data.checklists.filter((checklist: any) => checklist.date === today);
     const checklistCounts = {
       ok: data.checklists.filter((checklist: any) => checklist.status === "ok").length,
@@ -231,7 +257,7 @@ export default function Dashboard() {
     const waitingPartsOrders = activeOrders.filter((order: any) => inferWaitingParts(order));
     const stoppedEquipments = data.equipments.filter((equipment: any) => equipment.status !== "active");
 
-    const fuelMetrics = data.fuelRecords.reduce((acc: Record<string, any[]>, record: any) => {
+    const fuelMetrics = data.fuelRecords.reduce((acc: Record<string, FuelMetricRecord[]>, record: any) => {
       const targetId = record.target_equipment_id;
       const hourMeter = Number(record.hour_meter || 0);
       const liters = Number(record.liters || 0);
@@ -247,17 +273,17 @@ export default function Dashboard() {
       return acc;
     }, {});
 
-    const consumptionInsights = Object.entries(fuelMetrics)
+    const consumptionInsights = (Object.entries(fuelMetrics) as Array<[string, FuelMetricRecord[]]>)
       .map(([equipmentId, records]) => {
         const equipment = equipmentMap[equipmentId];
         if (!equipment || records.length < 3) return null;
 
         const metricType = equipment.type === "truck" ? "truck" : "equipment";
         const sortedRecords = [...records].sort(
-          (a: any, b: any) => a.date.localeCompare(b.date) || a.created_at.localeCompare(b.created_at),
+          (a, b) => a.date.localeCompare(b.date) || a.created_at.localeCompare(b.created_at),
         );
 
-        const segments = sortedRecords.reduce((acc: EfficiencySegment[], current: any, index: number) => {
+        const segments = sortedRecords.reduce((acc: EfficiencySegment[], current, index) => {
           if (index === 0) return acc;
           const previous = sortedRecords[index - 1];
           const delta = current.hour_meter - previous.hour_meter;

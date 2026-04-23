@@ -140,10 +140,33 @@ export interface DBWorkOrder {
   mechanic_name?: string;
   status: 'open' | 'in_progress' | 'done';
   notes?: string;
+   cause_identified?: string;
+   maintenance_type?: 'preventiva' | 'corretiva';
+   service_executed?: string;
+   technical_observations?: string;
+   execution_meter?: number;
+   machine_released?: boolean;
+   final_status?: 'concluida' | 'aguardando_peca' | 'servico_externo' | 'maquina_parada';
+   maintenance_plan_id?: string;
+   invoice_number?: string;
+   labor_cost?: number;
+   parts_cost?: number;
+   photo_start_url?: string;
+   photo_end_url?: string;
+   parts?: WorkOrderPart[];
+   part_code?: string;
   started_at?: string;
   completed_at?: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface WorkOrderPart {
+  code: string;
+  description: string;
+  quantity?: number;
+  unit_price?: number;
+  total_price?: number;
 }
 
 

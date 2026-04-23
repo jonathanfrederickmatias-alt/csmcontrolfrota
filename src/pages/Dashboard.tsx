@@ -295,10 +295,18 @@ export default function Dashboard() {
       },
     });
 
-    if (error) {
-      const friendlyMessage = error.message.includes("payment_required") || error.message.includes("Not enough credits")
+    const backendErrorMessage = typeof response?.userMessage === "string"
+      ? response.userMessage
+      : typeof response?.error === "string" && (response.error.includes("payment_required") || response.error.includes("Not enough credits"))
         ? "A análise operacional está temporariamente indisponível porque o crédito de IA do workspace acabou. Recarregue os créditos para gerar novas avaliações."
-        : "Não foi possível gerar a avaliação operacional agora.";
+        : typeof response?.error === "string" && response.error.includes("rate_limit")
+          ? "A análise operacional atingiu o limite momentâneo de requisições. Aguarde alguns instantes e tente novamente."
+          : null;
+
+    if (error || backendErrorMessage) {
+      const friendlyMessage = backendErrorMessage || (error?.message.includes("payment_required") || error?.message.includes("Not enough credits")
+        ? "A análise operacional está temporariamente indisponível porque o crédito de IA do workspace acabou. Recarregue os créditos para gerar novas avaliações."
+        : "Não foi possível gerar a avaliação operacional agora.");
       setAiDecisions([]);
       setAiErrorMessage(friendlyMessage);
       toast({ title: "Análise operacional indisponível", description: friendlyMessage, variant: "destructive" });

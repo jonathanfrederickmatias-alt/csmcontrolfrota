@@ -10,6 +10,7 @@ import { ClipboardCheck, CheckCircle, Loader2, AlertTriangle, ShieldCheck, Shiel
 import PhotoUpload from "@/components/PhotoUpload";
 import { toast } from "sonner";
 import { getEquipmentDisplayName } from "@/lib/equipment-display";
+import { findOpenDuplicateMaintenanceIssue } from "@/lib/maintenance-duplicates";
 
 const defaultItems = [
   "Nível de óleo do motor",
@@ -140,6 +141,16 @@ export default function ChecklistPage() {
       return;
     }
     setSavingMaintenance(true);
+    const duplicateIssue = await findOpenDuplicateMaintenanceIssue(selectedEquipment, maintenanceDesc);
+    if (duplicateIssue) {
+      setSavingMaintenance(false);
+      toast.info(duplicateIssue.osNumber
+        ? `Já existe uma OS #${duplicateIssue.osNumber} em aberto para este mesmo problema.`
+        : 'Já existe uma OS em aberto para este mesmo problema.');
+      setSaved(true);
+      setTimeout(() => { setSaved(false); resetForm(); }, 2000);
+      return;
+    }
     await supabase.from('maintenance_requests').insert({
       equipment_id: selectedEquipment,
       operator_name: operatorName,

@@ -12,6 +12,7 @@ import { ClipboardList, Loader2, Edit2, Trash2, ShieldCheck, ShieldX, AlertTrian
 import { toast } from "sonner";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { exportChecklistPDF, ChecklistPDFData } from "@/lib/pdf-export";
+import { getEquipmentDisplayName } from "@/lib/equipment-display";
 
 const statusConfig = {
   ok: { label: 'OK', icon: ShieldCheck, color: 'text-success', bg: 'bg-success/10' },
@@ -55,10 +56,7 @@ export default function ChecklistListPage() {
 
   useEffect(() => { fetchData(); }, []);
 
-  const eqLabel = (eq: DBEquipment) => {
-    const id = eq.cost_center || eq.plate || '';
-    return id ? `${eq.name} (${id})` : eq.name;
-  };
+  const eqLabel = (eq: DBEquipment) => getEquipmentDisplayName(eq);
 
   const eqName = (eqId: string) => {
     const eq = equipments.find(e => e.id === eqId);

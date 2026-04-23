@@ -1,4 +1,5 @@
 import { DBEquipment, DBFuelPriceSetting, DBMaintenanceHistory, DBObra, DBWorkOrder } from "@/lib/supabase-types";
+import { getEquipmentDisplayName } from "@/lib/equipment-display";
 
 type WorkOrderFinancialLike = DBWorkOrder & {
   parts_cost?: number | null;
@@ -117,7 +118,7 @@ export function buildMaintenanceEquipmentRows(
       const laborCost = Number(item.labor_cost || 0);
       return {
         equipmentId: item.equipment_id,
-        equipmentName: equipment?.name || "Equipamento removido",
+        equipmentName: equipment ? getEquipmentDisplayName(equipment) : "Equipamento removido",
         obraName: obraMap[equipment?.obra_id || ""] || "Sem obra",
         date: item.executed_at,
         source: "Histórico",
@@ -138,7 +139,7 @@ export function buildMaintenanceEquipmentRows(
       const laborCost = Number(item.labor_cost || 0);
       return {
         equipmentId: item.equipment_id,
-        equipmentName: equipment?.name || "Equipamento removido",
+        equipmentName: equipment ? getEquipmentDisplayName(equipment) : "Equipamento removido",
         obraName: obraMap[equipment?.obra_id || ""] || "Sem obra",
         date: item.completed_at || item.started_at || item.created_at,
         source: "OS",
@@ -204,7 +205,7 @@ export function buildExecutiveEquipmentRanking(
 
       return {
         equipmentId: equipment.id,
-        equipmentName: equipment.name,
+        equipmentName: getEquipmentDisplayName(equipment),
         obraName: obraMap[equipment.obra_id || ""] || "Sem obra",
         fuelCost,
         maintenanceCost: historyCost + orderCost,

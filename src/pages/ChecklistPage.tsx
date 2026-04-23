@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ClipboardCheck, CheckCircle, Loader2, AlertTriangle, ShieldCheck, ShieldX, Plus, Trash2 } from "lucide-react";
 import PhotoUpload from "@/components/PhotoUpload";
 import { toast } from "sonner";
+import { getEquipmentDisplayName } from "@/lib/equipment-display";
 
 const defaultItems = [
   "Nível de óleo do motor",
@@ -230,7 +231,7 @@ export default function ChecklistPage() {
                 <Select value={selectedEquipment} onValueChange={setSelectedEquipment}>
                   <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
                   <SelectContent position="popper">
-                    {equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eq.name}</SelectItem>)}
+                      {equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{getEquipmentDisplayName(eq)}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>

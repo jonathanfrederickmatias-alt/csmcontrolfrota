@@ -22,6 +22,7 @@ import { exportGeneralReportsPDF, exportProfessionalExecutivePDF, exportProfessi
 import { DBFuelPriceSetting, DBObra } from '@/lib/supabase-types';
 import { ReportExportCard } from '@/components/reports/ReportExportCard';
 import { buildExecutiveProfessionalReport, buildMaintenanceEquipmentRows, buildObraProfessionalRows, formatCurrency, formatNumber } from '@/lib/reporting';
+import { getEquipmentDisplayName } from '@/lib/equipment-display';
 
 const COLORS = ['hsl(210,80%,45%)', 'hsl(38,92%,50%)', 'hsl(142,71%,45%)', 'hsl(0,72%,51%)', 'hsl(280,70%,60%)', 'hsl(16,80%,55%)'];
 
@@ -32,8 +33,7 @@ const priorityLabels: Record<string, string> = { low: 'Baixa', medium: 'Média',
 const checklistStatusLabels: Record<string, string> = { ok: 'OK', attention: 'Atenção', critical: 'Crítico' };
 
 function eqLabel(eq: DBEquipment, maxLen = 30): string {
-  const id = eq.cost_center || eq.plate || '';
-  const full = id ? `${eq.name} (${id})` : eq.name;
+  const full = getEquipmentDisplayName(eq);
   return full.length > maxLen ? full.slice(0, maxLen) + '…' : full;
 }
 

@@ -19,10 +19,10 @@ import { exportMaintenancePlansPDF, exportMaintenanceRequestsPDF, exportMaintena
 import { calculateMaintenanceStatus } from '@/lib/maintenance-utils';
 import { useUserRoles } from '@/hooks/useUserRoles';
 import { PremiumOsWorkspace } from '@/components/maintenance/PremiumOsWorkspace';
+import { getEquipmentDisplayName } from '@/lib/equipment-display';
 
 function eqLabel(eq: DBEquipment): string {
-  const id = eq.cost_center || eq.plate || '';
-  return id ? `${eq.name} (${id})` : eq.name;
+  return getEquipmentDisplayName(eq);
 }
 
 const statusConfig = {

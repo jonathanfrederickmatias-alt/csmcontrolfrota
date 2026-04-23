@@ -14,6 +14,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import PhotoUpload from "@/components/PhotoUpload";
 import { toast } from "sonner";
 import { useUserRoles } from '@/hooks/useUserRoles';
+import { getEquipmentDisplayName, getEquipmentIdentifier } from "@/lib/equipment-display";
 
 export default function FuelPage() {
   const navigate = useNavigate();
@@ -141,8 +142,8 @@ export default function FuelPage() {
       const extras = ((r as any).extra_items || []) as FuelSupplyExtraItem[];
       return {
         Data: new Date(r.date + 'T12:00:00').toLocaleDateString('pt-BR'),
-        Comboio: combo?.name || '—',
-        Equipamento: target?.name || '—',
+        Comboio: combo ? getEquipmentDisplayName(combo) : '—',
+        Equipamento: target ? getEquipmentDisplayName(target) : '—',
         Combustível: (r as any).fuel_type || '—',
         Litros: r.liters,
         Horímetro: r.hour_meter || '',
@@ -275,8 +276,8 @@ export default function FuelPage() {
                 <div className="flex items-center gap-3 mb-3">
                   <Droplets className="w-6 h-6 text-primary" />
                   <div>
-                    <h3 className="font-bold">{c.name}</h3>
-                    <p className="text-xs text-muted-foreground">{c.plate || 'Sem placa'}</p>
+                      <h3 className="font-bold">{getEquipmentDisplayName(c)}</h3>
+                      <p className="text-xs text-muted-foreground">{getEquipmentIdentifier(c) || 'Sem identificação'}</p>
                   </div>
                 </div>
                 <div className="flex items-end justify-between mb-2">
@@ -306,13 +307,13 @@ export default function FuelPage() {
             <div><Label>Comboio {!hasExtraItems && '*'}</Label>
               <Select value={comboId} onValueChange={setComboId}>
                 <SelectTrigger><SelectValue placeholder="Selecionar comboio..." /></SelectTrigger>
-                <SelectContent>{combos.map(c => <SelectItem key={c.id} value={c.id}>{c.name} ({c.current_fuel || 0}L)</SelectItem>)}</SelectContent>
+                <SelectContent>{combos.map(c => <SelectItem key={c.id} value={c.id}>{getEquipmentDisplayName(c)} ({c.current_fuel || 0}L)</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div><Label>Equipamento Destino {!hasExtraItems && '*'}</Label>
               <Select value={targetId} onValueChange={setTargetId}>
                 <SelectTrigger><SelectValue placeholder="Selecionar máquina..." /></SelectTrigger>
-                <SelectContent>{targets.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
+                <SelectContent>{targets.map(t => <SelectItem key={t.id} value={t.id}>{getEquipmentDisplayName(t)}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div>

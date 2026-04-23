@@ -26,6 +26,7 @@ import QREquipamento from "@/pages/qr/QREquipamento";
 import QRMechanicOS from "@/pages/qr/QRMechanicOS";
 import QRPrintPage from "@/pages/QRPrintPage";
 import MechanicDashboardPage from "@/pages/MechanicDashboardPage";
+import ExecutiveDashboardPage from "@/pages/ExecutiveDashboardPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -61,6 +62,7 @@ const App = () => (
                     <Route path="/reabastecimento" element={<FuelSupplyPage />} />
                     <Route path="/seguros" element={<SegurosPage />} />
                     <Route path="/relatorios" element={<ReportsPage />} />
+                    <Route path="/executivo" element={<ExecutiveDashboardPage />} />
                     <Route path="/qrcode" element={<QRCodePage />} />
                     <Route path="/pedido-manutencao" element={<MaintenanceRequestPage />} />
                     <Route path="/obras" element={<ObrasPage />} />

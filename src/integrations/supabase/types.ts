@@ -159,6 +159,30 @@ export type Database = {
         }
         Relationships: []
       }
+      fuel_price_settings: {
+        Row: {
+          created_at: string
+          fuel_type: string
+          id: string
+          unit_price: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          fuel_type: string
+          id?: string
+          unit_price?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          fuel_type?: string
+          id?: string
+          unit_price?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       fuel_records: {
         Row: {
           combo_equipment_id: string | null

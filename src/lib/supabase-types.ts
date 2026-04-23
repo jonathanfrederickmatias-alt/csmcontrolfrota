@@ -145,3 +145,12 @@ export interface DBWorkOrder {
   created_at: string;
   updated_at: string;
 }
+
+
+export interface DBFuelPriceSetting {
+  id: string;
+  fuel_type: string;
+  unit_price: number;
+  created_at: string;
+  updated_at: string;
+}

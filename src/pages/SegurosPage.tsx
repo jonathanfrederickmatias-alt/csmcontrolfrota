@@ -12,7 +12,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Plus, Pencil, Trash2, ShieldCheck, AlertTriangle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { format, differenceInDays, parseISO } from "date-fns";
+
+const parseDate = (value: string) => new Date(`${value}T12:00:00`);
+const formatShortDate = (value: string) => parseDate(value).toLocaleDateString("pt-BR");
+const differenceInDays = (endDate: string, baseDate = new Date()) => {
+  const diffMs = parseDate(endDate).getTime() - baseDate.getTime();
+  return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+};
 
 interface InsuranceRecord {
   id: string;
@@ -128,7 +134,7 @@ export default function SegurosPage() {
   };
 
   const getStatusBadge = (endDate: string) => {
-    const days = differenceInDays(parseISO(endDate), new Date());
+    const days = differenceInDays(endDate);
     if (days < 0) return <Badge variant="destructive" className="gap-1"><AlertTriangle className="w-3 h-3" /> Vencido</Badge>;
     if (days <= 15) return <Badge className="bg-yellow-500 hover:bg-yellow-600 gap-1"><AlertTriangle className="w-3 h-3" /> Vence em {days}d</Badge>;
     return <Badge className="bg-green-600 hover:bg-green-700 gap-1"><ShieldCheck className="w-3 h-3" /> Vigente</Badge>;
@@ -237,7 +243,7 @@ export default function SegurosPage() {
                   <TableCell>{r.insurance_company}</TableCell>
                   <TableCell>{r.policy_number || "—"}</TableCell>
                   <TableCell className="text-sm">
-                    {format(parseISO(r.start_date), "dd/MM/yy")} — {format(parseISO(r.end_date), "dd/MM/yy")}
+                    {formatShortDate(r.start_date)} — {formatShortDate(r.end_date)}
                   </TableCell>
                   <TableCell>{getStatusBadge(r.end_date)}</TableCell>
                   <TableCell>

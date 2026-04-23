@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { DBEquipment, DBFuelRecord, DBChecklist, DBMaintenancePlan, DBWorkOrder, DBMaintenanceHistory } from '@/lib/supabase-types';
 
@@ -12,12 +12,16 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
 } from 'recharts';
-import { BarChart2, Droplets, Clock, Wrench, Calendar, FileSpreadsheet, FileText, Filter, ClipboardList, Clipboard, Info, Calculator } from 'lucide-react';
+import { BarChart2, Building2, Droplets, Clock, Wrench, Calendar, FileSpreadsheet, FileText, Filter, ClipboardList, Clipboard, Info, Calculator, Presentation, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import * as XLSX from 'xlsx';
-import { exportGeneralReportsPDF } from '@/lib/pdf-export';
+import { exportGeneralReportsPDF, exportProfessionalExecutivePDF, exportProfessionalMaintenancePDF, exportProfessionalObraPDF } from '@/lib/pdf-export';
+import { DBFuelPriceSetting, DBObra } from '@/lib/supabase-types';
+import { ReportExportCard } from '@/components/reports/ReportExportCard';
+import { buildExecutiveProfessionalReport, buildMaintenanceEquipmentRows, buildObraProfessionalRows, formatCurrency, formatNumber } from '@/lib/reporting';
 
 const COLORS = ['hsl(210,80%,45%)', 'hsl(38,92%,50%)', 'hsl(142,71%,45%)', 'hsl(0,72%,51%)', 'hsl(280,70%,60%)', 'hsl(16,80%,55%)'];
 
@@ -42,6 +46,8 @@ export default function ReportsPage() {
   const [plans, setPlans] = useState<DBMaintenancePlan[]>([]);
   const [workOrders, setWorkOrders] = useState<DBWorkOrder[]>([]);
   const [maintenanceHistory, setMaintenanceHistory] = useState<DBMaintenanceHistory[]>([]);
+  const [obras, setObras] = useState<DBObra[]>([]);
+  const [fuelPriceSettings, setFuelPriceSettings] = useState<DBFuelPriceSetting[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -49,7 +55,7 @@ export default function ReportsPage() {
       setLoading(true);
       const cutoff = period === 'all' ? null : new Date(Date.now() - parseInt(period) * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-      const [eqRes, frRes, clRes, mpRes, osRes, mhRes] = await Promise.all([
+      const [eqRes, frRes, clRes, mpRes, osRes, mhRes, obraRes, fuelPriceRes] = await Promise.all([
         supabase.from('equipments').select('*'),
         cutoff
           ? supabase.from('fuel_records').select('*').gte('date', cutoff).order('date')
@@ -64,6 +70,8 @@ export default function ReportsPage() {
         cutoff
           ? supabase.from('maintenance_history').select('*').gte('executed_at', cutoff + 'T00:00:00').order('executed_at', { ascending: false })
           : supabase.from('maintenance_history').select('*').order('executed_at', { ascending: false }),
+        supabase.from('obras').select('*').order('name'),
+        supabase.from('fuel_price_settings').select('*').order('fuel_type'),
       ]);
 
       setEquipments((eqRes.data || []) as DBEquipment[]);
@@ -72,6 +80,8 @@ export default function ReportsPage() {
       setPlans((mpRes.data || []) as DBMaintenancePlan[]);
       setWorkOrders((osRes.data || []) as DBWorkOrder[]);
       setMaintenanceHistory((mhRes.data || []) as DBMaintenanceHistory[]);
+      setObras((obraRes.data || []) as DBObra[]);
+      setFuelPriceSettings((fuelPriceRes.data || []) as DBFuelPriceSetting[]);
       setLoading(false);
     };
     fetchAll();
@@ -216,6 +226,21 @@ export default function ReportsPage() {
 
   const selectedEqName = selectedEquipment === 'all' ? 'Todos' : equipments.find(e => e.id === selectedEquipment)?.name || '';
 
+  const maintenanceProfessionalRows = useMemo(
+    () => buildMaintenanceEquipmentRows(equipments, obras, workOrders as any, maintenanceHistory, selectedEquipment === 'all' ? undefined : selectedEquipment),
+    [equipments, obras, workOrders, maintenanceHistory, selectedEquipment],
+  );
+
+  const obraProfessionalRows = useMemo(
+    () => buildObraProfessionalRows(equipments, obras, filteredFuel as any, workOrders as any, maintenanceHistory, fuelPriceSettings),
+    [equipments, obras, filteredFuel, workOrders, maintenanceHistory, fuelPriceSettings],
+  );
+
+  const executiveProfessionalReport = useMemo(
+    () => buildExecutiveProfessionalReport(filteredEquipments, obras, filteredFuel as any, filteredOrders as any, filteredHistory, fuelPriceSettings),
+    [filteredEquipments, obras, filteredFuel, filteredOrders, filteredHistory, fuelPriceSettings],
+  );
+
   const exportExcel = () => {
     const wb = XLSX.utils.book_new();
     const suffix = selectedEquipment === 'all' ? '' : `_${selectedEqName}`;
@@ -339,6 +364,87 @@ export default function ReportsPage() {
     });
   };
 
+  const exportMaintenanceExcel = () => {
+    const wb = XLSX.utils.book_new();
+    const sheet = XLSX.utils.json_to_sheet(maintenanceProfessionalRows.map((row) => ({
+      Equipamento: row.equipmentName,
+      Obra: row.obraName,
+      Data: new Date(row.date).toLocaleDateString('pt-BR'),
+      Origem: row.source,
+      Descrição: row.description,
+      'Peças Trocadas': row.parts,
+      'Custo Peças': row.partsCost,
+      'Custo Serviços': row.laborCost,
+      'Custo Total': row.totalCost,
+      Status: row.status,
+    })));
+    XLSX.utils.book_append_sheet(wb, sheet, 'Manutencao');
+    XLSX.writeFile(wb, `CSM_Relatorio_Manutencao_${selectedEqName || 'Todos'}.xlsx`);
+  };
+
+  const exportObraExcel = () => {
+    const wb = XLSX.utils.book_new();
+    const sheet = XLSX.utils.json_to_sheet(obraProfessionalRows.map((row) => ({
+      Obra: row.obraName,
+      Cliente: row.client,
+      Contrato: row.contractNumber,
+      Equipamentos: row.equipmentsUsed.join(', '),
+      'Consumo (L)': row.totalFuelLiters,
+      'Custo Combustível': row.totalFuelCost,
+      'Custo Manutenção': row.totalMaintenanceCost,
+      'Tempo Parado (h)': row.totalDowntimeHours,
+      'Custo Parada': row.totalDowntimeCost,
+      'Custo Total': row.totalCost,
+    })));
+    XLSX.utils.book_append_sheet(wb, sheet, 'Obras');
+    XLSX.writeFile(wb, 'CSM_Relatorio_Obras_Profissional.xlsx');
+  };
+
+  const exportExecutiveExcel = () => {
+    const wb = XLSX.utils.book_new();
+    const summarySheet = XLSX.utils.json_to_sheet([
+      {
+        'Custo Total': executiveProfessionalReport.totalCost,
+        'Consumo Total (L)': executiveProfessionalReport.totalFuelLiters,
+        'Disponibilidade Média (%)': executiveProfessionalReport.averageAvailability,
+      },
+    ]);
+    const rankingSheet = XLSX.utils.json_to_sheet(executiveProfessionalReport.ranking.map((row) => ({
+      Equipamento: row.equipmentName,
+      Obra: row.obraName,
+      'Custo Combustível': row.fuelCost,
+      'Custo Manutenção': row.maintenanceCost,
+      'Horas Paradas': row.downtimeHours,
+      'Custo Parada': row.downtimeCost,
+      'Custo Total': row.totalCost,
+      'Custo/Hora': row.costPerHour,
+      'Custo/Km': row.costPerKm,
+      'Disponibilidade (%)': row.availability,
+    })));
+    XLSX.utils.book_append_sheet(wb, summarySheet, 'Resumo');
+    XLSX.utils.book_append_sheet(wb, rankingSheet, 'Ranking');
+    XLSX.writeFile(wb, 'CSM_Relatorio_Executivo_Profissional.xlsx');
+  };
+
+  const exportMaintenancePDF = () => exportProfessionalMaintenancePDF({
+    filterName: selectedEqName || 'Todos os equipamentos',
+    generatedPeriod: periodLabels[period],
+    rows: maintenanceProfessionalRows,
+  });
+
+  const exportObraPDF = () => exportProfessionalObraPDF({
+    generatedPeriod: periodLabels[period],
+    rows: obraProfessionalRows,
+  });
+
+  const exportExecutivePDF = () => exportProfessionalExecutivePDF({
+    generatedPeriod: periodLabels[period],
+    totalCost: executiveProfessionalReport.totalCost,
+    totalFuelLiters: executiveProfessionalReport.totalFuelLiters,
+    averageAvailability: executiveProfessionalReport.averageAvailability,
+    ranking: executiveProfessionalReport.ranking,
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
@@ -388,6 +494,85 @@ export default function ReportsPage() {
           </Button>
         )}
       </div>
+
+      <section className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+        <Card className="border-border/70 bg-card/95 shadow-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg font-black">
+              <Presentation className="h-5 w-5 text-primary" />
+              Relatórios profissionais prontos para apresentação
+            </CardTitle>
+            <CardDescription>
+              Saídas executivas em PDF e Excel com padrão empresa/concessionária para manutenção, obra e visão consolidada.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4 md:grid-cols-3">
+            <ReportExportCard
+              title="Manutenção por equipamento"
+              description="Histórico completo, peças trocadas, datas e custos por ativo."
+              icon={<Wrench className="h-4 w-4 text-primary" />}
+              bullets={[
+                `${maintenanceProfessionalRows.length} lançamentos consolidados`,
+                `Custo total ${formatCurrency(maintenanceProfessionalRows.reduce((sum, row) => sum + row.totalCost, 0))}`,
+                'Formato técnico para entrega a oficinas e concessionárias',
+              ]}
+              onExportPdf={exportMaintenancePDF}
+              onExportExcel={exportMaintenanceExcel}
+            />
+            <ReportExportCard
+              title="Relatório por obra"
+              description="Consumo, custo e equipamentos utilizados por frente operacional."
+              icon={<Building2 className="h-4 w-4 text-primary" />}
+              bullets={[
+                `${obraProfessionalRows.length} obras analisadas`,
+                `Consumo total ${formatNumber(obraProfessionalRows.reduce((sum, row) => sum + row.totalFuelLiters, 0), 0)} L`,
+                'Resumo financeiro com parada e manutenção',
+              ]}
+              onExportPdf={exportObraPDF}
+              onExportExcel={exportObraExcel}
+            />
+            <ReportExportCard
+              title="Relatório executivo"
+              description="Custo total, disponibilidade e ranking de equipamentos mais caros."
+              icon={<ShieldCheck className="h-4 w-4 text-primary" />}
+              bullets={[
+                `Custo total ${formatCurrency(executiveProfessionalReport.totalCost)}`,
+                `Disponibilidade média ${formatNumber(executiveProfessionalReport.averageAvailability)}%`,
+                'Visual corporativo pronto para diretoria',
+              ]}
+              onExportPdf={exportExecutivePDF}
+              onExportExcel={exportExecutiveExcel}
+            />
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/70 bg-card/95 shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-base font-black text-foreground">Resumo executivo do período</CardTitle>
+            <CardDescription>Indicadores consolidados para acompanhar custo, consumo e disponibilidade.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 gap-3">
+            <div className="rounded-lg border border-border bg-secondary/20 p-4">
+              <p className="text-xs text-muted-foreground">Custo consolidado</p>
+              <p className="mt-2 text-2xl font-black text-foreground">{formatCurrency(executiveProfessionalReport.totalCost)}</p>
+            </div>
+            <div className="rounded-lg border border-border bg-secondary/20 p-4">
+              <p className="text-xs text-muted-foreground">Disponibilidade média</p>
+              <p className="mt-2 text-2xl font-black text-foreground">{formatNumber(executiveProfessionalReport.averageAvailability)}%</p>
+            </div>
+            <div className="rounded-lg border border-border bg-secondary/20 p-4">
+              <p className="text-xs text-muted-foreground">Top obra por custo</p>
+              <p className="mt-2 text-sm font-black text-foreground">{obraProfessionalRows[0]?.obraName || '—'}</p>
+              <p className="text-xs text-muted-foreground">{obraProfessionalRows[0] ? formatCurrency(obraProfessionalRows[0].totalCost) : 'Sem dados'}</p>
+            </div>
+            <div className="rounded-lg border border-border bg-secondary/20 p-4">
+              <p className="text-xs text-muted-foreground">Equipamento mais caro</p>
+              <p className="mt-2 text-sm font-black text-foreground">{executiveProfessionalReport.ranking[0]?.equipmentName || '—'}</p>
+              <p className="text-xs text-muted-foreground">{executiveProfessionalReport.ranking[0] ? formatCurrency(executiveProfessionalReport.ranking[0].totalCost) : 'Sem dados'}</p>
+            </div>
+          </CardContent>
+        </Card>
+      </section>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">

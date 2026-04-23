@@ -112,7 +112,7 @@ export default function MechanicDashboardPage() {
   if (selectedOS) {
     return (
       <WorkOrderExecutionView
-        initialOS={selectedOS as unknown as any}
+        initialOS={selectedOS as unknown as DBWorkOrder}
         equipment={equipments[selectedOS.equipment_id] || null}
         obra={obras[equipments[selectedOS.equipment_id]?.obra_id || ''] || null}
         onBack={() => { setSelectedOS(null); fetchData(); }}

@@ -48,7 +48,13 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { DBEquipment, DBMaintenancePlan, DBObra, DBWorkOrder, WorkOrderPart } from "@/lib/supabase-types";
+import { DBEquipment, DBMaintenancePlan, DBWorkOrder, WorkOrderPart } from "@/lib/supabase-types";
+
+type WorkOrderObraSummary = {
+  id: string;
+  name: string;
+  location?: string | null;
+};
 
 type WorkOrderUpdatePayload = {
   description: string;
@@ -163,7 +169,7 @@ export function WorkOrderExecutionView({
 }: {
   initialOS: DBWorkOrder;
   equipment: DBEquipment | null;
-  obra: DBObra | null;
+  obra: WorkOrderObraSummary | null;
   onBack: () => void;
 }) {
   const [os, setOs] = useState<DBWorkOrder>(initialOS);

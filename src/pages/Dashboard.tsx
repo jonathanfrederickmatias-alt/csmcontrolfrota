@@ -34,6 +34,13 @@ import {
   AIMaintenanceDecision,
   AIMaintenanceDecisionsSection,
 } from "@/components/dashboard/AIMaintenanceDecisionsSection";
+import {
+  OperationalCommandDeck,
+  PriorityNowSection,
+  type ExecutiveSignalItem,
+  type PriorityNowItem,
+  type QuickActionItem,
+} from "@/components/dashboard/PremiumOperationsSections";
 import { Camera, MessageSquare, ShieldCheck, ShieldX } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
@@ -270,6 +277,8 @@ export default function Dashboard() {
                 maintenanceType: item.maintenanceType === "corrective" ? "corrective" : "preventive",
                 suggestedParts: Array.isArray(item.suggestedParts) ? item.suggestedParts.filter(Boolean) : [],
                 downtimeHours: Number(item.downtimeHours || 0),
+                operationalImpact: item.operationalImpact || `Impacto estimado de ${Number(item.downtimeHours || 0).toFixed(1)}h na disponibilidade operacional.`,
+                technicalReason: item.technicalReason || item.reason || "Sem justificativa detalhada.",
                 autoCreateOS: item.autoCreateOS !== false,
               } satisfies AIMaintenanceDecisionPayload;
             })

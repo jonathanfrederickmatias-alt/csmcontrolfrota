@@ -1,5 +1,12 @@
 import { DBEquipment, DBFuelPriceSetting, DBMaintenanceHistory, DBObra, DBWorkOrder } from "@/lib/supabase-types";
 
+type WorkOrderFinancialLike = DBWorkOrder & {
+  parts_cost?: number | null;
+  labor_cost?: number | null;
+  parts?: unknown;
+  part_code?: string | null;
+};
+
 export type ReportType = "maintenance" | "obra" | "executive";
 
 export interface MaintenanceEquipmentReportRow {
@@ -92,7 +99,7 @@ export function buildFuelPriceMap(settings: DBFuelPriceSetting[]) {
 export function buildMaintenanceEquipmentRows(
   equipments: DBEquipment[],
   obras: DBObra[],
-  workOrders: DBWorkOrder[],
+  workOrders: WorkOrderFinancialLike[],
   maintenanceHistory: DBMaintenanceHistory[],
   selectedEquipmentId?: string,
 ) {
@@ -151,7 +158,7 @@ export function buildExecutiveEquipmentRanking(
   equipments: DBEquipment[],
   obras: DBObra[],
   fuelRecords: FuelRecordLike[],
-  workOrders: DBWorkOrder[],
+  workOrders: WorkOrderFinancialLike[],
   maintenanceHistory: DBMaintenanceHistory[],
   fuelPriceSettings: DBFuelPriceSetting[],
 ) {
@@ -216,7 +223,7 @@ export function buildObraProfessionalRows(
   equipments: DBEquipment[],
   obras: DBObra[],
   fuelRecords: FuelRecordLike[],
-  workOrders: DBWorkOrder[],
+  workOrders: WorkOrderFinancialLike[],
   maintenanceHistory: DBMaintenanceHistory[],
   fuelPriceSettings: DBFuelPriceSetting[],
 ) {
@@ -287,7 +294,7 @@ export function buildExecutiveProfessionalReport(
   equipments: DBEquipment[],
   obras: DBObra[],
   fuelRecords: FuelRecordLike[],
-  workOrders: DBWorkOrder[],
+  workOrders: WorkOrderFinancialLike[],
   maintenanceHistory: DBMaintenanceHistory[],
   fuelPriceSettings: DBFuelPriceSetting[],
 ) {

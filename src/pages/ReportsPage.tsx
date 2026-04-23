@@ -126,9 +126,9 @@ export default function ReportsPage() {
 
   // Fuel efficiency (km/l or l/h)
   const fuelEfficiency = (() => {
-    // Group ALL fuel records (not just filtered period) by target equipment, need full history for delta calc
+    const EFFICIENCY_WINDOW = 10;
     const allFuelByEq: Record<string, { date: string; hour_meter: number; liters: number }[]> = {};
-    // Use filteredFuel which already respects period + equipment filter
+
     filteredFuel.forEach(r => {
       const hm = Number((r as any).hour_meter);
       if (!hm || hm <= 0) return;
@@ -145,16 +145,20 @@ export default function ReportsPage() {
       const eq = equipments.find(e => e.id === eqId);
       if (!eq) return;
 
-      // Sort by date then hour_meter
-      records.sort((a, b) => a.date.localeCompare(b.date) || a.hour_meter - b.hour_meter);
+      // Sort by date then hour_meter and keep only the latest window of markings
+      const recentRecords = [...records]
+        .sort((a, b) => a.date.localeCompare(b.date) || a.hour_meter - b.hour_meter)
+        .slice(-EFFICIENCY_WINDOW);
+
+      if (recentRecords.length < 2) return;
 
       let totalDelta = 0;
       let totalLiters = 0;
-      for (let i = 1; i < records.length; i++) {
-        const delta = records[i].hour_meter - records[i - 1].hour_meter;
+      for (let i = 1; i < recentRecords.length; i++) {
+        const delta = recentRecords[i].hour_meter - recentRecords[i - 1].hour_meter;
         if (delta > 0) {
           totalDelta += delta;
-          totalLiters += records[i].liters;
+          totalLiters += recentRecords[i].liters;
         }
       }
 
@@ -711,7 +715,7 @@ export default function ReportsPage() {
               Eficiência de Combustível (km/L ou L/h)
             </h2>
             <p className="text-xs text-muted-foreground mb-3">
-              Calculado pela diferença de horímetro/hodômetro entre abastecimentos consecutivos.
+              Calculado pelos até 10 abastecimentos mais recentes com horímetro/hodômetro preenchido.
               Caminhões = km/L • Máquinas = L/h
             </p>
             {fuelEfficiency.length === 0 ? (

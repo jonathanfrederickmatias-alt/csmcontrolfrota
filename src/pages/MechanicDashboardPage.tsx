@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Wrench, Loader2, CheckCircle, Clock, AlertTriangle, CalendarClock,
-  ChevronRight, Filter, ClipboardList, UserRound, Building2
+  ChevronRight, Filter, ClipboardList, UserRound, Building2, PlayCircle, ShieldCheck, CircleAlert
 } from "lucide-react";
 import { WorkOrderExecutionView } from "@/components/mechanic/WorkOrderExecutionView";
 import {
@@ -48,6 +48,13 @@ const statusColors: Record<string, string> = {
   open: 'border-warning/30 bg-warning/10 text-warning',
   in_progress: 'border-primary/30 bg-primary/10 text-primary',
   done: 'border-success/30 bg-success/10 text-success',
+};
+
+const priorityCardTone: Record<string, string> = {
+  low: 'border-border/70',
+  medium: 'border-warning/25',
+  high: 'border-warning/40',
+  urgent: 'border-destructive/35',
 };
 
 export default function MechanicDashboardPage() {
@@ -114,13 +121,18 @@ export default function MechanicDashboardPage() {
   return (
     <div className="space-y-6">
       <div className="space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-primary/20 bg-primary/10">
+        <div className="rounded-lg border border-border/70 bg-card px-4 py-4 shadow-sm sm:px-5">
+          <div className="flex items-start gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-primary/20 bg-primary/10">
             <Wrench className="w-5 h-5 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-black text-foreground">Painel do Mecânico</h1>
-            <p className="text-sm text-muted-foreground">Fila operacional com leitura rápida, prioridade visual e execução rastreável.</p>
+            </div>
+            <div className="space-y-1">
+              <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-primary">
+                <ShieldCheck className="h-3.5 w-3.5" /> Operação da oficina
+              </div>
+              <h1 className="text-2xl font-black text-foreground">Painel do Mecânico</h1>
+              <p className="text-sm text-muted-foreground">Fila premium com leitura imediata, ações grandes para mobile e rastreabilidade operacional completa.</p>
+            </div>
           </div>
         </div>
 
@@ -168,11 +180,11 @@ export default function MechanicDashboardPage() {
           {filteredOrders.map(order => {
             const eq = equipments[order.equipment_id];
             const obra = obras[eq?.obra_id || ''];
+            const priorityTone = priorityCardTone[order.priority] || priorityCardTone.medium;
             return (
-              <button
+              <div
                 key={order.id}
-                onClick={() => setSelectedOS(order)}
-                className="w-full rounded-lg border border-border/70 bg-card p-4 text-left shadow-sm transition-all hover:border-primary/30 hover:shadow-md"
+                className={`rounded-lg border bg-card p-4 text-left shadow-sm transition-all hover:shadow-md ${priorityTone}`}
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0 flex-1 space-y-3">
@@ -190,6 +202,12 @@ export default function MechanicDashboardPage() {
                       <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{order.description}</p>
                     </div>
 
+                    {order.priority === 'urgent' && (
+                      <div className="inline-flex items-center gap-1.5 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-1.5 text-xs text-destructive">
+                        <CircleAlert className="h-3.5 w-3.5" /> Atendimento imediato recomendado
+                      </div>
+                    )}
+
                     <div className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-2 lg:grid-cols-4">
                       <div className="flex items-center gap-2"><ClipboardList className="h-3.5 w-3.5 text-primary" /><span>{order.mechanic_name || 'Sem mecânico'}</span></div>
                       <div className="flex items-center gap-2"><CalendarClock className="h-3.5 w-3.5 text-primary" /><span>{new Date(order.created_at).toLocaleDateString('pt-BR')}</span></div>
@@ -204,15 +222,26 @@ export default function MechanicDashboardPage() {
                       </div>
                     )}
                   </div>
-                  <div className="flex shrink-0 items-center gap-3 self-center">
-                    <div className="hidden text-right text-xs text-muted-foreground sm:block">
-                      <p className="font-medium text-foreground">Abrir execução</p>
-                      <p>Detalhes completos da OS</p>
-                    </div>
-                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                  <div className="flex shrink-0 flex-col gap-2 self-center sm:min-w-[190px]">
+                    {order.status === 'open' && (
+                      <button onClick={() => setSelectedOS(order)} className="inline-flex h-11 items-center justify-between rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
+                        <span className="inline-flex items-center gap-2"><PlayCircle className="h-4 w-4" /> Iniciar serviço</span>
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    )}
+                    {order.status !== 'open' && (
+                      <button onClick={() => setSelectedOS(order)} className="inline-flex h-11 items-center justify-between rounded-md border border-input bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground">
+                        <span className="inline-flex items-center gap-2"><Wrench className="h-4 w-4" /> Ver detalhes</span>
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    )}
+                    <button onClick={() => setSelectedOS(order)} className="inline-flex h-11 items-center justify-between rounded-md border border-input bg-background px-4 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground">
+                      <span className="inline-flex items-center gap-2"><UserRound className="h-4 w-4" /> Atribuir mecânico</span>
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
                   </div>
                 </div>
-              </button>
+              </div>
             );
           })}
         </div>

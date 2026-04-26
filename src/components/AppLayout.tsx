@@ -25,8 +25,10 @@ const allNavItems = [
   { to: "/qrcode", label: "QR Code", icon: QrCode, roles: ['admin', 'gestor'] },
   { to: "/usuarios", label: "Usuários", icon: Users, roles: ['admin', 'gestor'] },
   { to: "/empresas", label: "Empresas", icon: Building2, roles: ['admin'] },
-  { to: "/configuracoes/empresa", label: "Configurações da Empresa", icon: Settings, roles: ['admin'] },
+  { to: "/configuracoes/empresa", match: ["/configuracoes/empresa"], label: "Configurações da Empresa", icon: Settings, roles: ['administrador', 'admin', 'super_admin', 'super-admin', 'owner'] },
 ];
+
+const COMPANY_SETTINGS_PATH = "/configuracoes/empresa";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
@@ -42,7 +44,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // Filter nav items based on user roles; if no roles yet, show nothing (loading)
   const navItems = rolesLoading
     ? []
-    : allNavItems.filter(item => item.roles.some(r => roles.includes(r as any)));
+    : allNavItems.filter(item => {
+        if (item.to === COMPANY_SETTINGS_PATH) return true;
+        return item.roles.some(r => roles.includes(r as any));
+      });
 
   return (
     <div className="min-h-screen bg-background/80 lg:grid lg:grid-cols-[280px_minmax(0,1fr)]">

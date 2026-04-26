@@ -746,174 +746,130 @@ export default function Dashboard() {
     };
   }, [data.checklists, data.combos, data.equipments, data.fuelPriceSettings, data.fuelRecords, data.plans, data.requests, data.workOrders, equipmentMap, navigate, today]);
 
-  const actionableAlerts = useMemo<ActionableAlertItem[]>(
-    () => [
-      {
-        id: "overdue-maintenance",
-        label: "Manutenção atrasada",
-        value: stats.overdueMaintenance.length,
-        description: "Equipamentos que já ultrapassaram o ponto de revisão e precisam de despacho imediato.",
-        icon: AlertTriangle,
-        tone: stats.overdueMaintenance.length > 0 ? "critical" : "ok",
-        actions: [
-          {
-            label: "Gerar OS automática",
-            variant: stats.overdueMaintenance.length > 0 ? "destructive" : "outline",
-            onClick: () => navigate("/pedido-manutencao"),
-          },
-          {
-            label: "Programar manutenção",
-            onClick: () => navigate("/manutencao"),
-          },
-        ],
-      },
-      {
-        id: "critical-os",
-        label: "OS críticas",
-        value: stats.criticalOrders.length,
-        description: "Ordens com prioridade alta ou urgente que ainda impactam a disponibilidade da frota.",
-        icon: Wrench,
-        tone: stats.criticalOrders.length > 0 ? "critical" : "ok",
-        actions: [
-          {
-            label: "Atribuir mecânico",
-            variant: stats.criticalOrders.length > 0 ? "destructive" : "outline",
-            onClick: () => navigate("/mecanico"),
-          },
-          {
-            label: "Priorizar",
-            onClick: () => navigate("/manutencao"),
-          },
-        ],
-      },
-      {
-        id: "stopped-equipments",
-        label: "Equipamentos parados",
-        value: stats.stoppedEquipments.length,
-        description: "Ativos indisponíveis ou em manutenção, com risco direto à produção em campo.",
-        icon: PauseCircle,
-        tone: stats.stoppedEquipments.length > 0 ? "critical" : "ok",
-        actions: [
-          {
-            label: "Ver disponibilidade",
-            onClick: () => navigate("/equipamentos"),
-          },
-          {
-            label: "Abrir manutenção",
-            onClick: () => navigate("/manutencao"),
-          },
-        ],
-      },
-      {
-        id: "abnormal-consumption",
-        label: "Consumo anormal",
-        value: stats.consumptionInsights.length,
-        description: "Desvio calculado com unidade correta e comparação contra média histórica real dos últimos 60 dias.",
-        icon: Truck,
-        tone: stats.consumptionInsights.length > 0 ? "critical" : "ok",
-        actions: [
-          {
-            label: "Abrir análise de consumo",
-            variant: stats.consumptionInsights.length > 0 ? "destructive" : "outline",
-            onClick: () => navigate("/relatorios"),
-          },
-          {
-            label: "Comparar histórico",
-            onClick: () => navigate("/abastecimento"),
-          },
-        ],
-      },
-      {
-        id: "data-anomalies",
-        label: "Dados inconsistentes",
-        value: stats.anomalies.length,
-        description: "Equipamentos com anomalias de horímetro/consumo que exigem validação antes de automações.",
-        icon: AlertTriangle,
-        tone: stats.anomalies.some((item) => item.blocksAutoOs) ? "critical" : stats.anomalies.length > 0 ? "warning" : "ok",
-        actions: [
-          {
-            label: "Filtrar anomalias",
-            variant: stats.anomalies.length > 0 ? "destructive" : "outline",
-            onClick: () => setAnomalyFilter("blocked"),
-          },
-          {
-            label: "Abrir equipamentos",
-            onClick: () => navigate("/equipamentos"),
-          },
-        ],
-      },
-    ],
-    [navigate, stats.anomalies, stats.consumptionInsights.length, stats.criticalOrders.length, stats.overdueMaintenance.length, stats.stoppedEquipments.length],
-  );
+  /* ----- Diagnóstico automático calculado a partir dos dados ao vivo ----- */
+  const autoDiagnostic = useMemo<AutoDiagnosticData>(() => {
+    const overdue = stats.overdueMaintenance.length;
+    const critical = stats.criticalOrders.length;
+    const stopped = stats.stoppedEquipments.length;
+    const abnormal = stats.consumptionInsights.length;
+    const blockingAnomalies = stats.anomalies.filter((item) => item.blocksAutoOs).length;
 
-  const commandDeckItems = useMemo<ExecutiveSignalItem[]>(() => [
+    let level: RiskLevel = "low";
+    if (critical >= 5 || overdue >= 8 || stopped >= 5 || blockingAnomalies >= 3) level = "critical";
+    else if (critical >= 2 || overdue >= 3 || stopped >= 2 || abnormal >= 3) level = "high";
+    else if (critical >= 1 || overdue >= 1 || stopped >= 1 || abnormal >= 1) level = "medium";
+
+    const evidence: string[] = [];
+    if (overdue > 0) evidence.push(`${overdue} preventiva${overdue === 1 ? "" : "s"} vencida${overdue === 1 ? "" : "s"}.`);
+    if (critical > 0) evidence.push(`${critical} OS crítica${critical === 1 ? "" : "s"} sem conclusão.`);
+    if (stopped > 0) evidence.push(`${stopped} equipamento${stopped === 1 ? "" : "s"} parado${stopped === 1 ? "" : "s"} agora.`);
+    if (abnormal > 0) evidence.push(`${abnormal} ativo${abnormal === 1 ? "" : "s"} com consumo acima da média.`);
+    if (blockingAnomalies > 0) evidence.push(`${blockingAnomalies} anomalia${blockingAnomalies === 1 ? "" : "s"} bloqueando automações.`);
+
+    let mainCause = "Operação dentro dos parâmetros monitorados.";
+    let recommendedAction = "Manter rotina de checklist e monitoramento.";
+    let nextStep = "Reavaliar no próximo turno.";
+    let riskTitle = "Frota estável";
+
+    if (level === "critical") {
+      riskTitle = "Risco crítico identificado na operação";
+      mainCause = critical > 0
+        ? `${critical} OS crítica${critical === 1 ? "" : "s"} e ${overdue} manutenção${overdue === 1 ? "" : "ões"} vencida${overdue === 1 ? "" : "s"} indicam alta chance de parada operacional.`
+        : `${overdue} manutenção${overdue === 1 ? "" : "ões"} vencida${overdue === 1 ? "" : "s"} e ${stopped} equipamento${stopped === 1 ? "" : "s"} parado${stopped === 1 ? "" : "s"}.`;
+      recommendedAction = "Atribuir mecânicos às OS críticas e despachar preventivas vencidas imediatamente.";
+      nextStep = "Programar OS automáticas e reavaliar disponibilidade em 4h.";
+    } else if (level === "high") {
+      riskTitle = "Risco alto — atenção operacional necessária";
+      mainCause = `${critical || overdue} item${(critical || overdue) === 1 ? "" : "s"} crítico${(critical || overdue) === 1 ? "" : "s"} no backlog operacional.`;
+      recommendedAction = "Priorizar despacho dos itens da fila Prioridade Agora.";
+      nextStep = "Programar OS preventivas e validar consumo dos top desvios.";
+    } else if (level === "medium") {
+      riskTitle = "Risco moderado em monitoramento";
+      mainCause = "Itens em atenção ainda não comprometem a operação.";
+      recommendedAction = "Programar manutenções com horímetro próximo do limite.";
+      nextStep = "Acompanhar evolução do consumo nos próximos abastecimentos.";
+    }
+
+    const financial =
+      stopped * FINANCIAL_ESTIMATES.dailyDowntimeBRL +
+      overdue * FINANCIAL_ESTIMATES.overdueRiskBRL * 0.15 +
+      critical * FINANCIAL_ESTIMATES.criticalOSExposureBRL * 0.2 +
+      abnormal * (FINANCIAL_ESTIMATES.abnormalConsumptionMonthlyBRL / 30);
+
+    return {
+      riskLevel: level,
+      riskTitle,
+      mainCause,
+      recommendedAction,
+      nextStep,
+      financialImpact: Math.round(financial),
+      evidence,
+    } satisfies AutoDiagnosticData;
+  }, [stats.anomalies, stats.consumptionInsights.length, stats.criticalOrders.length, stats.overdueMaintenance.length, stats.stoppedEquipments.length]);
+
+  /* ----- KPIs executivos do hero ----- */
+  const executiveKpis = useMemo<ExecutiveKpi[]>(() => [
     {
-      id: "deck-overdue",
-      label: "Manutenções atrasadas",
-      value: stats.overdueMaintenance.length,
-      tone: stats.overdueMaintenance.length > 0 ? "critical" : "ok",
-      detail: "Preventivas vencidas com risco real de parada corretiva.",
-    },
-    {
-      id: "deck-critical-os",
-      label: "OS críticas",
-      value: stats.criticalOrders.length,
-      tone: stats.criticalOrders.length > 0 ? "critical" : "ok",
-      detail: "Ordens de maior impacto para despacho imediato.",
-    },
-    {
-      id: "deck-consumption",
-      label: "Consumo anormal",
-      value: stats.consumptionInsights.length,
-      tone: stats.consumptionInsights.length > 0 ? "warning" : "ok",
-      detail: "Ativos acima da curva histórica de eficiência.",
-    },
-    {
-      id: "deck-anomalies",
-      label: "Dados inconsistentes",
-      value: stats.anomalies.length,
-      tone: stats.anomalies.some((item) => item.blocksAutoOs) ? "critical" : stats.anomalies.length > 0 ? "warning" : "ok",
-      detail: "Leituras incoerentes que bloqueiam automações sensíveis.",
-      onClick: () => setAnomalyFilter("blocked"),
-    },
-    {
-      id: "deck-active",
-      label: "Equipamentos ativos",
-      value: stats.activeEquipments,
+      id: "exec-active",
+      label: "Ativos em operação",
+      value: String(stats.activeEquipments),
+      helper: `${data.equipments.length} no total da frota`,
       tone: stats.activeEquipments > 0 ? "ok" : "warning",
-      detail: `${stats.stoppedEquipments.length} ativos estão indisponíveis agora.`,
+      icon: Truck,
       onClick: () => navigate("/equipamentos"),
     },
     {
-      id: "deck-monthly-cost",
-      label: "Custo mensal",
-      value: new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(stats.monthlyCost),
-      tone: stats.monthlyCost > 0 ? "warning" : "ok",
-      detail: "Combina custo de combustível estimado e OS encerradas no mês.",
+      id: "exec-stopped",
+      label: "Equipamentos parados",
+      value: String(stats.stoppedEquipments.length),
+      helper: stats.stoppedEquipments.length > 0
+        ? `~${new Intl.NumberFormat("pt-BR").format(stats.stoppedEquipments.length * FINANCIAL_ESTIMATES.dailyDowntimeBRL)} BRL/dia em perda`
+        : "Sem perda operacional registrada",
+      tone: stats.stoppedEquipments.length > 0 ? "critical" : "ok",
+      icon: PauseCircle,
+      onClick: () => navigate("/equipamentos"),
+    },
+    {
+      id: "exec-overdue",
+      label: "Manutenções atrasadas",
+      value: String(stats.overdueMaintenance.length),
+      helper: stats.overdueMaintenance.length > 0
+        ? "Risco de quebra → exposição estimada"
+        : "Plano preventivo em dia",
+      tone: stats.overdueMaintenance.length > 0 ? "critical" : "ok",
+      icon: AlertTriangle,
+      onClick: () => navigate("/manutencao"),
+    },
+    {
+      id: "exec-critical-os",
+      label: "OS críticas",
+      value: String(stats.criticalOrders.length),
+      helper: stats.criticalOrders.length > 0 ? "Afetam disponibilidade operacional" : "Backlog crítico zerado",
+      tone: stats.criticalOrders.length > 0 ? "critical" : "ok",
+      icon: Wrench,
+      onClick: () => navigate("/manutencao"),
+    },
+    {
+      id: "exec-abnormal",
+      label: "Consumo anormal",
+      value: String(stats.consumptionInsights.length),
+      helper: stats.consumptionInsights.length > 0 ? "Ativos acima da curva histórica" : "Frota dentro do padrão",
+      tone: stats.consumptionInsights.length > 0 ? "warning" : "ok",
+      icon: Fuel,
       onClick: () => navigate("/relatorios"),
     },
-  ], [navigate, stats.activeEquipments, stats.anomalies, stats.consumptionInsights.length, stats.criticalOrders.length, stats.monthlyCost, stats.overdueMaintenance.length, stats.stoppedEquipments.length]);
-
-  const commandDeckActions = useMemo<QuickActionItem[]>(() => [
     {
-      id: "action-auto-os",
-      label: "Gerar OS automática",
-      onClick: () => navigate("/pedido-manutencao"),
-      variant: stats.anomalies.some((item) => item.blocksAutoOs) ? "outline" : stats.overdueMaintenance.length > 0 ? "destructive" : "outline",
+      id: "exec-checklists",
+      label: "Checklists hoje",
+      value: String(stats.todayChecklists.length),
+      helper: stats.checklistCounts.critical > 0
+        ? `${stats.checklistCounts.critical} críticos`
+        : "Sem checklists críticos hoje",
+      tone: stats.checklistCounts.critical > 0 ? "warning" : stats.todayChecklists.length > 0 ? "ok" : "neutral",
+      icon: ClipboardCheck,
+      onClick: () => navigate("/checklist"),
     },
-    {
-      id: "action-assign-mechanic",
-      label: "Atribuir mecânico",
-      onClick: () => navigate("/mecanico"),
-      variant: "default",
-    },
-    {
-      id: "action-view-priorities",
-      label: "Ver prioridades",
-      onClick: () => navigate("/manutencao"),
-      variant: "secondary",
-    },
-  ], [navigate, stats.anomalies, stats.overdueMaintenance.length]);
+  ], [data.equipments.length, navigate, stats.activeEquipments, stats.checklistCounts.critical, stats.consumptionInsights.length, stats.criticalOrders.length, stats.overdueMaintenance.length, stats.stoppedEquipments.length, stats.todayChecklists.length]);
 
   const filteredAnomalies = useMemo<EquipmentAnomalyItem[]>(() => {
     return stats.anomalies

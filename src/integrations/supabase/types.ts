@@ -760,25 +760,43 @@ export type Database = {
       }
       tenants: {
         Row: {
+          ativo: boolean
+          cor_alerta: string | null
+          cor_primaria: string | null
+          cor_secundaria: string | null
           created_at: string
           id: string
+          logo_url: string | null
           name: string
+          nome_exibicao: string | null
           slug: string
           status: string
           updated_at: string
         }
         Insert: {
+          ativo?: boolean
+          cor_alerta?: string | null
+          cor_primaria?: string | null
+          cor_secundaria?: string | null
           created_at?: string
           id?: string
+          logo_url?: string | null
           name: string
+          nome_exibicao?: string | null
           slug: string
           status?: string
           updated_at?: string
         }
         Update: {
+          ativo?: boolean
+          cor_alerta?: string | null
+          cor_primaria?: string | null
+          cor_secundaria?: string | null
           created_at?: string
           id?: string
+          logo_url?: string | null
           name?: string
+          nome_exibicao?: string | null
           slug?: string
           status?: string
           updated_at?: string
@@ -989,10 +1007,36 @@ export type Database = {
         }
         Returns: string
       }
+      admin_update_tenant_branding: {
+        Args: {
+          _ativo?: boolean
+          _cor_alerta?: string
+          _cor_primaria?: string
+          _cor_secundaria?: string
+          _logo_url?: string
+          _nome_exibicao?: string
+          _tenant_id: string
+        }
+        Returns: boolean
+      }
       get_default_tenant_id: { Args: never; Returns: string }
       get_my_roles: {
         Args: never
         Returns: Database["public"]["Enums"]["app_role"][]
+      }
+      get_my_tenant_branding: {
+        Args: never
+        Returns: {
+          ativo: boolean
+          cor_alerta: string
+          cor_primaria: string
+          cor_secundaria: string
+          id: string
+          logo_url: string
+          name: string
+          nome_exibicao: string
+          slug: string
+        }[]
       }
       get_my_tenant_id: { Args: never; Returns: string }
       has_role: {

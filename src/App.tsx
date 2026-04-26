@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { BrandingProvider } from "@/contexts/BrandingContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AppLayout from "@/components/AppLayout";
 import Dashboard from "@/pages/Dashboard";
@@ -51,6 +52,7 @@ const App = () => (
             {/* Protected app routes */}
             <Route path="/*" element={
               <ProtectedRoute>
+                <BrandingProvider>
                 <AppLayout>
                   <Routes>
                     <Route path="/" element={<Dashboard />} />
@@ -72,6 +74,7 @@ const App = () => (
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </AppLayout>
+                </BrandingProvider>
               </ProtectedRoute>
             } />
           </Routes>

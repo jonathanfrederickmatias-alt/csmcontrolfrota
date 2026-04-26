@@ -253,6 +253,13 @@ export default function Dashboard() {
       if (error) {
         toast({ title: "Erro ao gerar decisões automáticas", description: error.message, variant: "destructive" });
         setAiDecisions([]);
+      } else if (response?.error) {
+        toast({
+          title: "Decisões automáticas indisponíveis",
+          description: response.message || "Serviço de IA temporariamente indisponível.",
+          variant: "destructive",
+        });
+        setAiDecisions([]);
       } else {
         const items = Array.isArray(response?.decisions) ? response.decisions : [];
         setAiDecisions(

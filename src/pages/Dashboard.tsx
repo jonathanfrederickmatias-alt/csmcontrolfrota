@@ -1040,14 +1040,22 @@ export default function Dashboard() {
     [equipmentMap, stats.todayChecklists],
   );
 
-  const comboItems = useMemo<FuelOpsItem[]>(
+  /* ----- Tanques premium com autonomia estimada ----- */
+  const tankItems = useMemo<PremiumTankItem[]>(
     () =>
       data.combos.map((combo: any) => {
         const fuelCapacity = Number(combo.fuel_capacity || 0);
         const currentFuel = Number(combo.current_fuel || 0);
-        const lowLevelThreshold = fuelCapacity >= 5000 ? 1000 : fuelCapacity * 0.2;
         const dispatchesToday = data.fuelRecords.filter((record: any) => record.combo_equipment_id === combo.id && record.date === today).length;
         const latestSupply = data.fuelSupplyRecords.find((record: any) => record.combo_equipment_id === combo.id);
+
+        // Consumo médio diário dos últimos 14 dias
+        const fourteenDaysAgo = new Date();
+        fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+        const cutoff = fourteenDaysAgo.toISOString().split("T")[0];
+        const recentDispatches = data.fuelRecords.filter((record: any) => record.combo_equipment_id === combo.id && record.date >= cutoff);
+        const totalLiters = recentDispatches.reduce((sum: number, record: any) => sum + Number(record.liters || 0), 0);
+        const averageDailyConsumption = totalLiters > 0 ? totalLiters / 14 : 0;
 
         return {
           id: combo.id,
@@ -1057,11 +1065,34 @@ export default function Dashboard() {
           percentage: fuelCapacity ? (currentFuel / fuelCapacity) * 100 : 0,
           dispatchesToday,
           lastSupplyLabel: latestSupply ? formatDateLabel(latestSupply.date) : "sem registro",
-          lowLevelThreshold,
-        } satisfies FuelOpsItem;
+          averageDailyConsumption,
+        } satisfies PremiumTankItem;
       }),
     [data.combos, data.fuelRecords, data.fuelSupplyRecords, today],
   );
+
+  /* ----- Resumo executivo ----- */
+  const [executiveSummaryOpen, setExecutiveSummaryOpen] = useState(false);
+  const executiveSummary = useMemo<ExecutiveSummaryData>(() => {
+    const overdueItems = stats.overdueMaintenance.slice(0, 5).map((item: any) => `${item.equipmentName} — ${Math.abs(Math.round(item.remaining))} ${item.unit} de atraso`);
+    const criticalItems = [
+      ...stats.criticalOrders.slice(0, 3).map((order: any) => `${getEquipmentDisplayName(equipmentMap[order.equipment_id])} — OS #${order.os_number} (${order.priority})`),
+      ...stats.stoppedEquipments.slice(0, 3).map((eq: any) => `${getEquipmentDisplayName(eq)} — parado`),
+    ];
+    const consumptionItems = stats.consumptionInsights.slice(0, 5).map((item) => `${item.equipmentName} — ${item.variationPercent.toFixed(0)}% acima da média`);
+    const recommendedItems = stats.recommendations.slice(0, 5).map((rec) => rec.title);
+    const topRisks = autoDiagnostic.evidence.slice(0, 5);
+
+    return {
+      situation: autoDiagnostic.riskTitle + ". " + autoDiagnostic.mainCause,
+      topRisks,
+      criticalEquipments: criticalItems,
+      abnormalConsumption: consumptionItems,
+      overdueMaintenance: overdueItems,
+      recommendedActions: recommendedItems,
+      estimatedFinancialImpact: autoDiagnostic.financialImpact,
+    } satisfies ExecutiveSummaryData;
+  }, [autoDiagnostic, equipmentMap, stats.consumptionInsights, stats.criticalOrders, stats.overdueMaintenance, stats.recommendations, stats.stoppedEquipments]);
 
   const summary = useMemo(
     () =>

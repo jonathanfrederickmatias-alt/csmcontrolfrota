@@ -81,8 +81,20 @@ ${JSON.stringify({ equipments, maintenancePlans, maintenanceHistory, fuelRecords
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
-      return new Response(JSON.stringify({ error: errorText || "AI gateway error" }), {
-        status: aiResponse.status,
+      console.error("AI gateway error:", aiResponse.status, errorText);
+
+      let errorCode = "ai_error";
+      let message = "Não foi possível gerar decisões automáticas no momento.";
+      if (aiResponse.status === 402) {
+        errorCode = "payment_required";
+        message = "Créditos de IA esgotados. Adicione créditos em Configurações > Workspace > Uso para retomar as decisões automáticas.";
+      } else if (aiResponse.status === 429) {
+        errorCode = "rate_limited";
+        message = "Muitas requisições à IA. Aguarde alguns instantes e tente novamente.";
+      }
+
+      return new Response(JSON.stringify({ decisions: [], error: errorCode, message }), {
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

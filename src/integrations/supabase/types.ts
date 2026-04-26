@@ -26,6 +26,7 @@ export type Database = {
           operator_name: string
           photo_url: string | null
           status: string
+          tenant_id: string
           type: string
         }
         Insert: {
@@ -39,6 +40,7 @@ export type Database = {
           operator_name: string
           photo_url?: string | null
           status?: string
+          tenant_id: string
           type?: string
         }
         Update: {
@@ -52,6 +54,7 @@ export type Database = {
           operator_name?: string
           photo_url?: string | null
           status?: string
+          tenant_id?: string
           type?: string
         }
         Relationships: [
@@ -62,6 +65,20 @@ export type Database = {
             referencedRelation: "equipments"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "checklists_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklists_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
         ]
       }
       equipments: {
@@ -69,6 +86,7 @@ export type Database = {
           brand: string | null
           chassis: string | null
           cost_center: string | null
+          cost_per_hour: number
           created_at: string
           current_fuel: number | null
           current_hour_meter: number
@@ -80,6 +98,7 @@ export type Database = {
           ownership: string
           plate: string | null
           status: string
+          tenant_id: string
           type: string
           updated_at: string
           year: number | null
@@ -88,6 +107,7 @@ export type Database = {
           brand?: string | null
           chassis?: string | null
           cost_center?: string | null
+          cost_per_hour?: number
           created_at?: string
           current_fuel?: number | null
           current_hour_meter?: number
@@ -99,6 +119,7 @@ export type Database = {
           ownership?: string
           plate?: string | null
           status?: string
+          tenant_id: string
           type: string
           updated_at?: string
           year?: number | null
@@ -107,6 +128,7 @@ export type Database = {
           brand?: string | null
           chassis?: string | null
           cost_center?: string | null
+          cost_per_hour?: number
           created_at?: string
           current_fuel?: number | null
           current_hour_meter?: number
@@ -118,6 +140,7 @@ export type Database = {
           ownership?: string
           plate?: string | null
           status?: string
+          tenant_id?: string
           type?: string
           updated_at?: string
           year?: number | null
@@ -130,6 +153,20 @@ export type Database = {
             referencedRelation: "obras"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "equipments_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
         ]
       }
       fuel_pins: {
@@ -137,6 +174,7 @@ export type Database = {
           created_at: string
           id: string
           pin: string
+          tenant_id: string
           updated_at: string
           user_id: string
         }
@@ -144,6 +182,7 @@ export type Database = {
           created_at?: string
           id?: string
           pin?: string
+          tenant_id: string
           updated_at?: string
           user_id: string
         }
@@ -151,10 +190,68 @@ export type Database = {
           created_at?: string
           id?: string
           pin?: string
+          tenant_id?: string
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fuel_pins_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fuel_pins_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fuel_price_settings: {
+        Row: {
+          created_at: string
+          fuel_type: string
+          id: string
+          tenant_id: string
+          unit_price: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          fuel_type: string
+          id?: string
+          tenant_id: string
+          unit_price?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          fuel_type?: string
+          id?: string
+          tenant_id?: string
+          unit_price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fuel_price_settings_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fuel_price_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       fuel_records: {
         Row: {
@@ -169,6 +266,7 @@ export type Database = {
           operator_name: string
           photo_url: string | null
           target_equipment_id: string | null
+          tenant_id: string
         }
         Insert: {
           combo_equipment_id?: string | null
@@ -182,6 +280,7 @@ export type Database = {
           operator_name: string
           photo_url?: string | null
           target_equipment_id?: string | null
+          tenant_id: string
         }
         Update: {
           combo_equipment_id?: string | null
@@ -195,6 +294,7 @@ export type Database = {
           operator_name?: string
           photo_url?: string | null
           target_equipment_id?: string | null
+          tenant_id?: string
         }
         Relationships: [
           {
@@ -209,6 +309,20 @@ export type Database = {
             columns: ["target_equipment_id"]
             isOneToOne: false
             referencedRelation: "equipments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fuel_records_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fuel_records_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -226,6 +340,7 @@ export type Database = {
           photo_url: string | null
           responsible_name: string
           supplier: string | null
+          tenant_id: string
         }
         Insert: {
           combo_equipment_id: string
@@ -239,6 +354,7 @@ export type Database = {
           photo_url?: string | null
           responsible_name: string
           supplier?: string | null
+          tenant_id: string
         }
         Update: {
           combo_equipment_id?: string
@@ -252,6 +368,7 @@ export type Database = {
           photo_url?: string | null
           responsible_name?: string
           supplier?: string | null
+          tenant_id?: string
         }
         Relationships: [
           {
@@ -259,6 +376,20 @@ export type Database = {
             columns: ["combo_equipment_id"]
             isOneToOne: false
             referencedRelation: "equipments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fuel_supply_records_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fuel_supply_records_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -273,6 +404,7 @@ export type Database = {
           notes: string | null
           policy_number: string | null
           start_date: string
+          tenant_id: string
           updated_at: string
         }
         Insert: {
@@ -284,6 +416,7 @@ export type Database = {
           notes?: string | null
           policy_number?: string | null
           start_date: string
+          tenant_id: string
           updated_at?: string
         }
         Update: {
@@ -295,9 +428,25 @@ export type Database = {
           notes?: string | null
           policy_number?: string | null
           start_date?: string
+          tenant_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "insurance_records_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "insurance_records_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       maintenance_history: {
         Row: {
@@ -312,6 +461,7 @@ export type Database = {
           operator_name: string | null
           parts_cost: number | null
           plan_id: string | null
+          tenant_id: string
         }
         Insert: {
           created_at?: string
@@ -325,6 +475,7 @@ export type Database = {
           operator_name?: string | null
           parts_cost?: number | null
           plan_id?: string | null
+          tenant_id: string
         }
         Update: {
           created_at?: string
@@ -338,6 +489,7 @@ export type Database = {
           operator_name?: string | null
           parts_cost?: number | null
           plan_id?: string | null
+          tenant_id?: string
         }
         Relationships: [
           {
@@ -354,6 +506,20 @@ export type Database = {
             referencedRelation: "maintenance_plans"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "maintenance_history_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_history_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
         ]
       }
       maintenance_plans: {
@@ -367,6 +533,7 @@ export type Database = {
           last_executed_at: string | null
           next_due_at: number
           status: string
+          tenant_id: string
           updated_at: string
         }
         Insert: {
@@ -379,6 +546,7 @@ export type Database = {
           last_executed_at?: string | null
           next_due_at: number
           status?: string
+          tenant_id: string
           updated_at?: string
         }
         Update: {
@@ -391,6 +559,7 @@ export type Database = {
           last_executed_at?: string | null
           next_due_at?: number
           status?: string
+          tenant_id?: string
           updated_at?: string
         }
         Relationships: [
@@ -399,6 +568,20 @@ export type Database = {
             columns: ["equipment_id"]
             isOneToOne: false
             referencedRelation: "equipments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_plans_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_plans_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -417,6 +600,7 @@ export type Database = {
           priority: string
           resolved_at: string | null
           status: string
+          tenant_id: string
           updated_at: string
         }
         Insert: {
@@ -432,6 +616,7 @@ export type Database = {
           priority?: string
           resolved_at?: string | null
           status?: string
+          tenant_id: string
           updated_at?: string
         }
         Update: {
@@ -447,6 +632,7 @@ export type Database = {
           priority?: string
           resolved_at?: string | null
           status?: string
+          tenant_id?: string
           updated_at?: string
         }
         Relationships: [
@@ -455,6 +641,20 @@ export type Database = {
             columns: ["equipment_id"]
             isOneToOne: false
             referencedRelation: "equipments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_requests_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_requests_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -471,6 +671,7 @@ export type Database = {
           name: string
           start_date: string | null
           status: string
+          tenant_id: string
           updated_at: string
         }
         Insert: {
@@ -484,6 +685,7 @@ export type Database = {
           name: string
           start_date?: string | null
           status?: string
+          tenant_id: string
           updated_at?: string
         }
         Update: {
@@ -497,28 +699,179 @@ export type Database = {
           name?: string
           start_date?: string | null
           status?: string
+          tenant_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "obras_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obras_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
           created_at: string
           display_name: string
           id: string
+          tenant_id: string
           user_id: string
         }
         Insert: {
           created_at?: string
           display_name?: string
           id?: string
+          tenant_id: string
           user_id: string
         }
         Update: {
           created_at?: string
           display_name?: string
           id?: string
+          tenant_id?: string
           user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenants: {
+        Row: {
+          ativo: boolean
+          cep: string | null
+          cidade: string | null
+          cnpj: string | null
+          cor_alerta: string | null
+          cor_primaria: string | null
+          cor_secundaria: string | null
+          created_at: string
+          email_admin: string | null
+          email_alertas: string | null
+          endereco: string | null
+          estado: string | null
+          favicon_url: string | null
+          fuso_horario: string | null
+          horario_operacao: string | null
+          id: string
+          inscricao_estadual: string | null
+          logo_url: string | null
+          moeda: string | null
+          name: string
+          nome_exibicao: string | null
+          nome_fantasia: string | null
+          razao_social: string | null
+          relatorio_assinatura: string | null
+          relatorio_mostrar_cnpj: boolean
+          relatorio_mostrar_logo: boolean
+          relatorio_rodape: string | null
+          responsavel_principal: string | null
+          site: string | null
+          slug: string
+          status: string
+          telefone: string | null
+          tipo_empresa: string | null
+          updated_at: string
+          whatsapp: string | null
+          whatsapp_alertas: string | null
+        }
+        Insert: {
+          ativo?: boolean
+          cep?: string | null
+          cidade?: string | null
+          cnpj?: string | null
+          cor_alerta?: string | null
+          cor_primaria?: string | null
+          cor_secundaria?: string | null
+          created_at?: string
+          email_admin?: string | null
+          email_alertas?: string | null
+          endereco?: string | null
+          estado?: string | null
+          favicon_url?: string | null
+          fuso_horario?: string | null
+          horario_operacao?: string | null
+          id?: string
+          inscricao_estadual?: string | null
+          logo_url?: string | null
+          moeda?: string | null
+          name: string
+          nome_exibicao?: string | null
+          nome_fantasia?: string | null
+          razao_social?: string | null
+          relatorio_assinatura?: string | null
+          relatorio_mostrar_cnpj?: boolean
+          relatorio_mostrar_logo?: boolean
+          relatorio_rodape?: string | null
+          responsavel_principal?: string | null
+          site?: string | null
+          slug: string
+          status?: string
+          telefone?: string | null
+          tipo_empresa?: string | null
+          updated_at?: string
+          whatsapp?: string | null
+          whatsapp_alertas?: string | null
+        }
+        Update: {
+          ativo?: boolean
+          cep?: string | null
+          cidade?: string | null
+          cnpj?: string | null
+          cor_alerta?: string | null
+          cor_primaria?: string | null
+          cor_secundaria?: string | null
+          created_at?: string
+          email_admin?: string | null
+          email_alertas?: string | null
+          endereco?: string | null
+          estado?: string | null
+          favicon_url?: string | null
+          fuso_horario?: string | null
+          horario_operacao?: string | null
+          id?: string
+          inscricao_estadual?: string | null
+          logo_url?: string | null
+          moeda?: string | null
+          name?: string
+          nome_exibicao?: string | null
+          nome_fantasia?: string | null
+          razao_social?: string | null
+          relatorio_assinatura?: string | null
+          relatorio_mostrar_cnpj?: boolean
+          relatorio_mostrar_logo?: boolean
+          relatorio_rodape?: string | null
+          responsavel_principal?: string | null
+          site?: string | null
+          slug?: string
+          status?: string
+          telefone?: string | null
+          tipo_empresa?: string | null
+          updated_at?: string
+          whatsapp?: string | null
+          whatsapp_alertas?: string | null
         }
         Relationships: []
       }
@@ -526,30 +879,58 @@ export type Database = {
         Row: {
           id: string
           role: Database["public"]["Enums"]["app_role"]
+          tenant_id: string
           user_id: string
         }
         Insert: {
           id?: string
           role: Database["public"]["Enums"]["app_role"]
+          tenant_id: string
           user_id: string
         }
         Update: {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          tenant_id?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_roles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       work_orders: {
         Row: {
+          cause_identified: string | null
           completed_at: string | null
           created_at: string
           description: string
           equipment_id: string
+          execution_meter: number
+          final_status:
+            | Database["public"]["Enums"]["work_order_final_status"]
+            | null
           id: string
           invoice_number: string | null
           labor_cost: number | null
+          machine_released: boolean
+          maintenance_plan_id: string | null
           maintenance_request_id: string
+          maintenance_type:
+            | Database["public"]["Enums"]["maintenance_execution_type"]
+            | null
           mechanic_name: string | null
           notes: string | null
           os_number: number
@@ -562,17 +943,29 @@ export type Database = {
           service_executed: string | null
           started_at: string | null
           status: string
+          technical_observations: string | null
+          tenant_id: string
           updated_at: string
         }
         Insert: {
+          cause_identified?: string | null
           completed_at?: string | null
           created_at?: string
           description: string
           equipment_id: string
+          execution_meter?: number
+          final_status?:
+            | Database["public"]["Enums"]["work_order_final_status"]
+            | null
           id?: string
           invoice_number?: string | null
           labor_cost?: number | null
+          machine_released?: boolean
+          maintenance_plan_id?: string | null
           maintenance_request_id: string
+          maintenance_type?:
+            | Database["public"]["Enums"]["maintenance_execution_type"]
+            | null
           mechanic_name?: string | null
           notes?: string | null
           os_number?: number
@@ -585,17 +978,29 @@ export type Database = {
           service_executed?: string | null
           started_at?: string | null
           status?: string
+          technical_observations?: string | null
+          tenant_id: string
           updated_at?: string
         }
         Update: {
+          cause_identified?: string | null
           completed_at?: string | null
           created_at?: string
           description?: string
           equipment_id?: string
+          execution_meter?: number
+          final_status?:
+            | Database["public"]["Enums"]["work_order_final_status"]
+            | null
           id?: string
           invoice_number?: string | null
           labor_cost?: number | null
+          machine_released?: boolean
+          maintenance_plan_id?: string | null
           maintenance_request_id?: string
+          maintenance_type?:
+            | Database["public"]["Enums"]["maintenance_execution_type"]
+            | null
           mechanic_name?: string | null
           notes?: string | null
           os_number?: number
@@ -608,6 +1013,8 @@ export type Database = {
           service_executed?: string | null
           started_at?: string | null
           status?: string
+          technical_observations?: string | null
+          tenant_id?: string
           updated_at?: string
         }
         Relationships: [
@@ -619,10 +1026,31 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "work_orders_maintenance_plan_id_fkey"
+            columns: ["maintenance_plan_id"]
+            isOneToOne: false
+            referencedRelation: "maintenance_plans"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "work_orders_maintenance_request_id_fkey"
             columns: ["maintenance_request_id"]
             isOneToOne: false
             referencedRelation: "maintenance_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_orders_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_orders_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -632,10 +1060,81 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_assign_user_to_tenant: {
+        Args: { _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
+      admin_create_tenant: {
+        Args: { _name: string; _slug: string }
+        Returns: string
+      }
+      admin_create_user_in_tenant: {
+        Args: {
+          _display_name: string
+          _email: string
+          _password: string
+          _pin?: string
+          _role: Database["public"]["Enums"]["app_role"]
+          _tenant_id: string
+        }
+        Returns: string
+      }
+      admin_update_tenant_branding: {
+        Args: {
+          _ativo?: boolean
+          _cor_alerta?: string
+          _cor_primaria?: string
+          _cor_secundaria?: string
+          _logo_url?: string
+          _nome_exibicao?: string
+          _tenant_id: string
+        }
+        Returns: boolean
+      }
+      get_default_tenant_id: { Args: never; Returns: string }
       get_my_roles: {
         Args: never
         Returns: Database["public"]["Enums"]["app_role"][]
       }
+      get_my_tenant_branding: {
+        Args: never
+        Returns: {
+          ativo: boolean
+          cep: string
+          cidade: string
+          cnpj: string
+          cor_alerta: string
+          cor_primaria: string
+          cor_secundaria: string
+          email_admin: string
+          email_alertas: string
+          endereco: string
+          estado: string
+          favicon_url: string
+          fuso_horario: string
+          horario_operacao: string
+          id: string
+          inscricao_estadual: string
+          logo_url: string
+          moeda: string
+          name: string
+          nome_exibicao: string
+          nome_fantasia: string
+          razao_social: string
+          relatorio_assinatura: string
+          relatorio_mostrar_cnpj: boolean
+          relatorio_mostrar_logo: boolean
+          relatorio_rodape: string
+          responsavel_principal: string
+          site: string
+          slug: string
+          telefone: string
+          tipo_empresa: string
+          whatsapp: string
+          whatsapp_alertas: string
+        }[]
+      }
+      get_my_tenant_id: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -643,9 +1142,59 @@ export type Database = {
         }
         Returns: boolean
       }
+      list_my_tenants: {
+        Args: never
+        Returns: {
+          created_at: string
+          id: string
+          name: string
+          slug: string
+          status: string
+        }[]
+      }
+      update_my_tenant_branding: {
+        Args: {
+          _cep?: string
+          _cidade?: string
+          _cnpj?: string
+          _cor_alerta?: string
+          _cor_primaria?: string
+          _cor_secundaria?: string
+          _email_admin?: string
+          _email_alertas?: string
+          _endereco?: string
+          _estado?: string
+          _favicon_url?: string
+          _fuso_horario?: string
+          _horario_operacao?: string
+          _inscricao_estadual?: string
+          _logo_url?: string
+          _moeda?: string
+          _nome_exibicao?: string
+          _nome_fantasia?: string
+          _razao_social?: string
+          _relatorio_assinatura?: string
+          _relatorio_mostrar_cnpj?: boolean
+          _relatorio_mostrar_logo?: boolean
+          _relatorio_rodape?: string
+          _responsavel_principal?: string
+          _site?: string
+          _telefone?: string
+          _tipo_empresa?: string
+          _whatsapp?: string
+          _whatsapp_alertas?: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "gestor" | "mecanico" | "abastecedor"
+      maintenance_execution_type: "preventiva" | "corretiva"
+      work_order_final_status:
+        | "concluida"
+        | "aguardando_peca"
+        | "servico_externo"
+        | "maquina_parada"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -774,6 +1323,13 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "gestor", "mecanico", "abastecedor"],
+      maintenance_execution_type: ["preventiva", "corretiva"],
+      work_order_final_status: [
+        "concluida",
+        "aguardando_peca",
+        "servico_externo",
+        "maquina_parada",
+      ],
     },
   },
 } as const

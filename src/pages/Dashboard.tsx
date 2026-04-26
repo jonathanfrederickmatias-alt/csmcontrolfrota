@@ -1113,25 +1113,52 @@ export default function Dashboard() {
     stats.stoppedEquipments.length > 0 ||
     stats.consumptionInsights.length > 0;
 
+  const estimatedDailyLoss = stats.stoppedEquipments.length * FINANCIAL_ESTIMATES.dailyDowntimeBRL;
+
   return (
     <div className="space-y-5">
-      <DashboardHero
+      <ExecutiveHeroPanel
         title="Central operacional"
-        subtitle={todayLabel}
-        summary={summary}
+        dateLabel={todayLabel}
+        riskLevel={autoDiagnostic.riskLevel}
+        riskHeadline={autoDiagnostic.riskTitle}
+        monthlyCost={stats.monthlyCost}
+        estimatedDailyLoss={estimatedDailyLoss}
+        kpis={executiveKpis}
         onRefresh={fetchData}
         onSignOut={signOut}
         refreshing={isRefreshing}
+        onPrimaryAction={
+          stats.criticalOrders.length > 0
+            ? { label: "Atribuir mecânico", onClick: () => navigate("/mecanico") }
+            : stats.overdueMaintenance.length > 0
+              ? { label: "Programar OS", onClick: () => navigate("/manutencao") }
+              : undefined
+        }
       />
 
-      <OperationalCommandDeck items={commandDeckItems} actions={commandDeckActions} />
-      <ActionableAlertsPanel items={actionableAlerts} />
-      <KpiSummaryGrid items={kpis} />
+      <AutoDiagnosticPanel
+        data={autoDiagnostic}
+        onPrimaryAction={() => {
+          if (stats.criticalOrders.length > 0) navigate("/mecanico");
+          else if (stats.overdueMaintenance.length > 0) navigate("/manutencao");
+          else navigate("/equipamentos");
+        }}
+        onAiBoost={loadAiDecisions}
+        aiAvailable={data.equipments.length > 0}
+        aiLoading={aiLoading}
+      />
+
+      <ExecutiveSummaryCard
+        data={executiveSummary}
+        expanded={executiveSummaryOpen}
+        onToggle={() => setExecutiveSummaryOpen((value) => !value)}
+      />
 
       {!hasCriticalItems && <EmptyOperationalState />}
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-        <PriorityNowSection items={priorityNowItems} />
+        <PriorityDispatchSection items={priorityNowItems} />
         <RecommendedActionsSection items={stats.recommendations} />
       </div>
 
@@ -1163,14 +1190,13 @@ export default function Dashboard() {
 
       <ConsumptionOperationsSection items={stats.consumptionInsights as ConsumptionDetailedItem[]} onOpenReports={() => navigate("/relatorios")} />
 
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-        <ChecklistOverviewSection items={checklistItems} />
-        <FuelOperationsSection
-          items={comboItems}
-          onRegisterFuel={() => navigate("/abastecimento")}
-          onOpenSupply={() => navigate("/reabastecimento")}
-        />
-      </div>
+      <PremiumTanksSection
+        items={tankItems}
+        onRegisterFuel={() => navigate("/abastecimento")}
+        onOpenSupply={() => navigate("/reabastecimento")}
+      />
+
+      <ChecklistOverviewSection items={checklistItems} />
 
       <Dialog open={!!selectedChecklist} onOpenChange={() => setSelectedChecklist(null)}>
         <DialogContent className="max-h-[85vh] max-w-lg overflow-y-auto">

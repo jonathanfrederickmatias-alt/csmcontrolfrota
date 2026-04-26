@@ -26,6 +26,7 @@ export type Database = {
           operator_name: string
           photo_url: string | null
           status: string
+          tenant_id: string | null
           type: string
         }
         Insert: {
@@ -39,6 +40,7 @@ export type Database = {
           operator_name: string
           photo_url?: string | null
           status?: string
+          tenant_id?: string | null
           type?: string
         }
         Update: {
@@ -52,6 +54,7 @@ export type Database = {
           operator_name?: string
           photo_url?: string | null
           status?: string
+          tenant_id?: string | null
           type?: string
         }
         Relationships: [
@@ -60,6 +63,13 @@ export type Database = {
             columns: ["equipment_id"]
             isOneToOne: false
             referencedRelation: "equipments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklists_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -81,6 +91,7 @@ export type Database = {
           ownership: string
           plate: string | null
           status: string
+          tenant_id: string | null
           type: string
           updated_at: string
           year: number | null
@@ -101,6 +112,7 @@ export type Database = {
           ownership?: string
           plate?: string | null
           status?: string
+          tenant_id?: string | null
           type: string
           updated_at?: string
           year?: number | null
@@ -121,6 +133,7 @@ export type Database = {
           ownership?: string
           plate?: string | null
           status?: string
+          tenant_id?: string | null
           type?: string
           updated_at?: string
           year?: number | null
@@ -133,6 +146,13 @@ export type Database = {
             referencedRelation: "obras"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "equipments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
         ]
       }
       fuel_pins: {
@@ -140,6 +160,7 @@ export type Database = {
           created_at: string
           id: string
           pin: string
+          tenant_id: string | null
           updated_at: string
           user_id: string
         }
@@ -147,6 +168,7 @@ export type Database = {
           created_at?: string
           id?: string
           pin?: string
+          tenant_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -154,16 +176,26 @@ export type Database = {
           created_at?: string
           id?: string
           pin?: string
+          tenant_id?: string | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fuel_pins_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       fuel_price_settings: {
         Row: {
           created_at: string
           fuel_type: string
           id: string
+          tenant_id: string | null
           unit_price: number
           updated_at: string
         }
@@ -171,6 +203,7 @@ export type Database = {
           created_at?: string
           fuel_type: string
           id?: string
+          tenant_id?: string | null
           unit_price?: number
           updated_at?: string
         }
@@ -178,10 +211,19 @@ export type Database = {
           created_at?: string
           fuel_type?: string
           id?: string
+          tenant_id?: string | null
           unit_price?: number
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fuel_price_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       fuel_records: {
         Row: {
@@ -196,6 +238,7 @@ export type Database = {
           operator_name: string
           photo_url: string | null
           target_equipment_id: string | null
+          tenant_id: string | null
         }
         Insert: {
           combo_equipment_id?: string | null
@@ -209,6 +252,7 @@ export type Database = {
           operator_name: string
           photo_url?: string | null
           target_equipment_id?: string | null
+          tenant_id?: string | null
         }
         Update: {
           combo_equipment_id?: string | null
@@ -222,6 +266,7 @@ export type Database = {
           operator_name?: string
           photo_url?: string | null
           target_equipment_id?: string | null
+          tenant_id?: string | null
         }
         Relationships: [
           {
@@ -236,6 +281,13 @@ export type Database = {
             columns: ["target_equipment_id"]
             isOneToOne: false
             referencedRelation: "equipments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fuel_records_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -253,6 +305,7 @@ export type Database = {
           photo_url: string | null
           responsible_name: string
           supplier: string | null
+          tenant_id: string | null
         }
         Insert: {
           combo_equipment_id: string
@@ -266,6 +319,7 @@ export type Database = {
           photo_url?: string | null
           responsible_name: string
           supplier?: string | null
+          tenant_id?: string | null
         }
         Update: {
           combo_equipment_id?: string
@@ -279,6 +333,7 @@ export type Database = {
           photo_url?: string | null
           responsible_name?: string
           supplier?: string | null
+          tenant_id?: string | null
         }
         Relationships: [
           {
@@ -286,6 +341,13 @@ export type Database = {
             columns: ["combo_equipment_id"]
             isOneToOne: false
             referencedRelation: "equipments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fuel_supply_records_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -300,6 +362,7 @@ export type Database = {
           notes: string | null
           policy_number: string | null
           start_date: string
+          tenant_id: string | null
           updated_at: string
         }
         Insert: {
@@ -311,6 +374,7 @@ export type Database = {
           notes?: string | null
           policy_number?: string | null
           start_date: string
+          tenant_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -322,9 +386,18 @@ export type Database = {
           notes?: string | null
           policy_number?: string | null
           start_date?: string
+          tenant_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "insurance_records_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       maintenance_history: {
         Row: {
@@ -339,6 +412,7 @@ export type Database = {
           operator_name: string | null
           parts_cost: number | null
           plan_id: string | null
+          tenant_id: string | null
         }
         Insert: {
           created_at?: string
@@ -352,6 +426,7 @@ export type Database = {
           operator_name?: string | null
           parts_cost?: number | null
           plan_id?: string | null
+          tenant_id?: string | null
         }
         Update: {
           created_at?: string
@@ -365,6 +440,7 @@ export type Database = {
           operator_name?: string | null
           parts_cost?: number | null
           plan_id?: string | null
+          tenant_id?: string | null
         }
         Relationships: [
           {
@@ -381,6 +457,13 @@ export type Database = {
             referencedRelation: "maintenance_plans"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "maintenance_history_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
         ]
       }
       maintenance_plans: {
@@ -394,6 +477,7 @@ export type Database = {
           last_executed_at: string | null
           next_due_at: number
           status: string
+          tenant_id: string | null
           updated_at: string
         }
         Insert: {
@@ -406,6 +490,7 @@ export type Database = {
           last_executed_at?: string | null
           next_due_at: number
           status?: string
+          tenant_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -418,6 +503,7 @@ export type Database = {
           last_executed_at?: string | null
           next_due_at?: number
           status?: string
+          tenant_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -426,6 +512,13 @@ export type Database = {
             columns: ["equipment_id"]
             isOneToOne: false
             referencedRelation: "equipments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_plans_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -444,6 +537,7 @@ export type Database = {
           priority: string
           resolved_at: string | null
           status: string
+          tenant_id: string | null
           updated_at: string
         }
         Insert: {
@@ -459,6 +553,7 @@ export type Database = {
           priority?: string
           resolved_at?: string | null
           status?: string
+          tenant_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -474,6 +569,7 @@ export type Database = {
           priority?: string
           resolved_at?: string | null
           status?: string
+          tenant_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -482,6 +578,13 @@ export type Database = {
             columns: ["equipment_id"]
             isOneToOne: false
             referencedRelation: "equipments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_requests_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -498,6 +601,7 @@ export type Database = {
           name: string
           start_date: string | null
           status: string
+          tenant_id: string | null
           updated_at: string
         }
         Insert: {
@@ -511,6 +615,7 @@ export type Database = {
           name: string
           start_date?: string | null
           status?: string
+          tenant_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -524,28 +629,75 @@ export type Database = {
           name?: string
           start_date?: string | null
           status?: string
+          tenant_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "obras_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
           created_at: string
           display_name: string
           id: string
+          tenant_id: string | null
           user_id: string
         }
         Insert: {
           created_at?: string
           display_name?: string
           id?: string
+          tenant_id?: string | null
           user_id: string
         }
         Update: {
           created_at?: string
           display_name?: string
           id?: string
+          tenant_id?: string | null
           user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenants: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          slug: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          slug: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          slug?: string
+          status?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -553,19 +705,30 @@ export type Database = {
         Row: {
           id: string
           role: Database["public"]["Enums"]["app_role"]
+          tenant_id: string | null
           user_id: string
         }
         Insert: {
           id?: string
           role: Database["public"]["Enums"]["app_role"]
+          tenant_id?: string | null
           user_id: string
         }
         Update: {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          tenant_id?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       work_orders: {
         Row: {
@@ -600,6 +763,7 @@ export type Database = {
           started_at: string | null
           status: string
           technical_observations: string | null
+          tenant_id: string | null
           updated_at: string
         }
         Insert: {
@@ -634,6 +798,7 @@ export type Database = {
           started_at?: string | null
           status?: string
           technical_observations?: string | null
+          tenant_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -668,6 +833,7 @@ export type Database = {
           started_at?: string | null
           status?: string
           technical_observations?: string | null
+          tenant_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -692,6 +858,13 @@ export type Database = {
             referencedRelation: "maintenance_requests"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "work_orders_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
@@ -703,6 +876,7 @@ export type Database = {
         Args: never
         Returns: Database["public"]["Enums"]["app_role"][]
       }
+      get_my_tenant_id: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

@@ -39,8 +39,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { branding, displayName } = useBranding();
   const currentLocation = `${location.pathname}${location.search}`;
 
-  // Logo: SEMPRE usa logo do tenant; fallback é logo neutro (nunca CSM)
-  const logoSrc = branding?.logo_url || logoDefault;
+  // Logo: tenant.logo_url > (CSM → logo CSM original) > logo neutro
+  const isCsm = (branding?.nome_exibicao || branding?.name || "").toUpperCase().includes("CSM");
+  const fallbackLogo = isCsm ? logoCsm : logoDefault;
+  const logoSrc = branding?.logo_url || fallbackLogo;
 
   // Filter nav items based on user roles; if no roles yet, show nothing (loading)
   const navItems = rolesLoading

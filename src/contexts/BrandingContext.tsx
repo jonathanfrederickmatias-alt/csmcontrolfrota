@@ -118,8 +118,15 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
   return <BrandingContext.Provider value={value}>{children}</BrandingContext.Provider>;
 }
 
-export function useBranding() {
+export function useBranding(): BrandingContextValue {
   const ctx = useContext(BrandingContext);
-  if (!ctx) throw new Error("useBranding deve ser usado dentro de <BrandingProvider>");
+  if (!ctx) {
+    return {
+      branding: null,
+      loading: false,
+      refresh: async () => {},
+      displayName: "Sistema",
+    };
+  }
   return ctx;
 }

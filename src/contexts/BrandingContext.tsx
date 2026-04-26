@@ -95,9 +95,15 @@ function applyTheme(branding: TenantBranding | null) {
   if (secondaryHsl) {
     root.style.setProperty("--secondary", secondaryHsl);
   }
-  if (alertHsl) {
-    root.style.setProperty("--destructive", alertHsl);
+function applyFavicon(url: string | null) {
+  if (!url) return;
+  let link = document.querySelector<HTMLLinkElement>("link[rel='icon']");
+  if (!link) {
+    link = document.createElement("link");
+    link.rel = "icon";
+    document.head.appendChild(link);
   }
+  link.href = url;
 }
 
 export function BrandingProvider({ children }: { children: ReactNode }) {

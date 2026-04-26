@@ -4,6 +4,7 @@ import { useState } from "react";
 import csmLogo from "@/assets/csm-logo.png";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { useAuth } from "@/contexts/AuthContext";
+import { useBranding } from "@/contexts/BrandingContext";
 import { Button } from "@/components/ui/button";
 
 const allNavItems = [
@@ -31,7 +32,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { roles, loading: rolesLoading } = useUserRoles();
   const { signOut } = useAuth();
+  const { branding, displayName } = useBranding();
   const currentLocation = `${location.pathname}${location.search}`;
+
+  // Logo: usa logo do tenant se houver, senão CSM
+  const logoSrc = branding?.logo_url || csmLogo;
+  // Para CSM principal, mantém o split visual "CSM" + "CONTROLFROTA".
+  const isCsmMain = branding?.slug === "minha-empresa-principal";
 
   // Filter nav items based on user roles; if no roles yet, show nothing (loading)
   const navItems = rolesLoading
@@ -43,11 +50,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Sidebar desktop */}
       <aside className="hidden lg:flex lg:h-screen lg:sticky lg:top-0 lg:flex-col border-r border-sidebar-border bg-sidebar/80 backdrop-blur-xl">
         <Link to="/" className="flex items-center gap-3 border-b border-sidebar-border bg-background/95 p-5 transition-colors hover:bg-background">
-          <img src={csmLogo} alt="CSM Construções" className="w-16 h-12 object-contain" />
+          <img src={logoSrc} alt={displayName} className="w-16 h-12 object-contain" />
           <div>
             <h1 className="text-base font-black tracking-tight leading-tight">
-              <span className="text-gradient">CSM</span>
-              <span className="text-logo-blue">CONTROLFROTA</span>
+              {isCsmMain ? (
+                <>
+                  <span className="text-gradient">CSM</span>
+                  <span className="text-logo-blue">CONTROLFROTA</span>
+                </>
+              ) : (
+                <span className="text-foreground">{displayName}</span>
+              )}
             </h1>
             <p className="text-[10px] text-muted-foreground">Gestão de Frota & Manutenção</p>
           </div>
@@ -87,10 +100,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Mobile header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-background border-b border-border px-4 py-3 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2 text-lg font-black">
-          <img src={csmLogo} alt="CSM" className="w-12 h-10 object-contain" />
+          <img src={logoSrc} alt={displayName} className="w-12 h-10 object-contain" />
           <span>
-            <span className="text-gradient">CSM</span>
-            <span className="text-logo-blue">CONTROLFROTA</span>
+            {isCsmMain ? (
+              <>
+                <span className="text-gradient">CSM</span>
+                <span className="text-logo-blue">CONTROLFROTA</span>
+              </>
+            ) : (
+              <span className="text-foreground">{displayName}</span>
+            )}
           </span>
         </Link>
         <button onClick={() => setMobileOpen(!mobileOpen)} className="text-sidebar-foreground p-2">

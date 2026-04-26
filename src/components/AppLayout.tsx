@@ -100,7 +100,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Mobile header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-background border-b border-border px-4 py-3 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2 text-lg font-black">
-          <img src={logoSrc} alt={displayName} className="w-12 h-10 object-contain" loading="lazy" onError={(e) => { (e.currentTarget as HTMLImageElement).src = logoDefault; }} />
+          <img src={logoSrc} alt={displayName} className="w-12 h-10 object-contain" loading="lazy" onError={(e) => { (e.currentTarget as HTMLImageElement).src = fallbackLogo; }} />
           <span className="text-foreground">{displayName}</span>
         </Link>
         <button onClick={() => setMobileOpen(!mobileOpen)} className="text-sidebar-foreground p-2">

@@ -86,15 +86,36 @@
 
 @layer utilities {
   .glass-card {
-    @apply bg-card/80 backdrop-blur-sm border border-border/50 shadow-lg;
+    @apply bg-card/90 backdrop-blur-sm border border-border/60;
+    box-shadow: var(--shadow-card);
+  }
+
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+
+  .shadow-elevated {
+    box-shadow: var(--shadow-elevated);
+  }
+
+  .shadow-strong {
+    box-shadow: var(--shadow-strong);
+  }
+
+  .bg-gradient-primary {
+    background-image: var(--gradient-primary);
+  }
+
+  .bg-gradient-surface {
+    background-image: var(--gradient-surface);
   }
 
   .glow-primary {
-    box-shadow: 0 0 20px hsl(210 80% 45% / 0.2), 0 0 60px hsl(210 80% 45% / 0.08);
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.18), 0 0 60px hsl(var(--primary) / 0.06);
   }
 
   .text-gradient {
-    background: linear-gradient(to right, hsl(0 80% 50%), hsl(0 70% 40%));
+    background: linear-gradient(to right, hsl(var(--destructive)), hsl(0 70% 40%));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;

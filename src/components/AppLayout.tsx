@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Truck, ClipboardCheck, ClipboardList, Wrench, Fuel, QrCode, Menu, X, BarChart2, Droplets, Building2, Users, LogOut, ShieldCheck, BrainCircuit, FileStack, Palette } from "lucide-react";
+import { LayoutDashboard, Truck, ClipboardCheck, ClipboardList, Wrench, Fuel, QrCode, Menu, X, BarChart2, Droplets, Building2, Users, LogOut, ShieldCheck, BrainCircuit, FileStack, Settings } from "lucide-react";
 import { useState } from "react";
 import logoDefault from "@/assets/logo-default.png";
 import { useUserRoles } from "@/hooks/useUserRoles";

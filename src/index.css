@@ -6,52 +6,67 @@
 
 @layer base {
   :root {
-    --background: 210 20% 95%;
-    --foreground: 220 20% 15%;
+    /* Fundo executivo (#F3F6FA) e texto firme (#111827 / #6B7280) */
+    --background: 214 33% 97%;
+    --foreground: 220 39% 11%;
 
     --card: 0 0% 100%;
-    --card-foreground: 220 20% 15%;
+    --card-foreground: 220 39% 11%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 20% 15%;
+    --popover-foreground: 220 39% 11%;
 
-    --primary: 210 80% 45%;
+    /* Azul principal #1976D2 / institucional #003B73 */
+    --primary: 210 79% 46%;
     --primary-foreground: 0 0% 100%;
+    --primary-deep: 209 100% 23%;
 
-    --secondary: 210 15% 90%;
-    --secondary-foreground: 220 20% 25%;
+    --secondary: 214 32% 91%;
+    --secondary-foreground: 220 30% 20%;
 
-    --muted: 210 12% 88%;
-    --muted-foreground: 220 10% 45%;
+    --muted: 214 30% 93%;
+    --muted-foreground: 220 9% 46%;
 
-    --accent: 210 70% 40%;
+    --accent: 209 100% 23%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 72% 51%;
+    /* Vermelho crítico #D92525 */
+    --destructive: 0 70% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 142 71% 40%;
+    /* Verde OK #1FA463 */
+    --success: 148 68% 38%;
     --success-foreground: 0 0% 100%;
 
-    --warning: 38 92% 50%;
-    --warning-foreground: 220 20% 10%;
+    /* Amarelo atenção #F5A623 */
+    --warning: 36 91% 55%;
+    --warning-foreground: 220 39% 11%;
 
-    --border: 210 15% 85%;
-    --input: 210 15% 85%;
-    --ring: 210 80% 45%;
+    --border: 214 25% 87%;
+    --input: 214 25% 87%;
+    --ring: 210 79% 46%;
 
-    --radius: 0.75rem;
+    --radius: 0.875rem;
 
-    --sidebar-background: 210 40% 93%;
-    --sidebar-foreground: 220 20% 25%;
-    --sidebar-primary: 210 80% 45%;
+    --sidebar-background: 209 100% 23%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 210 79% 46%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 30% 86%;
-    --sidebar-accent-foreground: 220 20% 20%;
-    --sidebar-border: 210 25% 85%;
-    --sidebar-ring: 210 80% 45%;
+    --sidebar-accent: 209 70% 30%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 209 60% 28%;
+    --sidebar-ring: 210 79% 46%;
 
-    --logo-blue: 210 85% 30%;
+    --logo-blue: 209 100% 23%;
+
+    /* Sombras executivas */
+    --shadow-elevated: 0 1px 2px 0 hsl(220 39% 11% / 0.04), 0 8px 24px -12px hsl(220 39% 11% / 0.18);
+    --shadow-card: 0 1px 2px 0 hsl(220 39% 11% / 0.04), 0 4px 12px -4px hsl(220 39% 11% / 0.08);
+    --shadow-strong: 0 4px 8px -2px hsl(220 39% 11% / 0.06), 0 16px 40px -12px hsl(220 39% 11% / 0.22);
+
+    /* Gradientes premium */
+    --gradient-primary: linear-gradient(135deg, hsl(209 100% 23%) 0%, hsl(210 79% 46%) 100%);
+    --gradient-surface: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(214 33% 97%) 100%);
   }
 }
 

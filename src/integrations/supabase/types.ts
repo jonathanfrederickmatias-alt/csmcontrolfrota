@@ -761,45 +761,117 @@ export type Database = {
       tenants: {
         Row: {
           ativo: boolean
+          cep: string | null
+          cidade: string | null
+          cnpj: string | null
           cor_alerta: string | null
           cor_primaria: string | null
           cor_secundaria: string | null
           created_at: string
+          email_admin: string | null
+          email_alertas: string | null
+          endereco: string | null
+          estado: string | null
+          favicon_url: string | null
+          fuso_horario: string | null
+          horario_operacao: string | null
           id: string
+          inscricao_estadual: string | null
           logo_url: string | null
+          moeda: string | null
           name: string
           nome_exibicao: string | null
+          nome_fantasia: string | null
+          razao_social: string | null
+          relatorio_assinatura: string | null
+          relatorio_mostrar_cnpj: boolean
+          relatorio_mostrar_logo: boolean
+          relatorio_rodape: string | null
+          responsavel_principal: string | null
+          site: string | null
           slug: string
           status: string
+          telefone: string | null
+          tipo_empresa: string | null
           updated_at: string
+          whatsapp: string | null
+          whatsapp_alertas: string | null
         }
         Insert: {
           ativo?: boolean
+          cep?: string | null
+          cidade?: string | null
+          cnpj?: string | null
           cor_alerta?: string | null
           cor_primaria?: string | null
           cor_secundaria?: string | null
           created_at?: string
+          email_admin?: string | null
+          email_alertas?: string | null
+          endereco?: string | null
+          estado?: string | null
+          favicon_url?: string | null
+          fuso_horario?: string | null
+          horario_operacao?: string | null
           id?: string
+          inscricao_estadual?: string | null
           logo_url?: string | null
+          moeda?: string | null
           name: string
           nome_exibicao?: string | null
+          nome_fantasia?: string | null
+          razao_social?: string | null
+          relatorio_assinatura?: string | null
+          relatorio_mostrar_cnpj?: boolean
+          relatorio_mostrar_logo?: boolean
+          relatorio_rodape?: string | null
+          responsavel_principal?: string | null
+          site?: string | null
           slug: string
           status?: string
+          telefone?: string | null
+          tipo_empresa?: string | null
           updated_at?: string
+          whatsapp?: string | null
+          whatsapp_alertas?: string | null
         }
         Update: {
           ativo?: boolean
+          cep?: string | null
+          cidade?: string | null
+          cnpj?: string | null
           cor_alerta?: string | null
           cor_primaria?: string | null
           cor_secundaria?: string | null
           created_at?: string
+          email_admin?: string | null
+          email_alertas?: string | null
+          endereco?: string | null
+          estado?: string | null
+          favicon_url?: string | null
+          fuso_horario?: string | null
+          horario_operacao?: string | null
           id?: string
+          inscricao_estadual?: string | null
           logo_url?: string | null
+          moeda?: string | null
           name?: string
           nome_exibicao?: string | null
+          nome_fantasia?: string | null
+          razao_social?: string | null
+          relatorio_assinatura?: string | null
+          relatorio_mostrar_cnpj?: boolean
+          relatorio_mostrar_logo?: boolean
+          relatorio_rodape?: string | null
+          responsavel_principal?: string | null
+          site?: string | null
           slug?: string
           status?: string
+          telefone?: string | null
+          tipo_empresa?: string | null
           updated_at?: string
+          whatsapp?: string | null
+          whatsapp_alertas?: string | null
         }
         Relationships: []
       }
@@ -1028,14 +1100,38 @@ export type Database = {
         Args: never
         Returns: {
           ativo: boolean
+          cep: string
+          cidade: string
+          cnpj: string
           cor_alerta: string
           cor_primaria: string
           cor_secundaria: string
+          email_admin: string
+          email_alertas: string
+          endereco: string
+          estado: string
+          favicon_url: string
+          fuso_horario: string
+          horario_operacao: string
           id: string
+          inscricao_estadual: string
           logo_url: string
+          moeda: string
           name: string
           nome_exibicao: string
+          nome_fantasia: string
+          razao_social: string
+          relatorio_assinatura: string
+          relatorio_mostrar_cnpj: boolean
+          relatorio_mostrar_logo: boolean
+          relatorio_rodape: string
+          responsavel_principal: string
+          site: string
           slug: string
+          telefone: string
+          tipo_empresa: string
+          whatsapp: string
+          whatsapp_alertas: string
         }[]
       }
       get_my_tenant_id: { Args: never; Returns: string }
@@ -1058,11 +1154,35 @@ export type Database = {
       }
       update_my_tenant_branding: {
         Args: {
+          _cep?: string
+          _cidade?: string
+          _cnpj?: string
           _cor_alerta?: string
           _cor_primaria?: string
           _cor_secundaria?: string
+          _email_admin?: string
+          _email_alertas?: string
+          _endereco?: string
+          _estado?: string
+          _favicon_url?: string
+          _fuso_horario?: string
+          _horario_operacao?: string
+          _inscricao_estadual?: string
           _logo_url?: string
+          _moeda?: string
           _nome_exibicao?: string
+          _nome_fantasia?: string
+          _razao_social?: string
+          _relatorio_assinatura?: string
+          _relatorio_mostrar_cnpj?: boolean
+          _relatorio_mostrar_logo?: boolean
+          _relatorio_rodape?: string
+          _responsavel_principal?: string
+          _site?: string
+          _telefone?: string
+          _tipo_empresa?: string
+          _whatsapp?: string
+          _whatsapp_alertas?: string
         }
         Returns: boolean
       }

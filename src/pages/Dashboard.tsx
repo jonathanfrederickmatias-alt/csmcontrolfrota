@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, ClipboardCheck, PauseCircle, Truck, Wrench } from "lucide-react";
+import { AlertTriangle, ClipboardCheck, Fuel, PauseCircle, Truck, Wrench } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -8,10 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { calculateMaintenanceStatus } from "@/lib/maintenance-utils";
 import {
   ChecklistOverviewItem,
-  DashboardHero,
-  DashboardKpiItem,
   EmptyOperationalState,
-  KpiSummaryGrid,
   MaintenancePriorityItem,
   MaintenancePriorityList,
   ChecklistOverviewSection,
@@ -19,14 +16,10 @@ import {
   WorkOrderStatusItem,
 } from "@/components/dashboard/OperationalDashboardSections";
 import {
-  ActionableAlertItem,
-  ActionableAlertsPanel,
   ConsumptionDetailedItem,
   ConsumptionOperationsSection,
   EquipmentAnomaliesSection,
   EquipmentAnomalyItem,
-  FuelOperationsSection,
-  FuelOpsItem,
   PriorityRankingItem,
   PriorityRankingSection,
   RecommendationItem,
@@ -37,15 +30,32 @@ import {
   AIMaintenanceDecisionsSection,
 } from "@/components/dashboard/AIMaintenanceDecisionsSection";
 import {
-  OperationalCommandDeck,
-  PriorityNowSection,
-  type ExecutiveSignalItem,
-  type PriorityNowItem,
-  type QuickActionItem,
-} from "@/components/dashboard/PremiumOperationsSections";
+  AutoDiagnosticPanel,
+  ExecutiveHeroPanel,
+  ExecutiveSummaryCard,
+  PremiumTanksSection,
+  PriorityDispatchSection,
+  type AutoDiagnosticData,
+  type ExecutiveKpi,
+  type ExecutiveSummaryData,
+  type PremiumTankItem,
+  type PriorityNowExecutiveItem,
+  type RiskLevel,
+} from "@/components/dashboard/ExecutiveDashboardSections";
 import { Camera, MessageSquare, ShieldCheck, ShieldX } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { getEquipmentDisplayName as formatEquipmentDisplayName } from "@/lib/equipment-display";
+
+/* --------------------- Constantes de impacto financeiro --------------------- */
+/* Estimativas operacionais conservadoras usadas como fallback quando não há */
+/* custo real lançado. Nunca substituem a controladoria.                      */
+const FINANCIAL_ESTIMATES = {
+  dailyDowntimeBRL: 1200,        // perda média por equipamento parado / dia
+  overdueRiskBRL: 8500,          // risco de quebra em manutenção atrasada
+  criticalOSExposureBRL: 4200,   // exposição por OS crítica em aberto
+  abnormalConsumptionMonthlyBRL: 4800, // impacto mensal estimado por consumo anormal
+};
+
 
 type DashboardData = {
   equipments: any[];
@@ -736,174 +746,130 @@ export default function Dashboard() {
     };
   }, [data.checklists, data.combos, data.equipments, data.fuelPriceSettings, data.fuelRecords, data.plans, data.requests, data.workOrders, equipmentMap, navigate, today]);
 
-  const actionableAlerts = useMemo<ActionableAlertItem[]>(
-    () => [
-      {
-        id: "overdue-maintenance",
-        label: "Manutenção atrasada",
-        value: stats.overdueMaintenance.length,
-        description: "Equipamentos que já ultrapassaram o ponto de revisão e precisam de despacho imediato.",
-        icon: AlertTriangle,
-        tone: stats.overdueMaintenance.length > 0 ? "critical" : "ok",
-        actions: [
-          {
-            label: "Gerar OS automática",
-            variant: stats.overdueMaintenance.length > 0 ? "destructive" : "outline",
-            onClick: () => navigate("/pedido-manutencao"),
-          },
-          {
-            label: "Programar manutenção",
-            onClick: () => navigate("/manutencao"),
-          },
-        ],
-      },
-      {
-        id: "critical-os",
-        label: "OS críticas",
-        value: stats.criticalOrders.length,
-        description: "Ordens com prioridade alta ou urgente que ainda impactam a disponibilidade da frota.",
-        icon: Wrench,
-        tone: stats.criticalOrders.length > 0 ? "critical" : "ok",
-        actions: [
-          {
-            label: "Atribuir mecânico",
-            variant: stats.criticalOrders.length > 0 ? "destructive" : "outline",
-            onClick: () => navigate("/mecanico"),
-          },
-          {
-            label: "Priorizar",
-            onClick: () => navigate("/manutencao"),
-          },
-        ],
-      },
-      {
-        id: "stopped-equipments",
-        label: "Equipamentos parados",
-        value: stats.stoppedEquipments.length,
-        description: "Ativos indisponíveis ou em manutenção, com risco direto à produção em campo.",
-        icon: PauseCircle,
-        tone: stats.stoppedEquipments.length > 0 ? "critical" : "ok",
-        actions: [
-          {
-            label: "Ver disponibilidade",
-            onClick: () => navigate("/equipamentos"),
-          },
-          {
-            label: "Abrir manutenção",
-            onClick: () => navigate("/manutencao"),
-          },
-        ],
-      },
-      {
-        id: "abnormal-consumption",
-        label: "Consumo anormal",
-        value: stats.consumptionInsights.length,
-        description: "Desvio calculado com unidade correta e comparação contra média histórica real dos últimos 60 dias.",
-        icon: Truck,
-        tone: stats.consumptionInsights.length > 0 ? "critical" : "ok",
-        actions: [
-          {
-            label: "Abrir análise de consumo",
-            variant: stats.consumptionInsights.length > 0 ? "destructive" : "outline",
-            onClick: () => navigate("/relatorios"),
-          },
-          {
-            label: "Comparar histórico",
-            onClick: () => navigate("/abastecimento"),
-          },
-        ],
-      },
-      {
-        id: "data-anomalies",
-        label: "Dados inconsistentes",
-        value: stats.anomalies.length,
-        description: "Equipamentos com anomalias de horímetro/consumo que exigem validação antes de automações.",
-        icon: AlertTriangle,
-        tone: stats.anomalies.some((item) => item.blocksAutoOs) ? "critical" : stats.anomalies.length > 0 ? "warning" : "ok",
-        actions: [
-          {
-            label: "Filtrar anomalias",
-            variant: stats.anomalies.length > 0 ? "destructive" : "outline",
-            onClick: () => setAnomalyFilter("blocked"),
-          },
-          {
-            label: "Abrir equipamentos",
-            onClick: () => navigate("/equipamentos"),
-          },
-        ],
-      },
-    ],
-    [navigate, stats.anomalies, stats.consumptionInsights.length, stats.criticalOrders.length, stats.overdueMaintenance.length, stats.stoppedEquipments.length],
-  );
+  /* ----- Diagnóstico automático calculado a partir dos dados ao vivo ----- */
+  const autoDiagnostic = useMemo<AutoDiagnosticData>(() => {
+    const overdue = stats.overdueMaintenance.length;
+    const critical = stats.criticalOrders.length;
+    const stopped = stats.stoppedEquipments.length;
+    const abnormal = stats.consumptionInsights.length;
+    const blockingAnomalies = stats.anomalies.filter((item) => item.blocksAutoOs).length;
 
-  const commandDeckItems = useMemo<ExecutiveSignalItem[]>(() => [
+    let level: RiskLevel = "low";
+    if (critical >= 5 || overdue >= 8 || stopped >= 5 || blockingAnomalies >= 3) level = "critical";
+    else if (critical >= 2 || overdue >= 3 || stopped >= 2 || abnormal >= 3) level = "high";
+    else if (critical >= 1 || overdue >= 1 || stopped >= 1 || abnormal >= 1) level = "medium";
+
+    const evidence: string[] = [];
+    if (overdue > 0) evidence.push(`${overdue} preventiva${overdue === 1 ? "" : "s"} vencida${overdue === 1 ? "" : "s"}.`);
+    if (critical > 0) evidence.push(`${critical} OS crítica${critical === 1 ? "" : "s"} sem conclusão.`);
+    if (stopped > 0) evidence.push(`${stopped} equipamento${stopped === 1 ? "" : "s"} parado${stopped === 1 ? "" : "s"} agora.`);
+    if (abnormal > 0) evidence.push(`${abnormal} ativo${abnormal === 1 ? "" : "s"} com consumo acima da média.`);
+    if (blockingAnomalies > 0) evidence.push(`${blockingAnomalies} anomalia${blockingAnomalies === 1 ? "" : "s"} bloqueando automações.`);
+
+    let mainCause = "Operação dentro dos parâmetros monitorados.";
+    let recommendedAction = "Manter rotina de checklist e monitoramento.";
+    let nextStep = "Reavaliar no próximo turno.";
+    let riskTitle = "Frota estável";
+
+    if (level === "critical") {
+      riskTitle = "Risco crítico identificado na operação";
+      mainCause = critical > 0
+        ? `${critical} OS crítica${critical === 1 ? "" : "s"} e ${overdue} manutenção${overdue === 1 ? "" : "ões"} vencida${overdue === 1 ? "" : "s"} indicam alta chance de parada operacional.`
+        : `${overdue} manutenção${overdue === 1 ? "" : "ões"} vencida${overdue === 1 ? "" : "s"} e ${stopped} equipamento${stopped === 1 ? "" : "s"} parado${stopped === 1 ? "" : "s"}.`;
+      recommendedAction = "Atribuir mecânicos às OS críticas e despachar preventivas vencidas imediatamente.";
+      nextStep = "Programar OS automáticas e reavaliar disponibilidade em 4h.";
+    } else if (level === "high") {
+      riskTitle = "Risco alto — atenção operacional necessária";
+      mainCause = `${critical || overdue} item${(critical || overdue) === 1 ? "" : "s"} crítico${(critical || overdue) === 1 ? "" : "s"} no backlog operacional.`;
+      recommendedAction = "Priorizar despacho dos itens da fila Prioridade Agora.";
+      nextStep = "Programar OS preventivas e validar consumo dos top desvios.";
+    } else if (level === "medium") {
+      riskTitle = "Risco moderado em monitoramento";
+      mainCause = "Itens em atenção ainda não comprometem a operação.";
+      recommendedAction = "Programar manutenções com horímetro próximo do limite.";
+      nextStep = "Acompanhar evolução do consumo nos próximos abastecimentos.";
+    }
+
+    const financial =
+      stopped * FINANCIAL_ESTIMATES.dailyDowntimeBRL +
+      overdue * FINANCIAL_ESTIMATES.overdueRiskBRL * 0.15 +
+      critical * FINANCIAL_ESTIMATES.criticalOSExposureBRL * 0.2 +
+      abnormal * (FINANCIAL_ESTIMATES.abnormalConsumptionMonthlyBRL / 30);
+
+    return {
+      riskLevel: level,
+      riskTitle,
+      mainCause,
+      recommendedAction,
+      nextStep,
+      financialImpact: Math.round(financial),
+      evidence,
+    } satisfies AutoDiagnosticData;
+  }, [stats.anomalies, stats.consumptionInsights.length, stats.criticalOrders.length, stats.overdueMaintenance.length, stats.stoppedEquipments.length]);
+
+  /* ----- KPIs executivos do hero ----- */
+  const executiveKpis = useMemo<ExecutiveKpi[]>(() => [
     {
-      id: "deck-overdue",
-      label: "Manutenções atrasadas",
-      value: stats.overdueMaintenance.length,
-      tone: stats.overdueMaintenance.length > 0 ? "critical" : "ok",
-      detail: "Preventivas vencidas com risco real de parada corretiva.",
-    },
-    {
-      id: "deck-critical-os",
-      label: "OS críticas",
-      value: stats.criticalOrders.length,
-      tone: stats.criticalOrders.length > 0 ? "critical" : "ok",
-      detail: "Ordens de maior impacto para despacho imediato.",
-    },
-    {
-      id: "deck-consumption",
-      label: "Consumo anormal",
-      value: stats.consumptionInsights.length,
-      tone: stats.consumptionInsights.length > 0 ? "warning" : "ok",
-      detail: "Ativos acima da curva histórica de eficiência.",
-    },
-    {
-      id: "deck-anomalies",
-      label: "Dados inconsistentes",
-      value: stats.anomalies.length,
-      tone: stats.anomalies.some((item) => item.blocksAutoOs) ? "critical" : stats.anomalies.length > 0 ? "warning" : "ok",
-      detail: "Leituras incoerentes que bloqueiam automações sensíveis.",
-      onClick: () => setAnomalyFilter("blocked"),
-    },
-    {
-      id: "deck-active",
-      label: "Equipamentos ativos",
-      value: stats.activeEquipments,
+      id: "exec-active",
+      label: "Ativos em operação",
+      value: String(stats.activeEquipments),
+      helper: `${data.equipments.length} no total da frota`,
       tone: stats.activeEquipments > 0 ? "ok" : "warning",
-      detail: `${stats.stoppedEquipments.length} ativos estão indisponíveis agora.`,
+      icon: Truck,
       onClick: () => navigate("/equipamentos"),
     },
     {
-      id: "deck-monthly-cost",
-      label: "Custo mensal",
-      value: new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(stats.monthlyCost),
-      tone: stats.monthlyCost > 0 ? "warning" : "ok",
-      detail: "Combina custo de combustível estimado e OS encerradas no mês.",
+      id: "exec-stopped",
+      label: "Equipamentos parados",
+      value: String(stats.stoppedEquipments.length),
+      helper: stats.stoppedEquipments.length > 0
+        ? `~${new Intl.NumberFormat("pt-BR").format(stats.stoppedEquipments.length * FINANCIAL_ESTIMATES.dailyDowntimeBRL)} BRL/dia em perda`
+        : "Sem perda operacional registrada",
+      tone: stats.stoppedEquipments.length > 0 ? "critical" : "ok",
+      icon: PauseCircle,
+      onClick: () => navigate("/equipamentos"),
+    },
+    {
+      id: "exec-overdue",
+      label: "Manutenções atrasadas",
+      value: String(stats.overdueMaintenance.length),
+      helper: stats.overdueMaintenance.length > 0
+        ? "Risco de quebra → exposição estimada"
+        : "Plano preventivo em dia",
+      tone: stats.overdueMaintenance.length > 0 ? "critical" : "ok",
+      icon: AlertTriangle,
+      onClick: () => navigate("/manutencao"),
+    },
+    {
+      id: "exec-critical-os",
+      label: "OS críticas",
+      value: String(stats.criticalOrders.length),
+      helper: stats.criticalOrders.length > 0 ? "Afetam disponibilidade operacional" : "Backlog crítico zerado",
+      tone: stats.criticalOrders.length > 0 ? "critical" : "ok",
+      icon: Wrench,
+      onClick: () => navigate("/manutencao"),
+    },
+    {
+      id: "exec-abnormal",
+      label: "Consumo anormal",
+      value: String(stats.consumptionInsights.length),
+      helper: stats.consumptionInsights.length > 0 ? "Ativos acima da curva histórica" : "Frota dentro do padrão",
+      tone: stats.consumptionInsights.length > 0 ? "warning" : "ok",
+      icon: Fuel,
       onClick: () => navigate("/relatorios"),
     },
-  ], [navigate, stats.activeEquipments, stats.anomalies, stats.consumptionInsights.length, stats.criticalOrders.length, stats.monthlyCost, stats.overdueMaintenance.length, stats.stoppedEquipments.length]);
-
-  const commandDeckActions = useMemo<QuickActionItem[]>(() => [
     {
-      id: "action-auto-os",
-      label: "Gerar OS automática",
-      onClick: () => navigate("/pedido-manutencao"),
-      variant: stats.anomalies.some((item) => item.blocksAutoOs) ? "outline" : stats.overdueMaintenance.length > 0 ? "destructive" : "outline",
+      id: "exec-checklists",
+      label: "Checklists hoje",
+      value: String(stats.todayChecklists.length),
+      helper: stats.checklistCounts.critical > 0
+        ? `${stats.checklistCounts.critical} críticos`
+        : "Sem checklists críticos hoje",
+      tone: stats.checklistCounts.critical > 0 ? "warning" : stats.todayChecklists.length > 0 ? "ok" : "neutral",
+      icon: ClipboardCheck,
+      onClick: () => navigate("/checklist"),
     },
-    {
-      id: "action-assign-mechanic",
-      label: "Atribuir mecânico",
-      onClick: () => navigate("/mecanico"),
-      variant: "default",
-    },
-    {
-      id: "action-view-priorities",
-      label: "Ver prioridades",
-      onClick: () => navigate("/manutencao"),
-      variant: "secondary",
-    },
-  ], [navigate, stats.anomalies, stats.overdueMaintenance.length]);
+  ], [data.equipments.length, navigate, stats.activeEquipments, stats.checklistCounts.critical, stats.consumptionInsights.length, stats.criticalOrders.length, stats.overdueMaintenance.length, stats.stoppedEquipments.length, stats.todayChecklists.length]);
 
   const filteredAnomalies = useMemo<EquipmentAnomalyItem[]>(() => {
     return stats.anomalies
@@ -925,78 +891,68 @@ export default function Dashboard() {
       }));
   }, [anomalyFilter, stats.anomalies]);
 
-  const priorityNowItems = useMemo<PriorityNowItem[]>(() => {
-    const operational = [
+  /* ----- Prioridade Agora (premium dispatch) ----- */
+  const priorityNowItems = useMemo<PriorityNowExecutiveItem[]>(() => {
+    let rank = 0;
+    const next = () => ++rank;
+
+    const operational: PriorityNowExecutiveItem[] = [
       ...stats.criticalOrders.slice(0, 3).map((order: any) => {
         const equipment = equipmentMap[order.equipment_id];
         const baseDate = order.started_at ? new Date(order.started_at) : new Date(order.created_at);
         const downtimeHours = Math.max(0, Math.round((Date.now() - baseDate.getTime()) / (1000 * 60 * 60)));
+        const realCost = Number(order.labor_cost || 0) + Number(order.parts_cost || 0);
+        const financial = realCost > 0
+          ? realCost
+          : Math.round((downtimeHours / 24) * FINANCIAL_ESTIMATES.dailyDowntimeBRL + FINANCIAL_ESTIMATES.criticalOSExposureBRL * 0.3);
 
         return {
           id: `critical-${order.id}`,
+          rank: next(),
+          status: order.status === "in_progress" ? ("Em execução" as const) : ("Urgente" as const),
           equipment: getEquipmentDisplayName(equipment),
-          problem: order.description,
-          impact: `OS ${order.priority === "urgent" ? "urgente" : "alta"} afetando disponibilidade operacional`,
-          downtime: `${downtimeHours}h parado`,
-          tone: "critical" as const,
+          problem: order.description || "OS sem descrição registrada",
+          operationalImpact: `OS #${order.os_number} ${order.priority === "urgent" ? "urgente" : "alta"} afetando disponibilidade`,
+          downtimeOrRisk: downtimeHours > 0 ? `${downtimeHours}h em aberto` : "Recém aberta",
+          financialImpact: financial,
+          responsible: order.mechanic_name || null,
           actionLabel: "Abrir execução",
           onAction: () => navigate("/mecanico"),
-        };
+          tone: "critical" as const,
+        } satisfies PriorityNowExecutiveItem;
       }),
       ...stats.overdueMaintenance.slice(0, 2).map((item: any) => ({
         id: `overdue-${item.id}`,
+        rank: next(),
+        status: "Aguardando" as const,
         equipment: item.equipmentName,
         problem: item.planLabel,
-        impact: `${Math.abs(Math.round(item.remaining))} ${item.unit} de atraso com risco de parada`,
-        downtime: equipmentMap[item.equipmentId]?.status === "active" ? "Risco iminente" : "Indisponível",
-        tone: "warning" as const,
+        operationalImpact: `${Math.abs(Math.round(item.remaining))} ${item.unit} de atraso · risco de quebra`,
+        downtimeOrRisk: equipmentMap[item.equipmentId]?.status === "active" ? "Risco iminente de parada" : "Equipamento indisponível",
+        financialImpact: FINANCIAL_ESTIMATES.overdueRiskBRL,
+        responsible: null,
         actionLabel: "Programar OS",
         onAction: () => navigate("/manutencao"),
+        tone: "warning" as const,
       })),
       ...stats.consumptionInsights.slice(0, 2).map((item) => ({
         id: `consumption-${item.id}`,
+        rank: next(),
+        status: "Atenção" as const,
         equipment: item.equipmentName,
-        problem: "Consumo fora do padrão operacional",
-        impact: `${item.variationPercent.toFixed(0)}% acima da média histórica`,
-        downtime: "Impacto financeiro em curso",
-        tone: item.severity === "critical" ? "critical" as const : "action" as const,
+        problem: `Consumo ${item.variationPercent.toFixed(0)}% acima da média histórica`,
+        operationalImpact: `${item.currentMetric.toFixed(2)} ${item.unit} vs ${item.averageMetric.toFixed(2)} ${item.unit} histórico`,
+        downtimeOrRisk: "Impacto financeiro contínuo",
+        financialImpact: Math.round(FINANCIAL_ESTIMATES.abnormalConsumptionMonthlyBRL * (item.variationPercent / 100)),
+        responsible: null,
         actionLabel: "Ver análise",
         onAction: () => navigate("/relatorios"),
+        tone: item.severity === "critical" ? ("critical" as const) : ("action" as const),
       })),
     ];
 
     return operational.slice(0, 6);
   }, [equipmentMap, navigate, stats.consumptionInsights, stats.criticalOrders, stats.overdueMaintenance]);
-
-  const kpis = useMemo<DashboardKpiItem[]>(
-    () => [
-      {
-        id: "equipments",
-        label: "Total equipamentos",
-        value: String(data.equipments.length),
-        context: `${stats.activeEquipments} ativos e ${stats.stoppedEquipments.length} parados`,
-        icon: Truck,
-        onClick: () => navigate("/equipamentos"),
-      },
-      {
-        id: "work-orders",
-        label: "Total OS",
-        value: String(data.workOrders.length),
-        context: `${stats.activeOrders.length} abertas/em andamento (${stats.criticalOrders.length} críticas)`,
-        icon: Wrench,
-        onClick: () => navigate("/manutencao"),
-      },
-      {
-        id: "checklists",
-        label: "Checklists",
-        value: String(data.checklists.length),
-        context: `${stats.todayChecklists.length} hoje (${stats.checklistCounts.critical} críticos)`,
-        icon: ClipboardCheck,
-        onClick: () => navigate("/checklist"),
-      },
-    ],
-    [data.checklists.length, data.equipments.length, data.workOrders.length, navigate, stats.activeEquipments, stats.activeOrders.length, stats.checklistCounts.critical, stats.criticalOrders.length, stats.stoppedEquipments.length, stats.todayChecklists.length],
-  );
 
   const maintenanceList = useMemo<MaintenancePriorityItem[]>(
     () =>
@@ -1084,14 +1040,22 @@ export default function Dashboard() {
     [equipmentMap, stats.todayChecklists],
   );
 
-  const comboItems = useMemo<FuelOpsItem[]>(
+  /* ----- Tanques premium com autonomia estimada ----- */
+  const tankItems = useMemo<PremiumTankItem[]>(
     () =>
       data.combos.map((combo: any) => {
         const fuelCapacity = Number(combo.fuel_capacity || 0);
         const currentFuel = Number(combo.current_fuel || 0);
-        const lowLevelThreshold = fuelCapacity >= 5000 ? 1000 : fuelCapacity * 0.2;
         const dispatchesToday = data.fuelRecords.filter((record: any) => record.combo_equipment_id === combo.id && record.date === today).length;
         const latestSupply = data.fuelSupplyRecords.find((record: any) => record.combo_equipment_id === combo.id);
+
+        // Consumo médio diário dos últimos 14 dias
+        const fourteenDaysAgo = new Date();
+        fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+        const cutoff = fourteenDaysAgo.toISOString().split("T")[0];
+        const recentDispatches = data.fuelRecords.filter((record: any) => record.combo_equipment_id === combo.id && record.date >= cutoff);
+        const totalLiters = recentDispatches.reduce((sum: number, record: any) => sum + Number(record.liters || 0), 0);
+        const averageDailyConsumption = totalLiters > 0 ? totalLiters / 14 : 0;
 
         return {
           id: combo.id,
@@ -1101,24 +1065,35 @@ export default function Dashboard() {
           percentage: fuelCapacity ? (currentFuel / fuelCapacity) * 100 : 0,
           dispatchesToday,
           lastSupplyLabel: latestSupply ? formatDateLabel(latestSupply.date) : "sem registro",
-          lowLevelThreshold,
-        } satisfies FuelOpsItem;
+          averageDailyConsumption,
+        } satisfies PremiumTankItem;
       }),
     [data.combos, data.fuelRecords, data.fuelSupplyRecords, today],
   );
 
-  const summary = useMemo(
-    () =>
-      buildSystemSummary({
-        overdueCount: stats.overdueMaintenance.length,
-        abnormalCount: stats.consumptionInsights.length,
-        openOrders: stats.activeOrders.length,
-        criticalOrders: stats.criticalOrders.length,
-        stoppedCount: stats.stoppedEquipments.length,
-        recommendedCount: stats.recommendations.length,
-      }),
-    [stats.activeOrders.length, stats.consumptionInsights.length, stats.criticalOrders.length, stats.overdueMaintenance.length, stats.recommendations.length, stats.stoppedEquipments.length],
-  );
+  /* ----- Resumo executivo ----- */
+  const [executiveSummaryOpen, setExecutiveSummaryOpen] = useState(false);
+  const executiveSummary = useMemo<ExecutiveSummaryData>(() => {
+    const overdueItems = stats.overdueMaintenance.slice(0, 5).map((item: any) => `${item.equipmentName} — ${Math.abs(Math.round(item.remaining))} ${item.unit} de atraso`);
+    const criticalItems = [
+      ...stats.criticalOrders.slice(0, 3).map((order: any) => `${getEquipmentDisplayName(equipmentMap[order.equipment_id])} — OS #${order.os_number} (${order.priority})`),
+      ...stats.stoppedEquipments.slice(0, 3).map((eq: any) => `${getEquipmentDisplayName(eq)} — parado`),
+    ];
+    const consumptionItems = stats.consumptionInsights.slice(0, 5).map((item) => `${item.equipmentName} — ${item.variationPercent.toFixed(0)}% acima da média`);
+    const recommendedItems = stats.recommendations.slice(0, 5).map((rec) => rec.title);
+    const topRisks = autoDiagnostic.evidence.slice(0, 5);
+
+    return {
+      situation: autoDiagnostic.riskTitle + ". " + autoDiagnostic.mainCause,
+      topRisks,
+      criticalEquipments: criticalItems,
+      abnormalConsumption: consumptionItems,
+      overdueMaintenance: overdueItems,
+      recommendedActions: recommendedItems,
+      estimatedFinancialImpact: autoDiagnostic.financialImpact,
+    } satisfies ExecutiveSummaryData;
+  }, [autoDiagnostic, equipmentMap, stats.consumptionInsights, stats.criticalOrders, stats.overdueMaintenance, stats.recommendations, stats.stoppedEquipments]);
+
 
   const hasCriticalItems =
     stats.overdueMaintenance.length > 0 ||
@@ -1126,25 +1101,52 @@ export default function Dashboard() {
     stats.stoppedEquipments.length > 0 ||
     stats.consumptionInsights.length > 0;
 
+  const estimatedDailyLoss = stats.stoppedEquipments.length * FINANCIAL_ESTIMATES.dailyDowntimeBRL;
+
   return (
     <div className="space-y-5">
-      <DashboardHero
+      <ExecutiveHeroPanel
         title="Central operacional"
-        subtitle={todayLabel}
-        summary={summary}
+        dateLabel={todayLabel}
+        riskLevel={autoDiagnostic.riskLevel}
+        riskHeadline={autoDiagnostic.riskTitle}
+        monthlyCost={stats.monthlyCost}
+        estimatedDailyLoss={estimatedDailyLoss}
+        kpis={executiveKpis}
         onRefresh={fetchData}
         onSignOut={signOut}
         refreshing={isRefreshing}
+        onPrimaryAction={
+          stats.criticalOrders.length > 0
+            ? { label: "Atribuir mecânico", onClick: () => navigate("/mecanico") }
+            : stats.overdueMaintenance.length > 0
+              ? { label: "Programar OS", onClick: () => navigate("/manutencao") }
+              : undefined
+        }
       />
 
-      <OperationalCommandDeck items={commandDeckItems} actions={commandDeckActions} />
-      <ActionableAlertsPanel items={actionableAlerts} />
-      <KpiSummaryGrid items={kpis} />
+      <AutoDiagnosticPanel
+        data={autoDiagnostic}
+        onPrimaryAction={() => {
+          if (stats.criticalOrders.length > 0) navigate("/mecanico");
+          else if (stats.overdueMaintenance.length > 0) navigate("/manutencao");
+          else navigate("/equipamentos");
+        }}
+        onAiBoost={loadAiDecisions}
+        aiAvailable={data.equipments.length > 0}
+        aiLoading={aiLoading}
+      />
+
+      <ExecutiveSummaryCard
+        data={executiveSummary}
+        expanded={executiveSummaryOpen}
+        onToggle={() => setExecutiveSummaryOpen((value) => !value)}
+      />
 
       {!hasCriticalItems && <EmptyOperationalState />}
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-        <PriorityNowSection items={priorityNowItems} />
+        <PriorityDispatchSection items={priorityNowItems} />
         <RecommendedActionsSection items={stats.recommendations} />
       </div>
 
@@ -1176,14 +1178,13 @@ export default function Dashboard() {
 
       <ConsumptionOperationsSection items={stats.consumptionInsights as ConsumptionDetailedItem[]} onOpenReports={() => navigate("/relatorios")} />
 
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-        <ChecklistOverviewSection items={checklistItems} />
-        <FuelOperationsSection
-          items={comboItems}
-          onRegisterFuel={() => navigate("/abastecimento")}
-          onOpenSupply={() => navigate("/reabastecimento")}
-        />
-      </div>
+      <PremiumTanksSection
+        items={tankItems}
+        onRegisterFuel={() => navigate("/abastecimento")}
+        onOpenSupply={() => navigate("/reabastecimento")}
+      />
+
+      <ChecklistOverviewSection items={checklistItems} />
 
       <Dialog open={!!selectedChecklist} onOpenChange={() => setSelectedChecklist(null)}>
         <DialogContent className="max-h-[85vh] max-w-lg overflow-y-auto">

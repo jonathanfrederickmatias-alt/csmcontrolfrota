@@ -166,7 +166,7 @@ export default function MaintenancePage() {
         last_done_at: lastDone,
         next_due_at: nextDue,
         status,
-      });
+      } as never);
       toast({ title: 'Plano criado com sucesso!' });
     }
 
@@ -192,7 +192,7 @@ export default function MaintenancePage() {
       plan_id: plan.id,
       description: plan.description,
       hour_meter: currentHM,
-    });
+    } as never);
 
     // Update plan
     await supabase.from('maintenance_plans').update({
@@ -225,7 +225,7 @@ export default function MaintenancePage() {
       hour_meter: Number(historyForm.hourMeter),
       notes: historyForm.notes || null,
       operator_name: historyForm.operatorName || null,
-    });
+    } as never);
     setHistorySaving(false);
     setHistoryOpen(false);
     setHistoryForm({ equipmentId: '', description: '', hourMeter: '', notes: '', operatorName: '' });
@@ -404,7 +404,7 @@ export default function MaintenancePage() {
       priority: newOsForm.priority,
       operator_name: newOsForm.operator_name || 'Sistema',
       status: 'open',
-    }).select().single();
+    } as never).select().single();
 
     if (reqErr || !reqData) {
       toast({ title: 'Erro ao criar pedido vinculado', variant: 'destructive' });
@@ -419,7 +419,7 @@ export default function MaintenancePage() {
       description: newOsForm.description,
       priority: newOsForm.priority,
       status: 'open',
-    });
+    } as never);
 
     if (osErr) {
       toast({ title: 'Erro ao criar OS', variant: 'destructive' });

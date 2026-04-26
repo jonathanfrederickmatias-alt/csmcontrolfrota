@@ -398,7 +398,7 @@ export default function Dashboard() {
         operator_name: "IA Operacional",
         status: "open",
         notes: item.reason,
-      })
+      } as never)
       .select()
       .single();
 
@@ -415,7 +415,7 @@ export default function Dashboard() {
       priority: mappedPriority,
       status: "open",
       notes: item.reason,
-    });
+    } as never);
 
     if (workOrderError) {
       toast({ title: "Erro ao criar OS automática", description: workOrderError.message, variant: "destructive" });

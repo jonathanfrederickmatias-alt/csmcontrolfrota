@@ -15,7 +15,7 @@ export function useEquipments() {
   useEffect(() => { fetch(); }, [fetch]);
 
   const save = async (eq: Omit<DBEquipment, 'id' | 'created_at' | 'updated_at'>) => {
-    const { error } = await supabase.from('equipments').insert(eq);
+    const { error } = await supabase.from('equipments').insert(eq as never);
     if (!error) fetch();
     return error;
   };

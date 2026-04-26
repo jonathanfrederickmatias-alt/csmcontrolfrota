@@ -105,7 +105,7 @@ export default function QRChecklist() {
       type: checklistType,
       photo_url: photoUrl || null,
       observations: generalObservations || null,
-    });
+    } as never);
 
     setSaving(false);
 
@@ -147,7 +147,7 @@ export default function QRChecklist() {
           priority: maintenancePriority,
           status: 'open',
           photo_start_url: maintenancePhotoUrl || null,
-        })),
+        })) as never,
       );
 
       if (error) {

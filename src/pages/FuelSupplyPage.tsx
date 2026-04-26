@@ -62,7 +62,7 @@ export default function FuelSupplyPage() {
       notes: form.notes || null,
       responsible_name: form.responsible_name,
       photo_url: photoUrl || null,
-    });
+    } as never);
 
     setLoading(false);
     if (!error) {

@@ -60,7 +60,7 @@ export default function QRFuel() {
     if (liters && Number(liters) > 0) record.liters = Number(liters);
     else record.liters = 0;
     if (hourMeter && Number(hourMeter) > 0) record.hour_meter = Number(hourMeter);
-    await supabase.from('fuel_records').insert(record);
+    await supabase.from('fuel_records').insert([record]);
     if (hourMeter && Number(hourMeter) > 0 && targetId) {
       await supabase.from('equipments').update({
         current_hour_meter: Number(hourMeter),

@@ -104,7 +104,7 @@ export default function SegurosPage() {
       if (error) { toast({ title: "Erro ao atualizar", variant: "destructive" }); return; }
       toast({ title: "Seguro atualizado" });
     } else {
-      const { error } = await supabase.from("insurance_records").insert(payload);
+      const { error } = await supabase.from("insurance_records").insert([payload]);
       if (error) { toast({ title: "Erro ao salvar", variant: "destructive" }); return; }
       toast({ title: "Seguro cadastrado" });
     }

@@ -52,7 +52,7 @@ export default function FuelSupplyPage() {
     if (!form.combo_equipment_id || !form.liters || !form.responsible_name) return;
     setLoading(true);
 
-    const { error } = await supabase.from('fuel_supply_records').insert({
+    const { error } = await supabase.from('fuel_supply_records').insert([{
       combo_equipment_id: form.combo_equipment_id,
       liters: Number(form.liters),
       invoice_number: form.invoice_number || null,
@@ -61,7 +61,7 @@ export default function FuelSupplyPage() {
       notes: form.notes || null,
       responsible_name: form.responsible_name,
       photo_url: photoUrl || null,
-    });
+    }]);
 
     setLoading(false);
     if (!error) {
@@ -271,7 +271,7 @@ export default function FuelSupplyPage() {
                                    fetchData();
                                    toast.success('Registro excluído!', {
                                      action: { label: 'Desfazer', onClick: async () => {
-                                       await supabase.from('fuel_supply_records').insert(backup as any);
+                                       await supabase.from('fuel_supply_records').insert([backup as any]);
                                        fetchData();
                                        toast.success('Registro restaurado!');
                                      }},

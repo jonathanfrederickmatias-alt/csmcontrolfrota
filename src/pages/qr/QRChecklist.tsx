@@ -95,7 +95,7 @@ export default function QRChecklist() {
     const isConforme = unchecked === 0;
     const status = !isConforme ? (unchecked > 3 ? 'critical' : 'attention') : 'ok';
 
-    await supabase.from('checklists').insert({
+    await supabase.from('checklists').insert([{
       equipment_id: selectedEquipment,
       operator_name: operatorName,
       hour_meter: Number(hourMeter),
@@ -105,7 +105,7 @@ export default function QRChecklist() {
       type: checklistType,
       photo_url: photoUrl || null,
       observations: generalObservations || null,
-    });
+    }]);
 
     setSaving(false);
 
@@ -137,14 +137,14 @@ export default function QRChecklist() {
   const handleSaveMaintenance = async () => {
     // Photo is optional for maintenance request
     setSavingMaintenance(true);
-    await supabase.from('maintenance_requests').insert({
+    await supabase.from('maintenance_requests').insert([{
       equipment_id: selectedEquipment,
       operator_name: operatorName,
       description: maintenanceDesc,
       priority: maintenancePriority,
       status: 'open',
       photo_start_url: maintenancePhotoUrl || null,
-    });
+    }]);
     setSavingMaintenance(false);
     setMaintenanceSaved(true);
 

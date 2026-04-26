@@ -298,14 +298,14 @@ export default function Dashboard() {
 
     const { data: requestData, error: requestError } = await supabase
       .from("maintenance_requests")
-      .insert({
+      .insert([{
         equipment_id: item.equipmentId,
         description,
         priority: mappedPriority,
         operator_name: "IA Operacional",
         status: "open",
         notes: item.reason,
-      })
+      }])
       .select()
       .single();
 
@@ -315,14 +315,14 @@ export default function Dashboard() {
       return;
     }
 
-    const { error: workOrderError } = await supabase.from("work_orders").insert({
+    const { error: workOrderError } = await supabase.from("work_orders").insert([{
       equipment_id: item.equipmentId,
       maintenance_request_id: requestData.id,
       description,
       priority: mappedPriority,
       status: "open",
       notes: item.reason,
-    });
+    }]);
 
     if (workOrderError) {
       toast({ title: "Erro ao criar OS automática", description: workOrderError.message, variant: "destructive" });

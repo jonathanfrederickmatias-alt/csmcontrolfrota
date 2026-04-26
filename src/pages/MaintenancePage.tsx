@@ -149,14 +149,14 @@ export default function MaintenancePage() {
       }).eq('id', editPlan.id);
       toast({ title: 'Plano atualizado com sucesso!' });
     } else {
-      await supabase.from('maintenance_plans').insert({
+      await supabase.from('maintenance_plans').insert([{
         equipment_id: form.equipmentId,
         description: form.description,
         interval_hours: interval,
         last_done_at: lastDone,
         next_due_at: nextDue,
         status,
-      });
+      }]);
       toast({ title: 'Plano criado com sucesso!' });
     }
 
@@ -177,12 +177,12 @@ export default function MaintenancePage() {
     const currentHM = eq?.current_hour_meter || 0;
 
     // Save to history
-    await supabase.from('maintenance_history').insert({
+    await supabase.from('maintenance_history').insert([{
       equipment_id: plan.equipment_id,
       plan_id: plan.id,
       description: plan.description,
       hour_meter: currentHM,
-    });
+    }]);
 
     // Update plan
     await supabase.from('maintenance_plans').update({
@@ -209,13 +209,13 @@ export default function MaintenancePage() {
 
   const handleSaveHistory = async () => {
     setHistorySaving(true);
-    await supabase.from('maintenance_history').insert({
+    await supabase.from('maintenance_history').insert([{
       equipment_id: historyForm.equipmentId,
       description: historyForm.description,
       hour_meter: Number(historyForm.hourMeter),
       notes: historyForm.notes || null,
       operator_name: historyForm.operatorName || null,
-    });
+    }]);
     setHistorySaving(false);
     setHistoryOpen(false);
     setHistoryForm({ equipmentId: '', description: '', hourMeter: '', notes: '', operatorName: '' });
@@ -388,13 +388,13 @@ export default function MaintenancePage() {
     if (!newOsForm.equipmentId || !newOsForm.description) return;
     setNewOsSaving(true);
     // Create maintenance request first (required by work_orders FK)
-    const { data: reqData, error: reqErr } = await supabase.from('maintenance_requests').insert({
+    const { data: reqData, error: reqErr } = await supabase.from('maintenance_requests').insert([{
       equipment_id: newOsForm.equipmentId,
       description: newOsForm.description,
       priority: newOsForm.priority,
       operator_name: newOsForm.operator_name || 'Sistema',
       status: 'open',
-    }).select().single();
+    }]).select().single();
 
     if (reqErr || !reqData) {
       toast({ title: 'Erro ao criar pedido vinculado', variant: 'destructive' });
@@ -403,13 +403,13 @@ export default function MaintenancePage() {
     }
 
     // Create work order
-    const { error: osErr } = await supabase.from('work_orders').insert({
+    const { error: osErr } = await supabase.from('work_orders').insert([{
       equipment_id: newOsForm.equipmentId,
       maintenance_request_id: reqData.id,
       description: newOsForm.description,
       priority: newOsForm.priority,
       status: 'open',
-    });
+    }]);
 
     if (osErr) {
       toast({ title: 'Erro ao criar OS', variant: 'destructive' });
@@ -591,7 +591,7 @@ export default function MaintenancePage() {
                                   sonnerToast.success('OS excluída!', {
                                     action: { label: 'Desfazer', onClick: async () => {
                                       const { id, os_number, ...rest } = backup;
-                                      await supabase.from('work_orders').insert({ ...rest, id, os_number } as any);
+                                      await supabase.from('work_orders').insert([{ ...rest, id, os_number } as any]);
                                       fetchAll();
                                       sonnerToast.success('OS restaurada!');
                                     }},
@@ -973,9 +973,9 @@ export default function MaintenancePage() {
                                   fetchAll();
                                   sonnerToast.success('Pedido excluído!', {
                                     action: { label: 'Desfazer', onClick: async () => {
-                                      await supabase.from('maintenance_requests').insert(backupReq as any);
+                                      await supabase.from('maintenance_requests').insert([backupReq as any]);
                                       if (linkedOS && linkedOS.length > 0) {
-                                        await supabase.from('work_orders').insert(linkedOS as any);
+                                        await supabase.from('work_orders').insert([linkedOS as any]);
                                       }
                                       fetchAll();
                                       sonnerToast.success('Pedido restaurado!');
@@ -1202,7 +1202,7 @@ export default function MaintenancePage() {
                                 fetchAll();
                                 sonnerToast.success('Registro excluído!', {
                                   action: { label: 'Desfazer', onClick: async () => {
-                                    await supabase.from('maintenance_history').insert(backup as any);
+                                    await supabase.from('maintenance_history').insert([backup as any]);
                                     fetchAll();
                                     sonnerToast.success('Registro restaurado!');
                                   }},

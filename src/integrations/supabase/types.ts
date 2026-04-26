@@ -970,6 +970,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_assign_user_to_tenant: {
+        Args: { _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
+      admin_create_tenant: {
+        Args: { _name: string; _slug: string }
+        Returns: string
+      }
       get_default_tenant_id: { Args: never; Returns: string }
       get_my_roles: {
         Args: never
@@ -982,6 +990,16 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      list_my_tenants: {
+        Args: never
+        Returns: {
+          created_at: string
+          id: string
+          name: string
+          slug: string
+          status: string
+        }[]
       }
     }
     Enums: {

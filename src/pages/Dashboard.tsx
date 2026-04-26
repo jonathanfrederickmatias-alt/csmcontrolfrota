@@ -891,78 +891,68 @@ export default function Dashboard() {
       }));
   }, [anomalyFilter, stats.anomalies]);
 
-  const priorityNowItems = useMemo<PriorityNowItem[]>(() => {
-    const operational = [
+  /* ----- Prioridade Agora (premium dispatch) ----- */
+  const priorityNowItems = useMemo<PriorityNowExecutiveItem[]>(() => {
+    let rank = 0;
+    const next = () => ++rank;
+
+    const operational: PriorityNowExecutiveItem[] = [
       ...stats.criticalOrders.slice(0, 3).map((order: any) => {
         const equipment = equipmentMap[order.equipment_id];
         const baseDate = order.started_at ? new Date(order.started_at) : new Date(order.created_at);
         const downtimeHours = Math.max(0, Math.round((Date.now() - baseDate.getTime()) / (1000 * 60 * 60)));
+        const realCost = Number(order.labor_cost || 0) + Number(order.parts_cost || 0);
+        const financial = realCost > 0
+          ? realCost
+          : Math.round((downtimeHours / 24) * FINANCIAL_ESTIMATES.dailyDowntimeBRL + FINANCIAL_ESTIMATES.criticalOSExposureBRL * 0.3);
 
         return {
           id: `critical-${order.id}`,
+          rank: next(),
+          status: order.status === "in_progress" ? ("Em execução" as const) : ("Urgente" as const),
           equipment: getEquipmentDisplayName(equipment),
-          problem: order.description,
-          impact: `OS ${order.priority === "urgent" ? "urgente" : "alta"} afetando disponibilidade operacional`,
-          downtime: `${downtimeHours}h parado`,
-          tone: "critical" as const,
+          problem: order.description || "OS sem descrição registrada",
+          operationalImpact: `OS #${order.os_number} ${order.priority === "urgent" ? "urgente" : "alta"} afetando disponibilidade`,
+          downtimeOrRisk: downtimeHours > 0 ? `${downtimeHours}h em aberto` : "Recém aberta",
+          financialImpact: financial,
+          responsible: order.mechanic_name || null,
           actionLabel: "Abrir execução",
           onAction: () => navigate("/mecanico"),
-        };
+          tone: "critical" as const,
+        } satisfies PriorityNowExecutiveItem;
       }),
       ...stats.overdueMaintenance.slice(0, 2).map((item: any) => ({
         id: `overdue-${item.id}`,
+        rank: next(),
+        status: "Aguardando" as const,
         equipment: item.equipmentName,
         problem: item.planLabel,
-        impact: `${Math.abs(Math.round(item.remaining))} ${item.unit} de atraso com risco de parada`,
-        downtime: equipmentMap[item.equipmentId]?.status === "active" ? "Risco iminente" : "Indisponível",
-        tone: "warning" as const,
+        operationalImpact: `${Math.abs(Math.round(item.remaining))} ${item.unit} de atraso · risco de quebra`,
+        downtimeOrRisk: equipmentMap[item.equipmentId]?.status === "active" ? "Risco iminente de parada" : "Equipamento indisponível",
+        financialImpact: FINANCIAL_ESTIMATES.overdueRiskBRL,
+        responsible: null,
         actionLabel: "Programar OS",
         onAction: () => navigate("/manutencao"),
+        tone: "warning" as const,
       })),
       ...stats.consumptionInsights.slice(0, 2).map((item) => ({
         id: `consumption-${item.id}`,
+        rank: next(),
+        status: "Atenção" as const,
         equipment: item.equipmentName,
-        problem: "Consumo fora do padrão operacional",
-        impact: `${item.variationPercent.toFixed(0)}% acima da média histórica`,
-        downtime: "Impacto financeiro em curso",
-        tone: item.severity === "critical" ? "critical" as const : "action" as const,
+        problem: `Consumo ${item.variationPercent.toFixed(0)}% acima da média histórica`,
+        operationalImpact: `${item.currentMetric.toFixed(2)} ${item.unit} vs ${item.averageMetric.toFixed(2)} ${item.unit} histórico`,
+        downtimeOrRisk: "Impacto financeiro contínuo",
+        financialImpact: Math.round(FINANCIAL_ESTIMATES.abnormalConsumptionMonthlyBRL * (item.variationPercent / 100)),
+        responsible: null,
         actionLabel: "Ver análise",
         onAction: () => navigate("/relatorios"),
+        tone: item.severity === "critical" ? ("critical" as const) : ("action" as const),
       })),
     ];
 
     return operational.slice(0, 6);
   }, [equipmentMap, navigate, stats.consumptionInsights, stats.criticalOrders, stats.overdueMaintenance]);
-
-  const kpis = useMemo<DashboardKpiItem[]>(
-    () => [
-      {
-        id: "equipments",
-        label: "Total equipamentos",
-        value: String(data.equipments.length),
-        context: `${stats.activeEquipments} ativos e ${stats.stoppedEquipments.length} parados`,
-        icon: Truck,
-        onClick: () => navigate("/equipamentos"),
-      },
-      {
-        id: "work-orders",
-        label: "Total OS",
-        value: String(data.workOrders.length),
-        context: `${stats.activeOrders.length} abertas/em andamento (${stats.criticalOrders.length} críticas)`,
-        icon: Wrench,
-        onClick: () => navigate("/manutencao"),
-      },
-      {
-        id: "checklists",
-        label: "Checklists",
-        value: String(data.checklists.length),
-        context: `${stats.todayChecklists.length} hoje (${stats.checklistCounts.critical} críticos)`,
-        icon: ClipboardCheck,
-        onClick: () => navigate("/checklist"),
-      },
-    ],
-    [data.checklists.length, data.equipments.length, data.workOrders.length, navigate, stats.activeEquipments, stats.activeOrders.length, stats.checklistCounts.critical, stats.criticalOrders.length, stats.stoppedEquipments.length, stats.todayChecklists.length],
-  );
 
   const maintenanceList = useMemo<MaintenancePriorityItem[]>(
     () =>

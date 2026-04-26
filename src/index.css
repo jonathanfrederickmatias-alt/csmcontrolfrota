@@ -1,72 +1,57 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
 @layer base {
   :root {
-    /* Fundo executivo (#F3F6FA) e texto firme (#111827 / #6B7280) */
-    --background: 214 33% 97%;
-    --foreground: 220 39% 11%;
+    --background: 210 20% 95%;
+    --foreground: 220 20% 15%;
 
     --card: 0 0% 100%;
-    --card-foreground: 220 39% 11%;
+    --card-foreground: 220 20% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 39% 11%;
+    --popover-foreground: 220 20% 15%;
 
-    /* Azul principal #1976D2 / institucional #003B73 */
-    --primary: 210 79% 46%;
+    --primary: 210 80% 45%;
     --primary-foreground: 0 0% 100%;
-    --primary-deep: 209 100% 23%;
 
-    --secondary: 214 32% 91%;
-    --secondary-foreground: 220 30% 20%;
+    --secondary: 210 15% 90%;
+    --secondary-foreground: 220 20% 25%;
 
-    --muted: 214 30% 93%;
-    --muted-foreground: 220 9% 46%;
+    --muted: 210 12% 88%;
+    --muted-foreground: 220 10% 45%;
 
-    --accent: 209 100% 23%;
+    --accent: 210 70% 40%;
     --accent-foreground: 0 0% 100%;
 
-    /* Vermelho crítico #D92525 */
-    --destructive: 0 70% 50%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Verde OK #1FA463 */
-    --success: 148 68% 38%;
+    --success: 142 71% 40%;
     --success-foreground: 0 0% 100%;
 
-    /* Amarelo atenção #F5A623 */
-    --warning: 36 91% 55%;
-    --warning-foreground: 220 39% 11%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 220 20% 10%;
 
-    --border: 214 25% 87%;
-    --input: 214 25% 87%;
-    --ring: 210 79% 46%;
+    --border: 210 15% 85%;
+    --input: 210 15% 85%;
+    --ring: 210 80% 45%;
 
-    --radius: 0.875rem;
+    --radius: 0.75rem;
 
-    --sidebar-background: 209 100% 23%;
-    --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 210 79% 46%;
+    --sidebar-background: 210 40% 93%;
+    --sidebar-foreground: 220 20% 25%;
+    --sidebar-primary: 210 80% 45%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 209 70% 30%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 209 60% 28%;
-    --sidebar-ring: 210 79% 46%;
+    --sidebar-accent: 210 30% 86%;
+    --sidebar-accent-foreground: 220 20% 20%;
+    --sidebar-border: 210 25% 85%;
+    --sidebar-ring: 210 80% 45%;
 
-    --logo-blue: 209 100% 23%;
-
-    /* Sombras executivas */
-    --shadow-elevated: 0 1px 2px 0 hsl(220 39% 11% / 0.04), 0 8px 24px -12px hsl(220 39% 11% / 0.18);
-    --shadow-card: 0 1px 2px 0 hsl(220 39% 11% / 0.04), 0 4px 12px -4px hsl(220 39% 11% / 0.08);
-    --shadow-strong: 0 4px 8px -2px hsl(220 39% 11% / 0.06), 0 16px 40px -12px hsl(220 39% 11% / 0.22);
-
-    /* Gradientes premium */
-    --gradient-primary: linear-gradient(135deg, hsl(209 100% 23%) 0%, hsl(210 79% 46%) 100%);
-    --gradient-surface: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(214 33% 97%) 100%);
+    --logo-blue: 210 85% 30%;
   }
 }
 
@@ -86,36 +71,15 @@
 
 @layer utilities {
   .glass-card {
-    @apply bg-card/90 backdrop-blur-sm border border-border/60;
-    box-shadow: var(--shadow-card);
-  }
-
-  .shadow-card {
-    box-shadow: var(--shadow-card);
-  }
-
-  .shadow-elevated {
-    box-shadow: var(--shadow-elevated);
-  }
-
-  .shadow-strong {
-    box-shadow: var(--shadow-strong);
-  }
-
-  .bg-gradient-primary {
-    background-image: var(--gradient-primary);
-  }
-
-  .bg-gradient-surface {
-    background-image: var(--gradient-surface);
+    @apply bg-card/80 backdrop-blur-sm border border-border/50 shadow-lg;
   }
 
   .glow-primary {
-    box-shadow: 0 0 20px hsl(var(--primary) / 0.18), 0 0 60px hsl(var(--primary) / 0.06);
+    box-shadow: 0 0 20px hsl(210 80% 45% / 0.2), 0 0 60px hsl(210 80% 45% / 0.08);
   }
 
   .text-gradient {
-    background: linear-gradient(to right, hsl(var(--destructive)), hsl(0 70% 40%));
+    background: linear-gradient(to right, hsl(0 80% 50%), hsl(0 70% 40%));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;

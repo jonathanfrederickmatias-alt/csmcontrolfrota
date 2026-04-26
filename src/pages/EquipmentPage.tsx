@@ -9,7 +9,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { getEquipmentDisplayName, getEquipmentIdentifier, getEquipmentIdentifierLabel } from "@/lib/equipment-display";
 
 type EqType = 'machine' | 'truck' | 'combo';
 type OwnershipType = 'own' | 'third_party';
@@ -97,7 +96,7 @@ export default function EquipmentPage() {
         chassis: form.chassis || null,
         status: 'active',
         ownership: activeTab,
-      } as never);
+      });
       if (error) toast.error("Erro ao criar");
       else toast.success("Equipamento criado!");
     }
@@ -138,14 +137,14 @@ export default function EquipmentPage() {
           >
             <div className="flex items-start justify-between mb-3">
               <div>
-                <h3 className="font-bold text-foreground">{getEquipmentDisplayName(eq)}</h3>
+                <h3 className="font-bold text-foreground">{eq.name}</h3>
                 <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">{typeLabels[eq.type]}</span>
               </div>
               <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[eq.status] || ''}`}>
                 {statusLabels[eq.status] || eq.status}
               </span>
             </div>
-            {getEquipmentIdentifier(eq) && <p className="text-xs text-muted-foreground">{getEquipmentIdentifierLabel(eq)}: {getEquipmentIdentifier(eq)}</p>}
+            {eq.plate && <p className="text-xs text-muted-foreground">Placa/Série: {eq.plate}</p>}
             {eq.model && <p className="text-xs text-muted-foreground">Modelo: {eq.model}</p>}
             {eq.brand && <p className="text-xs text-muted-foreground">Marca: {eq.brand}</p>}
             {eq.chassis && <p className="text-xs text-muted-foreground">Chassi: {eq.chassis}</p>}
@@ -224,7 +223,7 @@ export default function EquipmentPage() {
             <>
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
-                  {getEquipmentDisplayName(selectedEq)}
+                  {selectedEq.name}
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[selectedEq.status] || ''}`}>
                     {statusLabels[selectedEq.status] || selectedEq.status}
                   </span>
@@ -242,8 +241,8 @@ export default function EquipmentPage() {
                   </div>
                   {selectedEq.plate && (
                     <div className="bg-secondary/50 rounded-lg p-3">
-                      <p className="text-xs text-muted-foreground">{getEquipmentIdentifierLabel(selectedEq)}</p>
-                      <p className="font-mono font-semibold text-foreground">{getEquipmentIdentifier(selectedEq)}</p>
+                      <p className="text-xs text-muted-foreground">Placa/Série</p>
+                      <p className="font-mono font-semibold text-foreground">{selectedEq.plate}</p>
                     </div>
                   )}
                   {selectedEq.model && (

@@ -9,7 +9,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { CheckCircle, Wrench, Loader2, Play, Square, Plus, Trash2, Package, CheckSquare, SquareIcon } from "lucide-react";
 import PublicLayout from "@/components/PublicLayout";
 import PhotoUpload from "@/components/PhotoUpload";
-import { getEquipmentDisplayName } from "@/lib/equipment-display";
 
 interface Part {
   code: string;
@@ -264,7 +263,7 @@ export default function QRMechanicOS() {
           <h1 className="text-2xl font-black text-gradient">OS #{os.os_number}</h1>
         </div>
         <p className="text-muted-foreground text-sm">{os.description}</p>
-        {equipment && <p className="text-xs text-muted-foreground mt-1">Equipamento: <strong>{getEquipmentDisplayName(equipment)}</strong></p>}
+        {equipment && <p className="text-xs text-muted-foreground mt-1">Equipamento: <strong>{equipment.name}</strong></p>}
         <span className="inline-block mt-2 text-xs px-2 py-0.5 rounded-full font-medium bg-secondary text-muted-foreground">
           {priorityLabels[os.priority] || os.priority}
         </span>

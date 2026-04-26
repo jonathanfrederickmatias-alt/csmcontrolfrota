@@ -4,7 +4,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { BrandingProvider } from "@/contexts/BrandingContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AppLayout from "@/components/AppLayout";
 import Dashboard from "@/pages/Dashboard";
@@ -20,7 +19,6 @@ import MaintenanceRequestPage from "@/pages/MaintenanceRequestPage";
 import ObrasPage from "@/pages/ObrasPage";
 import SegurosPage from "@/pages/SegurosPage";
 import UsersPage from "@/pages/UsersPage";
-import CompanySettingsPage from "@/pages/CompanySettingsPage";
 import QRChecklist from "@/pages/qr/QRChecklist";
 import QRFuel from "@/pages/qr/QRFuel";
 import QRMaintenanceRequest from "@/pages/qr/QRMaintenanceRequest";
@@ -28,7 +26,6 @@ import QREquipamento from "@/pages/qr/QREquipamento";
 import QRMechanicOS from "@/pages/qr/QRMechanicOS";
 import QRPrintPage from "@/pages/QRPrintPage";
 import MechanicDashboardPage from "@/pages/MechanicDashboardPage";
-import ExecutiveDashboardPage from "@/pages/ExecutiveDashboardPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -52,7 +49,6 @@ const App = () => (
             {/* Protected app routes */}
             <Route path="/*" element={
               <ProtectedRoute>
-                <BrandingProvider>
                 <AppLayout>
                   <Routes>
                     <Route path="/" element={<Dashboard />} />
@@ -65,16 +61,13 @@ const App = () => (
                     <Route path="/reabastecimento" element={<FuelSupplyPage />} />
                     <Route path="/seguros" element={<SegurosPage />} />
                     <Route path="/relatorios" element={<ReportsPage />} />
-                    <Route path="/executivo" element={<ExecutiveDashboardPage />} />
                     <Route path="/qrcode" element={<QRCodePage />} />
                     <Route path="/pedido-manutencao" element={<MaintenanceRequestPage />} />
                     <Route path="/obras" element={<ObrasPage />} />
                     <Route path="/usuarios" element={<UsersPage />} />
-                    <Route path="/configuracoes/empresa" element={<CompanySettingsPage />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </AppLayout>
-                </BrandingProvider>
               </ProtectedRoute>
             } />
           </Routes>

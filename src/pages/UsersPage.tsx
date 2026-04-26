@@ -175,7 +175,7 @@ export default function UsersPage() {
     if (existing) {
       await supabase.from('fuel_pins').update({ pin: newPin }).eq('user_id', selectedUser.user_id);
     } else {
-      await supabase.from('fuel_pins').insert({ user_id: selectedUser.user_id, pin: newPin } as never);
+      await supabase.from('fuel_pins').insert({ user_id: selectedUser.user_id, pin: newPin });
     }
 
     toast.success('PIN atualizado!');

@@ -8,7 +8,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CheckCircle, Wrench } from "lucide-react";
-import { getEquipmentDisplayName } from "@/lib/equipment-display";
 
 export default function MaintenanceRequestPage() {
   const [searchParams] = useSearchParams();
@@ -61,7 +60,7 @@ export default function MaintenanceRequestPage() {
             <Select value={equipmentId} onValueChange={setEquipmentId}>
               <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
               <SelectContent>
-                {equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{getEquipmentDisplayName(eq as any)}</SelectItem>)}
+                {equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eq.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>

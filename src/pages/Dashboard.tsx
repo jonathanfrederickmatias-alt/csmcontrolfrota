@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, ClipboardCheck, Fuel, PauseCircle, Truck, Wrench } from "lucide-react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { AlertTriangle, ClipboardCheck, PauseCircle, Truck, Wrench } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/AuthContext";
@@ -8,7 +8,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { calculateMaintenanceStatus } from "@/lib/maintenance-utils";
 import {
   ChecklistOverviewItem,
+  DashboardHero,
+  DashboardKpiItem,
   EmptyOperationalState,
+  KpiSummaryGrid,
   MaintenancePriorityItem,
   MaintenancePriorityList,
   ChecklistOverviewSection,
@@ -16,10 +19,12 @@ import {
   WorkOrderStatusItem,
 } from "@/components/dashboard/OperationalDashboardSections";
 import {
+  ActionableAlertItem,
+  ActionableAlertsPanel,
   ConsumptionDetailedItem,
   ConsumptionOperationsSection,
-  EquipmentAnomaliesSection,
-  EquipmentAnomalyItem,
+  FuelOperationsSection,
+  FuelOpsItem,
   PriorityRankingItem,
   PriorityRankingSection,
   RecommendationItem,
@@ -29,40 +34,14 @@ import {
   AIMaintenanceDecision,
   AIMaintenanceDecisionsSection,
 } from "@/components/dashboard/AIMaintenanceDecisionsSection";
-import {
-  AutoDiagnosticPanel,
-  ExecutiveHeroPanel,
-  ExecutiveSummaryCard,
-  PremiumTanksSection,
-  PriorityDispatchSection,
-  type AutoDiagnosticData,
-  type ExecutiveKpi,
-  type ExecutiveSummaryData,
-  type PremiumTankItem,
-  type PriorityNowExecutiveItem,
-  type RiskLevel,
-} from "@/components/dashboard/ExecutiveDashboardSections";
 import { Camera, MessageSquare, ShieldCheck, ShieldX } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { getEquipmentDisplayName as formatEquipmentDisplayName } from "@/lib/equipment-display";
-
-/* --------------------- Constantes de impacto financeiro --------------------- */
-/* Estimativas operacionais conservadoras usadas como fallback quando não há */
-/* custo real lançado. Nunca substituem a controladoria.                      */
-const FINANCIAL_ESTIMATES = {
-  dailyDowntimeBRL: 1200,        // perda média por equipamento parado / dia
-  overdueRiskBRL: 8500,          // risco de quebra em manutenção atrasada
-  criticalOSExposureBRL: 4200,   // exposição por OS crítica em aberto
-  abnormalConsumptionMonthlyBRL: 4800, // impacto mensal estimado por consumo anormal
-};
-
 
 type DashboardData = {
   equipments: any[];
   checklists: any[];
   plans: any[];
   fuelRecords: any[];
-  fuelPriceSettings: any[];
   fuelSupplyRecords: any[];
   requests: any[];
   combos: any[];
@@ -80,20 +59,6 @@ type FuelMetricRecord = {
   created_at: string;
   hour_meter: number;
   liters: number;
-};
-
-type EquipmentAnomalyType = "hourmeter" | "consumption" | "data";
-
-type EquipmentAnomalySummary = {
-  id: string;
-  equipmentId: string;
-  equipmentName: string;
-  severity: "critical" | "warning";
-  anomalyTypes: EquipmentAnomalyType[];
-  summary: string;
-  detail: string;
-  impact: string;
-  blocksAutoOs: boolean;
 };
 
 type MaintenanceStatus = "ok" | "approaching" | "overdue";
@@ -120,14 +85,12 @@ type StatsSummary = {
   waitingPartsOrders: any[];
   stoppedEquipments: any[];
   consumptionInsights: ConsumptionDetailedItem[];
-  anomalies: EquipmentAnomalySummary[];
   openRequests: number;
   inProgressRequests: number;
   activeEquipments: number;
   priorityRanking: PriorityRankingItem[];
   recommendations: RecommendationItem[];
   lowFuelCombos: any[];
-  monthlyCost: number;
 };
 
 type AIMaintenanceDecisionPayload = AIMaintenanceDecision;
@@ -212,19 +175,8 @@ function getPriorityDescriptor(priority: string) {
   return "Monitorar";
 }
 
-function getEquipmentDisplayName(equipment?: {
-  name?: string | null;
-  plate?: string | null;
-  cost_center?: string | null;
-  chassis?: string | null;
-  type?: string | null;
-}) {
-  return formatEquipmentDisplayName(equipment);
-}
-
 export default function Dashboard() {
   const navigate = useNavigate();
-  const location = useLocation();
   const { signOut } = useAuth();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedChecklist, setSelectedChecklist] = useState<any>(null);
@@ -233,7 +185,6 @@ export default function Dashboard() {
     checklists: [],
     plans: [],
     fuelRecords: [],
-    fuelPriceSettings: [],
     fuelSupplyRecords: [],
     requests: [],
     combos: [],
@@ -242,18 +193,7 @@ export default function Dashboard() {
   });
   const [aiDecisions, setAiDecisions] = useState<AIMaintenanceDecisionPayload[]>([]);
   const [aiLoading, setAiLoading] = useState(false);
-  const [aiErrorMessage, setAiErrorMessage] = useState<string | null>(null);
-  const [aiHasGenerated, setAiHasGenerated] = useState(false);
   const [creatingAiDecisionId, setCreatingAiDecisionId] = useState<string | null>(null);
-  const [anomalyFilter, setAnomalyFilter] = useState<"all" | "blocked" | "hourmeter" | "consumption">("all");
-
-  useEffect(() => {
-    if (location.search.includes('focus=ai')) {
-      requestAnimationFrame(() => {
-        document.getElementById('ai-operacional-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      });
-    }
-  }, [location.search]);
 
   const fetchData = useCallback(async () => {
     setIsRefreshing(true);
@@ -262,12 +202,11 @@ export default function Dashboard() {
     sixtyDaysAgo.setDate(today.getDate() - 60);
     const cutoffDate = sixtyDaysAgo.toISOString().split("T")[0];
 
-    const [eqRes, clRes, plRes, frRes, fpsRes, fsRes, reqRes, woRes, histRes] = await Promise.all([
+    const [eqRes, clRes, plRes, frRes, fsRes, reqRes, woRes, histRes] = await Promise.all([
       supabase.from("equipments").select("*"),
       supabase.from("checklists").select("*").order("created_at", { ascending: false }).limit(200),
       supabase.from("maintenance_plans").select("*"),
       supabase.from("fuel_records").select("*").gte("date", cutoffDate).order("date", { ascending: false }).limit(1000),
-      supabase.from("fuel_price_settings").select("*"),
       supabase.from("fuel_supply_records").select("*").gte("date", cutoffDate).order("date", { ascending: false }).limit(300),
       supabase.from("maintenance_requests").select("*").order("created_at", { ascending: false }).limit(100),
       supabase.from("work_orders").select("*").order("created_at", { ascending: false }).limit(100),
@@ -280,7 +219,6 @@ export default function Dashboard() {
       checklists: clRes.data || [],
       plans: plRes.data || [],
       fuelRecords: frRes.data || [],
-      fuelPriceSettings: fpsRes.data || [],
       fuelSupplyRecords: fsRes.data || [],
       requests: reqRes.data || [],
       combos: equipments.filter((equipment: any) => equipment.type === "combo"),
@@ -294,96 +232,58 @@ export default function Dashboard() {
     fetchData();
   }, [fetchData]);
 
-  const loadAiDecisions = useCallback(async () => {
-    if (data.equipments.length === 0) {
-      setAiDecisions([]);
-      setAiHasGenerated(true);
-      setAiErrorMessage(null);
-      return;
-    }
+  useEffect(() => {
+    const loadAiDecisions = async () => {
+      if (data.equipments.length === 0) {
+        setAiDecisions([]);
+        return;
+      }
 
-    setAiLoading(true);
-    setAiErrorMessage(null);
-    setAiHasGenerated(true);
+      setAiLoading(true);
+      const { data: response, error } = await supabase.functions.invoke("maintenance-ai-decisions", {
+        body: {
+          equipments: data.equipments,
+          maintenancePlans: data.plans,
+          maintenanceHistory: data.maintenanceHistory,
+          fuelRecords: data.fuelRecords,
+          workOrders: data.workOrders,
+        },
+      });
 
-    const { data: response, error } = await supabase.functions.invoke("maintenance-ai-decisions", {
-      body: {
-        equipments: data.equipments,
-        maintenancePlans: data.plans,
-        maintenanceHistory: data.maintenanceHistory,
-        fuelRecords: data.fuelRecords,
-        workOrders: data.workOrders,
-      },
-    });
+      if (error) {
+        toast({ title: "Erro ao gerar decisões automáticas", description: error.message, variant: "destructive" });
+        setAiDecisions([]);
+      } else {
+        const items = Array.isArray(response?.decisions) ? response.decisions : [];
+        setAiDecisions(
+          items
+            .filter((item: any) => item?.equipmentId && item?.recommendation)
+            .map((item: any) => {
+              const equipment = data.equipments.find((entry: any) => entry.id === item.equipmentId);
+              return {
+                id: `${item.equipmentId}-${item.priority}-${item.maintenanceType}`,
+                equipmentId: item.equipmentId,
+                equipmentName: equipment?.name || "Equipamento",
+                recommendation: item.recommendation,
+                reason: item.reason || "Sem justificativa detalhada.",
+                priority: item.priority === "high" || item.priority === "medium" || item.priority === "low" ? item.priority : "medium",
+                maintenanceType: item.maintenanceType === "corrective" ? "corrective" : "preventive",
+                suggestedParts: Array.isArray(item.suggestedParts) ? item.suggestedParts.filter(Boolean) : [],
+                downtimeHours: Number(item.downtimeHours || 0),
+                autoCreateOS: item.autoCreateOS !== false,
+              } satisfies AIMaintenanceDecisionPayload;
+            })
+            .slice(0, 5),
+        );
+      }
 
-    const backendErrorMessage = typeof response?.userMessage === "string"
-      ? response.userMessage
-      : typeof response?.error === "string" && (response.error.includes("payment_required") || response.error.includes("Not enough credits"))
-        ? "A análise operacional está temporariamente indisponível porque o crédito de IA do workspace acabou. Recarregue os créditos para gerar novas avaliações."
-        : typeof response?.error === "string" && response.error.includes("rate_limit")
-          ? "A análise operacional atingiu o limite momentâneo de requisições. Aguarde alguns instantes e tente novamente."
-          : null;
-
-    if (error || backendErrorMessage) {
-      const friendlyMessage = backendErrorMessage || (error?.message.includes("payment_required") || error?.message.includes("Not enough credits")
-        ? "A análise operacional está temporariamente indisponível porque o crédito de IA do workspace acabou. Recarregue os créditos para gerar novas avaliações."
-        : "Não foi possível gerar a avaliação operacional agora.");
-      setAiDecisions([]);
-      setAiErrorMessage(friendlyMessage);
-      toast({ title: "Análise operacional indisponível", description: friendlyMessage, variant: "destructive" });
       setAiLoading(false);
-      return;
-    }
+    };
 
-    const items = Array.isArray(response?.decisions) ? response.decisions : [];
-    setAiDecisions(
-      items
-        .filter((item: any) => item?.equipmentId && item?.recommendation)
-        .map((item: any) => {
-          const equipment = data.equipments.find((entry: any) => entry.id === item.equipmentId);
-          const priority = item.priority === "critical" || item.priority === "high" || item.priority === "medium" || item.priority === "low" ? item.priority : "medium";
-          const classification = item.equipmentClassification === "good" || item.equipmentClassification === "medium" || item.equipmentClassification === "bad" ? item.equipmentClassification : "medium";
-          return {
-            id: `${item.equipmentId}-${priority}-${item.maintenanceType}`,
-            equipmentId: item.equipmentId,
-            equipmentName: getEquipmentDisplayName(equipment),
-            summary: item.summary || item.reason || item.recommendation,
-            failureRisk: Math.max(0, Math.min(100, Number(item.failureRisk || 0))),
-            recommendation: item.recommendation,
-            reason: item.reason || "Sem justificativa detalhada.",
-            priority,
-            maintenanceType: item.maintenanceType === "corrective" ? "corrective" : "preventive",
-            suggestedParts: Array.isArray(item.suggestedParts) ? item.suggestedParts.filter(Boolean) : [],
-            downtimeHours: Number(item.downtimeHours || 0),
-            consumptionStatus: item.consumptionStatus || "Dentro do esperado",
-            consumptionDeviationPercent: Number(item.consumptionDeviationPercent || 0),
-            costAnalysis: item.costAnalysis || "Sem pressão financeira relevante no momento.",
-            problemsIdentified: Array.isArray(item.problemsIdentified) ? item.problemsIdentified.filter(Boolean) : [],
-            possibleCauses: Array.isArray(item.possibleCauses) ? item.possibleCauses.filter(Boolean) : [],
-            recommendedActions: Array.isArray(item.recommendedActions) ? item.recommendedActions.filter(Boolean) : [item.recommendation],
-            operationalImpact: item.operationalImpact || `Impacto estimado de ${Number(item.downtimeHours || 0).toFixed(1)}h na disponibilidade operacional.`,
-            technicalReason: item.technicalReason || item.reason || "Sem justificativa detalhada.",
-            anomalyFlags: Array.isArray(item.anomalyFlags) ? item.anomalyFlags.filter(Boolean) : [],
-            equipmentClassification: classification,
-            autoCreateOS: item.autoCreateOS !== false,
-          } satisfies AIMaintenanceDecisionPayload;
-        })
-        .slice(0, 5),
-    );
-    setAiLoading(false);
+    loadAiDecisions();
   }, [data.equipments, data.fuelRecords, data.maintenanceHistory, data.plans, data.workOrders]);
 
   const handleCreateAiWorkOrder = useCallback(async (item: AIMaintenanceDecisionPayload) => {
-    if (item.anomalyFlags && item.anomalyFlags.length > 0) {
-      toast({
-        title: "OS automática bloqueada",
-        description: "Corrija as inconsistências de horímetro/consumo antes de gerar a OS automática para este equipamento.",
-        variant: "destructive",
-      });
-      setCreatingAiDecisionId(null);
-      return;
-    }
-
     setCreatingAiDecisionId(item.id);
 
     const mappedPriority = item.priority === "high" ? "urgent" : item.priority === "medium" ? "high" : "medium";
@@ -398,7 +298,7 @@ export default function Dashboard() {
         operator_name: "IA Operacional",
         status: "open",
         notes: item.reason,
-      } as never)
+      })
       .select()
       .single();
 
@@ -415,7 +315,7 @@ export default function Dashboard() {
       priority: mappedPriority,
       status: "open",
       notes: item.reason,
-    } as never);
+    });
 
     if (workOrderError) {
       toast({ title: "Erro ao criar OS automática", description: workOrderError.message, variant: "destructive" });
@@ -456,7 +356,7 @@ export default function Dashboard() {
         return {
           id: plan.id,
           equipmentId: equipment.id,
-          equipmentName: getEquipmentDisplayName(equipment),
+          equipmentName: equipment.name,
           currentHourMeter: Number(equipment.current_hour_meter || 0),
           status,
           remaining,
@@ -531,7 +431,7 @@ export default function Dashboard() {
 
         return {
           id: equipmentId,
-          equipmentName: getEquipmentDisplayName(equipment),
+          equipmentName: equipment.name,
           variationPercent: variation,
           metricLabel: `${currentSegment.metric.toFixed(2)} ${metricType === "truck" ? "km/L" : "L/h"} frente à média histórica de ${historicalAverage.toFixed(2)} ${metricType === "truck" ? "km/L" : "L/h"}`,
           severity: variation > 30 ? "critical" : "warning",
@@ -548,80 +448,12 @@ export default function Dashboard() {
       .filter(Boolean)
       .sort((a: any, b: any) => b.variationPercent - a.variationPercent);
 
-    const anomalies: EquipmentAnomalySummary[] = data.equipments
-      .map((equipment: any) => {
-        const relatedFuel = (fuelMetrics[equipment.id] || []).sort(
-          (a, b) => a.date.localeCompare(b.date) || a.created_at.localeCompare(b.created_at),
-        );
-        const relatedConsumption = consumptionInsights.find((item) => item.id === equipment.id);
-        const anomalyTypes: EquipmentAnomalyType[] = [];
-        const detailParts: string[] = [];
-        const impactParts: string[] = [];
-        let severity: EquipmentAnomalySummary["severity"] = "warning";
-
-        const duplicateHourMeter = relatedFuel.some((record, index) => {
-          if (index === 0) return false;
-          return Number(record.hour_meter) < Number(relatedFuel[index - 1].hour_meter);
-        });
-
-        const stagnantHourMeterWithFuel = relatedFuel.some((record, index) => {
-          if (index === 0) return false;
-          const delta = Number(record.hour_meter) - Number(relatedFuel[index - 1].hour_meter);
-          return delta === 0 && Number(record.liters) >= 20;
-        });
-
-        if (duplicateHourMeter || stagnantHourMeterWithFuel) {
-          anomalyTypes.push("hourmeter");
-          detailParts.push(duplicateHourMeter ? "horímetro regressivo entre abastecimentos" : "abastecimento registrado sem avanço de horímetro");
-          impactParts.push("base de manutenção preventiva comprometida");
-          severity = "critical";
-        }
-
-        if (relatedConsumption) {
-          anomalyTypes.push("consumption");
-          detailParts.push(`${relatedConsumption.variationPercent.toFixed(0)}% de desvio frente ao histórico em ${relatedConsumption.unit}`);
-          impactParts.push("risco de desperdício, falha mecânica ou lançamento incorreto");
-          if (relatedConsumption.variationPercent > 45) {
-            severity = "critical";
-          }
-        }
-
-        if (equipment.current_hour_meter < 0 || !Number.isFinite(Number(equipment.current_hour_meter))) {
-          anomalyTypes.push("data");
-          detailParts.push("horímetro atual inválido no cadastro");
-          impactParts.push("decisão automática sem lastro confiável");
-          severity = "critical";
-        }
-
-        if (anomalyTypes.length === 0) return null;
-
-        return {
-          id: `anomaly-${equipment.id}`,
-          equipmentId: equipment.id,
-          equipmentName: getEquipmentDisplayName(equipment),
-          severity,
-          anomalyTypes,
-          summary: anomalyTypes.includes("hourmeter")
-            ? "Inconsistência de leitura operacional detectada"
-            : "Comportamento fora do padrão de consumo detectado",
-          detail: detailParts.join(" · "),
-          impact: impactParts.join(" · "),
-          blocksAutoOs: severity === "critical" || anomalyTypes.includes("hourmeter") || anomalyTypes.includes("data"),
-        } satisfies EquipmentAnomalySummary;
-      })
-      .filter((item): item is EquipmentAnomalySummary => item !== null)
-      .sort((a, b) => {
-        if (a.blocksAutoOs !== b.blocksAutoOs) return a.blocksAutoOs ? -1 : 1;
-        if (a.severity !== b.severity) return a.severity === "critical" ? -1 : 1;
-        return a.equipmentName.localeCompare(b.equipmentName);
-      });
-
     const priorityRanking = [
       ...criticalOrders
         .filter((order: any) => equipmentMap[order.equipment_id]?.status !== "active")
         .map((order: any) => ({
           id: `p1-${order.id}`,
-          title: `${getEquipmentDisplayName(equipmentMap[order.equipment_id])} parado com OS #${order.os_number}`,
+          title: `${equipmentMap[order.equipment_id]?.name || "Equipamento"} parado com OS #${order.os_number}`,
           description: `${getPriorityDescriptor(order.priority)} · equipamento indisponível e ordem em aberto na oficina.`,
           priority: "p1" as const,
           priorityLabel: "Prioridade 1",
@@ -663,16 +495,6 @@ export default function Dashboard() {
       })
       .filter((combo: any) => combo.currentFuel <= combo.lowLevelThreshold)
       .sort((a: any, b: any) => a.currentFuel - b.currentFuel);
-
-    const currentMonthKey = new Date().toISOString().slice(0, 7);
-    const fuelPriceMap = Object.fromEntries(data.fuelPriceSettings.map((item: any) => [String(item.fuel_type || '').toLowerCase(), Number(item.unit_price || 0)]));
-    const monthlyFuelCost = data.fuelRecords
-      .filter((record: any) => String(record.date || '').startsWith(currentMonthKey))
-      .reduce((sum: number, record: any) => sum + (Number(record.liters || 0) * Number(fuelPriceMap[String(record.fuel_type || '').toLowerCase()] || 0)), 0);
-    const monthlyMaintenanceCost = data.workOrders
-      .filter((order: any) => String(order.completed_at || order.created_at || '').startsWith(currentMonthKey))
-      .reduce((sum: number, order: any) => sum + Number(order.labor_cost || 0) + Number(order.parts_cost || 0), 0);
-    const monthlyCost = monthlyFuelCost + monthlyMaintenanceCost;
 
     const recommendations: RecommendationItem[] = [];
 
@@ -735,224 +557,125 @@ export default function Dashboard() {
       waitingPartsOrders,
       stoppedEquipments,
       consumptionInsights,
-      anomalies,
       openRequests,
       inProgressRequests,
       activeEquipments,
       priorityRanking,
       recommendations: recommendations.slice(0, 4),
       lowFuelCombos,
-      monthlyCost,
     };
-  }, [data.checklists, data.combos, data.equipments, data.fuelPriceSettings, data.fuelRecords, data.plans, data.requests, data.workOrders, equipmentMap, navigate, today]);
+  }, [data.checklists, data.combos, data.equipments, data.fuelRecords, data.plans, data.requests, data.workOrders, equipmentMap, navigate, today]);
 
-  /* ----- Diagnóstico automático calculado a partir dos dados ao vivo ----- */
-  const autoDiagnostic = useMemo<AutoDiagnosticData>(() => {
-    const overdue = stats.overdueMaintenance.length;
-    const critical = stats.criticalOrders.length;
-    const stopped = stats.stoppedEquipments.length;
-    const abnormal = stats.consumptionInsights.length;
-    const blockingAnomalies = stats.anomalies.filter((item) => item.blocksAutoOs).length;
+  const actionableAlerts = useMemo<ActionableAlertItem[]>(
+    () => [
+      {
+        id: "overdue-maintenance",
+        label: "Manutenção atrasada",
+        value: stats.overdueMaintenance.length,
+        description: "Equipamentos que já ultrapassaram o ponto de revisão e precisam de despacho imediato.",
+        icon: AlertTriangle,
+        tone: stats.overdueMaintenance.length > 0 ? "critical" : "ok",
+        actions: [
+          {
+            label: "Gerar OS automática",
+            variant: stats.overdueMaintenance.length > 0 ? "destructive" : "outline",
+            onClick: () => navigate("/pedido-manutencao"),
+          },
+          {
+            label: "Programar manutenção",
+            onClick: () => navigate("/manutencao"),
+          },
+        ],
+      },
+      {
+        id: "critical-os",
+        label: "OS críticas",
+        value: stats.criticalOrders.length,
+        description: "Ordens com prioridade alta ou urgente que ainda impactam a disponibilidade da frota.",
+        icon: Wrench,
+        tone: stats.criticalOrders.length > 0 ? "critical" : "ok",
+        actions: [
+          {
+            label: "Atribuir mecânico",
+            variant: stats.criticalOrders.length > 0 ? "destructive" : "outline",
+            onClick: () => navigate("/mecanico"),
+          },
+          {
+            label: "Priorizar",
+            onClick: () => navigate("/manutencao"),
+          },
+        ],
+      },
+      {
+        id: "stopped-equipments",
+        label: "Equipamentos parados",
+        value: stats.stoppedEquipments.length,
+        description: "Ativos indisponíveis ou em manutenção, com risco direto à produção em campo.",
+        icon: PauseCircle,
+        tone: stats.stoppedEquipments.length > 0 ? "critical" : "ok",
+        actions: [
+          {
+            label: "Ver disponibilidade",
+            onClick: () => navigate("/equipamentos"),
+          },
+          {
+            label: "Abrir manutenção",
+            onClick: () => navigate("/manutencao"),
+          },
+        ],
+      },
+      {
+        id: "abnormal-consumption",
+        label: "Consumo anormal",
+        value: stats.consumptionInsights.length,
+        description: "Desvio calculado com unidade correta e comparação contra média histórica real dos últimos 60 dias.",
+        icon: Truck,
+        tone: stats.consumptionInsights.length > 0 ? "critical" : "ok",
+        actions: [
+          {
+            label: "Abrir análise de consumo",
+            variant: stats.consumptionInsights.length > 0 ? "destructive" : "outline",
+            onClick: () => navigate("/relatorios"),
+          },
+          {
+            label: "Comparar histórico",
+            onClick: () => navigate("/abastecimento"),
+          },
+        ],
+      },
+    ],
+    [navigate, stats.consumptionInsights.length, stats.criticalOrders.length, stats.overdueMaintenance.length, stats.stoppedEquipments.length],
+  );
 
-    let level: RiskLevel = "low";
-    if (critical >= 5 || overdue >= 8 || stopped >= 5 || blockingAnomalies >= 3) level = "critical";
-    else if (critical >= 2 || overdue >= 3 || stopped >= 2 || abnormal >= 3) level = "high";
-    else if (critical >= 1 || overdue >= 1 || stopped >= 1 || abnormal >= 1) level = "medium";
-
-    const evidence: string[] = [];
-    if (overdue > 0) evidence.push(`${overdue} preventiva${overdue === 1 ? "" : "s"} vencida${overdue === 1 ? "" : "s"}.`);
-    if (critical > 0) evidence.push(`${critical} OS crítica${critical === 1 ? "" : "s"} sem conclusão.`);
-    if (stopped > 0) evidence.push(`${stopped} equipamento${stopped === 1 ? "" : "s"} parado${stopped === 1 ? "" : "s"} agora.`);
-    if (abnormal > 0) evidence.push(`${abnormal} ativo${abnormal === 1 ? "" : "s"} com consumo acima da média.`);
-    if (blockingAnomalies > 0) evidence.push(`${blockingAnomalies} anomalia${blockingAnomalies === 1 ? "" : "s"} bloqueando automações.`);
-
-    let mainCause = "Operação dentro dos parâmetros monitorados.";
-    let recommendedAction = "Manter rotina de checklist e monitoramento.";
-    let nextStep = "Reavaliar no próximo turno.";
-    let riskTitle = "Frota estável";
-
-    if (level === "critical") {
-      riskTitle = "Risco crítico identificado na operação";
-      mainCause = critical > 0
-        ? `${critical} OS crítica${critical === 1 ? "" : "s"} e ${overdue} manutenção${overdue === 1 ? "" : "ões"} vencida${overdue === 1 ? "" : "s"} indicam alta chance de parada operacional.`
-        : `${overdue} manutenção${overdue === 1 ? "" : "ões"} vencida${overdue === 1 ? "" : "s"} e ${stopped} equipamento${stopped === 1 ? "" : "s"} parado${stopped === 1 ? "" : "s"}.`;
-      recommendedAction = "Atribuir mecânicos às OS críticas e despachar preventivas vencidas imediatamente.";
-      nextStep = "Programar OS automáticas e reavaliar disponibilidade em 4h.";
-    } else if (level === "high") {
-      riskTitle = "Risco alto — atenção operacional necessária";
-      mainCause = `${critical || overdue} item${(critical || overdue) === 1 ? "" : "s"} crítico${(critical || overdue) === 1 ? "" : "s"} no backlog operacional.`;
-      recommendedAction = "Priorizar despacho dos itens da fila Prioridade Agora.";
-      nextStep = "Programar OS preventivas e validar consumo dos top desvios.";
-    } else if (level === "medium") {
-      riskTitle = "Risco moderado em monitoramento";
-      mainCause = "Itens em atenção ainda não comprometem a operação.";
-      recommendedAction = "Programar manutenções com horímetro próximo do limite.";
-      nextStep = "Acompanhar evolução do consumo nos próximos abastecimentos.";
-    }
-
-    const financial =
-      stopped * FINANCIAL_ESTIMATES.dailyDowntimeBRL +
-      overdue * FINANCIAL_ESTIMATES.overdueRiskBRL * 0.15 +
-      critical * FINANCIAL_ESTIMATES.criticalOSExposureBRL * 0.2 +
-      abnormal * (FINANCIAL_ESTIMATES.abnormalConsumptionMonthlyBRL / 30);
-
-    return {
-      riskLevel: level,
-      riskTitle,
-      mainCause,
-      recommendedAction,
-      nextStep,
-      financialImpact: Math.round(financial),
-      evidence,
-    } satisfies AutoDiagnosticData;
-  }, [stats.anomalies, stats.consumptionInsights.length, stats.criticalOrders.length, stats.overdueMaintenance.length, stats.stoppedEquipments.length]);
-
-  /* ----- KPIs executivos do hero ----- */
-  const executiveKpis = useMemo<ExecutiveKpi[]>(() => [
-    {
-      id: "exec-active",
-      label: "Ativos em operação",
-      value: String(stats.activeEquipments),
-      helper: `${data.equipments.length} no total da frota`,
-      tone: stats.activeEquipments > 0 ? "ok" : "warning",
-      icon: Truck,
-      onClick: () => navigate("/equipamentos"),
-    },
-    {
-      id: "exec-stopped",
-      label: "Equipamentos parados",
-      value: String(stats.stoppedEquipments.length),
-      helper: stats.stoppedEquipments.length > 0
-        ? `~${new Intl.NumberFormat("pt-BR").format(stats.stoppedEquipments.length * FINANCIAL_ESTIMATES.dailyDowntimeBRL)} BRL/dia em perda`
-        : "Sem perda operacional registrada",
-      tone: stats.stoppedEquipments.length > 0 ? "critical" : "ok",
-      icon: PauseCircle,
-      onClick: () => navigate("/equipamentos"),
-    },
-    {
-      id: "exec-overdue",
-      label: "Manutenções atrasadas",
-      value: String(stats.overdueMaintenance.length),
-      helper: stats.overdueMaintenance.length > 0
-        ? "Risco de quebra → exposição estimada"
-        : "Plano preventivo em dia",
-      tone: stats.overdueMaintenance.length > 0 ? "critical" : "ok",
-      icon: AlertTriangle,
-      onClick: () => navigate("/manutencao"),
-    },
-    {
-      id: "exec-critical-os",
-      label: "OS críticas",
-      value: String(stats.criticalOrders.length),
-      helper: stats.criticalOrders.length > 0 ? "Afetam disponibilidade operacional" : "Backlog crítico zerado",
-      tone: stats.criticalOrders.length > 0 ? "critical" : "ok",
-      icon: Wrench,
-      onClick: () => navigate("/manutencao"),
-    },
-    {
-      id: "exec-abnormal",
-      label: "Consumo anormal",
-      value: String(stats.consumptionInsights.length),
-      helper: stats.consumptionInsights.length > 0 ? "Ativos acima da curva histórica" : "Frota dentro do padrão",
-      tone: stats.consumptionInsights.length > 0 ? "warning" : "ok",
-      icon: Fuel,
-      onClick: () => navigate("/relatorios"),
-    },
-    {
-      id: "exec-checklists",
-      label: "Checklists hoje",
-      value: String(stats.todayChecklists.length),
-      helper: stats.checklistCounts.critical > 0
-        ? `${stats.checklistCounts.critical} críticos`
-        : "Sem checklists críticos hoje",
-      tone: stats.checklistCounts.critical > 0 ? "warning" : stats.todayChecklists.length > 0 ? "ok" : "neutral",
-      icon: ClipboardCheck,
-      onClick: () => navigate("/checklist"),
-    },
-  ], [data.equipments.length, navigate, stats.activeEquipments, stats.checklistCounts.critical, stats.consumptionInsights.length, stats.criticalOrders.length, stats.overdueMaintenance.length, stats.stoppedEquipments.length, stats.todayChecklists.length]);
-
-  const filteredAnomalies = useMemo<EquipmentAnomalyItem[]>(() => {
-    return stats.anomalies
-      .filter((item) => {
-        if (anomalyFilter === "blocked") return item.blocksAutoOs;
-        if (anomalyFilter === "hourmeter") return item.anomalyTypes.includes("hourmeter");
-        if (anomalyFilter === "consumption") return item.anomalyTypes.includes("consumption");
-        return true;
-      })
-      .map((item) => ({
-        id: item.id,
-        equipmentName: item.equipmentName,
-        severity: item.severity,
-        anomalyTypes: item.anomalyTypes,
-        summary: item.summary,
-        detail: item.detail,
-        impact: item.impact,
-        blocksAutoOs: item.blocksAutoOs,
-      }));
-  }, [anomalyFilter, stats.anomalies]);
-
-  /* ----- Prioridade Agora (premium dispatch) ----- */
-  const priorityNowItems = useMemo<PriorityNowExecutiveItem[]>(() => {
-    let rank = 0;
-    const next = () => ++rank;
-
-    const operational: PriorityNowExecutiveItem[] = [
-      ...stats.criticalOrders.slice(0, 3).map((order: any) => {
-        const equipment = equipmentMap[order.equipment_id];
-        const baseDate = order.started_at ? new Date(order.started_at) : new Date(order.created_at);
-        const downtimeHours = Math.max(0, Math.round((Date.now() - baseDate.getTime()) / (1000 * 60 * 60)));
-        const realCost = Number(order.labor_cost || 0) + Number(order.parts_cost || 0);
-        const financial = realCost > 0
-          ? realCost
-          : Math.round((downtimeHours / 24) * FINANCIAL_ESTIMATES.dailyDowntimeBRL + FINANCIAL_ESTIMATES.criticalOSExposureBRL * 0.3);
-
-        return {
-          id: `critical-${order.id}`,
-          rank: next(),
-          status: order.status === "in_progress" ? ("Em execução" as const) : ("Urgente" as const),
-          equipment: getEquipmentDisplayName(equipment),
-          problem: order.description || "OS sem descrição registrada",
-          operationalImpact: `OS #${order.os_number} ${order.priority === "urgent" ? "urgente" : "alta"} afetando disponibilidade`,
-          downtimeOrRisk: downtimeHours > 0 ? `${downtimeHours}h em aberto` : "Recém aberta",
-          financialImpact: financial,
-          responsible: order.mechanic_name || null,
-          actionLabel: "Abrir execução",
-          onAction: () => navigate("/mecanico"),
-          tone: "critical" as const,
-        } satisfies PriorityNowExecutiveItem;
-      }),
-      ...stats.overdueMaintenance.slice(0, 2).map((item: any) => ({
-        id: `overdue-${item.id}`,
-        rank: next(),
-        status: "Aguardando" as const,
-        equipment: item.equipmentName,
-        problem: item.planLabel,
-        operationalImpact: `${Math.abs(Math.round(item.remaining))} ${item.unit} de atraso · risco de quebra`,
-        downtimeOrRisk: equipmentMap[item.equipmentId]?.status === "active" ? "Risco iminente de parada" : "Equipamento indisponível",
-        financialImpact: FINANCIAL_ESTIMATES.overdueRiskBRL,
-        responsible: null,
-        actionLabel: "Programar OS",
-        onAction: () => navigate("/manutencao"),
-        tone: "warning" as const,
-      })),
-      ...stats.consumptionInsights.slice(0, 2).map((item) => ({
-        id: `consumption-${item.id}`,
-        rank: next(),
-        status: "Atenção" as const,
-        equipment: item.equipmentName,
-        problem: `Consumo ${item.variationPercent.toFixed(0)}% acima da média histórica`,
-        operationalImpact: `${item.currentMetric.toFixed(2)} ${item.unit} vs ${item.averageMetric.toFixed(2)} ${item.unit} histórico`,
-        downtimeOrRisk: "Impacto financeiro contínuo",
-        financialImpact: Math.round(FINANCIAL_ESTIMATES.abnormalConsumptionMonthlyBRL * (item.variationPercent / 100)),
-        responsible: null,
-        actionLabel: "Ver análise",
-        onAction: () => navigate("/relatorios"),
-        tone: item.severity === "critical" ? ("critical" as const) : ("action" as const),
-      })),
-    ];
-
-    return operational.slice(0, 6);
-  }, [equipmentMap, navigate, stats.consumptionInsights, stats.criticalOrders, stats.overdueMaintenance]);
+  const kpis = useMemo<DashboardKpiItem[]>(
+    () => [
+      {
+        id: "equipments",
+        label: "Total equipamentos",
+        value: String(data.equipments.length),
+        context: `${stats.activeEquipments} ativos e ${stats.stoppedEquipments.length} parados`,
+        icon: Truck,
+        onClick: () => navigate("/equipamentos"),
+      },
+      {
+        id: "work-orders",
+        label: "Total OS",
+        value: String(data.workOrders.length),
+        context: `${stats.activeOrders.length} abertas/em andamento (${stats.criticalOrders.length} críticas)`,
+        icon: Wrench,
+        onClick: () => navigate("/manutencao"),
+      },
+      {
+        id: "checklists",
+        label: "Checklists",
+        value: String(data.checklists.length),
+        context: `${stats.todayChecklists.length} hoje (${stats.checklistCounts.critical} críticos)`,
+        icon: ClipboardCheck,
+        onClick: () => navigate("/checklist"),
+      },
+    ],
+    [data.checklists.length, data.equipments.length, data.workOrders.length, navigate, stats.activeEquipments, stats.activeOrders.length, stats.checklistCounts.critical, stats.criticalOrders.length, stats.stoppedEquipments.length, stats.todayChecklists.length],
+  );
 
   const maintenanceList = useMemo<MaintenancePriorityItem[]>(
     () =>
@@ -1020,7 +743,7 @@ export default function Dashboard() {
 
         return {
           id: checklist.id,
-          equipmentName: getEquipmentDisplayName(equipment),
+          equipmentName: equipment?.name || "Equipamento",
           operatorName: checklist.operator_name,
           typeLabel:
             checklist.type === "corrective"
@@ -1040,22 +763,14 @@ export default function Dashboard() {
     [equipmentMap, stats.todayChecklists],
   );
 
-  /* ----- Tanques premium com autonomia estimada ----- */
-  const tankItems = useMemo<PremiumTankItem[]>(
+  const comboItems = useMemo<FuelOpsItem[]>(
     () =>
       data.combos.map((combo: any) => {
         const fuelCapacity = Number(combo.fuel_capacity || 0);
         const currentFuel = Number(combo.current_fuel || 0);
+        const lowLevelThreshold = fuelCapacity >= 5000 ? 1000 : fuelCapacity * 0.2;
         const dispatchesToday = data.fuelRecords.filter((record: any) => record.combo_equipment_id === combo.id && record.date === today).length;
         const latestSupply = data.fuelSupplyRecords.find((record: any) => record.combo_equipment_id === combo.id);
-
-        // Consumo médio diário dos últimos 14 dias
-        const fourteenDaysAgo = new Date();
-        fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
-        const cutoff = fourteenDaysAgo.toISOString().split("T")[0];
-        const recentDispatches = data.fuelRecords.filter((record: any) => record.combo_equipment_id === combo.id && record.date >= cutoff);
-        const totalLiters = recentDispatches.reduce((sum: number, record: any) => sum + Number(record.liters || 0), 0);
-        const averageDailyConsumption = totalLiters > 0 ? totalLiters / 14 : 0;
 
         return {
           id: combo.id,
@@ -1065,35 +780,24 @@ export default function Dashboard() {
           percentage: fuelCapacity ? (currentFuel / fuelCapacity) * 100 : 0,
           dispatchesToday,
           lastSupplyLabel: latestSupply ? formatDateLabel(latestSupply.date) : "sem registro",
-          averageDailyConsumption,
-        } satisfies PremiumTankItem;
+          lowLevelThreshold,
+        } satisfies FuelOpsItem;
       }),
     [data.combos, data.fuelRecords, data.fuelSupplyRecords, today],
   );
 
-  /* ----- Resumo executivo ----- */
-  const [executiveSummaryOpen, setExecutiveSummaryOpen] = useState(false);
-  const executiveSummary = useMemo<ExecutiveSummaryData>(() => {
-    const overdueItems = stats.overdueMaintenance.slice(0, 5).map((item: any) => `${item.equipmentName} — ${Math.abs(Math.round(item.remaining))} ${item.unit} de atraso`);
-    const criticalItems = [
-      ...stats.criticalOrders.slice(0, 3).map((order: any) => `${getEquipmentDisplayName(equipmentMap[order.equipment_id])} — OS #${order.os_number} (${order.priority})`),
-      ...stats.stoppedEquipments.slice(0, 3).map((eq: any) => `${getEquipmentDisplayName(eq)} — parado`),
-    ];
-    const consumptionItems = stats.consumptionInsights.slice(0, 5).map((item) => `${item.equipmentName} — ${item.variationPercent.toFixed(0)}% acima da média`);
-    const recommendedItems = stats.recommendations.slice(0, 5).map((rec) => rec.title);
-    const topRisks = autoDiagnostic.evidence.slice(0, 5);
-
-    return {
-      situation: autoDiagnostic.riskTitle + ". " + autoDiagnostic.mainCause,
-      topRisks,
-      criticalEquipments: criticalItems,
-      abnormalConsumption: consumptionItems,
-      overdueMaintenance: overdueItems,
-      recommendedActions: recommendedItems,
-      estimatedFinancialImpact: autoDiagnostic.financialImpact,
-    } satisfies ExecutiveSummaryData;
-  }, [autoDiagnostic, equipmentMap, stats.consumptionInsights, stats.criticalOrders, stats.overdueMaintenance, stats.recommendations, stats.stoppedEquipments]);
-
+  const summary = useMemo(
+    () =>
+      buildSystemSummary({
+        overdueCount: stats.overdueMaintenance.length,
+        abnormalCount: stats.consumptionInsights.length,
+        openOrders: stats.activeOrders.length,
+        criticalOrders: stats.criticalOrders.length,
+        stoppedCount: stats.stoppedEquipments.length,
+        recommendedCount: stats.recommendations.length,
+      }),
+    [stats.activeOrders.length, stats.consumptionInsights.length, stats.criticalOrders.length, stats.overdueMaintenance.length, stats.recommendations.length, stats.stoppedEquipments.length],
+  );
 
   const hasCriticalItems =
     stats.overdueMaintenance.length > 0 ||
@@ -1101,75 +805,33 @@ export default function Dashboard() {
     stats.stoppedEquipments.length > 0 ||
     stats.consumptionInsights.length > 0;
 
-  const estimatedDailyLoss = stats.stoppedEquipments.length * FINANCIAL_ESTIMATES.dailyDowntimeBRL;
-
   return (
     <div className="space-y-5">
-      <ExecutiveHeroPanel
+      <DashboardHero
         title="Central operacional"
-        dateLabel={todayLabel}
-        riskLevel={autoDiagnostic.riskLevel}
-        riskHeadline={autoDiagnostic.riskTitle}
-        monthlyCost={stats.monthlyCost}
-        estimatedDailyLoss={estimatedDailyLoss}
-        kpis={executiveKpis}
+        subtitle={todayLabel}
+        summary={summary}
         onRefresh={fetchData}
         onSignOut={signOut}
         refreshing={isRefreshing}
-        onPrimaryAction={
-          stats.criticalOrders.length > 0
-            ? { label: "Atribuir mecânico", onClick: () => navigate("/mecanico") }
-            : stats.overdueMaintenance.length > 0
-              ? { label: "Programar OS", onClick: () => navigate("/manutencao") }
-              : undefined
-        }
       />
 
-      <AutoDiagnosticPanel
-        data={autoDiagnostic}
-        onPrimaryAction={() => {
-          if (stats.criticalOrders.length > 0) navigate("/mecanico");
-          else if (stats.overdueMaintenance.length > 0) navigate("/manutencao");
-          else navigate("/equipamentos");
-        }}
-        onAiBoost={loadAiDecisions}
-        aiAvailable={data.equipments.length > 0}
-        aiLoading={aiLoading}
-      />
-
-      <ExecutiveSummaryCard
-        data={executiveSummary}
-        expanded={executiveSummaryOpen}
-        onToggle={() => setExecutiveSummaryOpen((value) => !value)}
-      />
+      <ActionableAlertsPanel items={actionableAlerts} />
+      <KpiSummaryGrid items={kpis} />
 
       {!hasCriticalItems && <EmptyOperationalState />}
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-        <PriorityDispatchSection items={priorityNowItems} />
+        <PriorityRankingSection items={stats.priorityRanking as PriorityRankingItem[]} />
         <RecommendedActionsSection items={stats.recommendations} />
       </div>
 
-      <EquipmentAnomaliesSection
-        items={filteredAnomalies}
-        selectedFilter={anomalyFilter}
-        onFilterChange={setAnomalyFilter}
-        onOpenEquipments={() => navigate("/equipamentos")}
+      <AIMaintenanceDecisionsSection
+        items={aiDecisions}
+        loading={aiLoading}
+        creatingId={creatingAiDecisionId}
+        onCreateWorkOrder={handleCreateAiWorkOrder}
       />
-
-      <PriorityRankingSection items={stats.priorityRanking as PriorityRankingItem[]} />
-
-      <div id="ai-operacional-section">
-        <AIMaintenanceDecisionsSection
-          items={aiDecisions}
-          loading={aiLoading}
-          errorMessage={aiErrorMessage}
-          hasGenerated={aiHasGenerated}
-          creatingId={creatingAiDecisionId}
-          onRefresh={loadAiDecisions}
-          onCreateWorkOrder={handleCreateAiWorkOrder}
-        />
-      </div>
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.2fr_0.8fr]">
         <MaintenancePriorityList items={maintenanceList} onOpenAll={() => navigate("/manutencao")} />
@@ -1178,13 +840,14 @@ export default function Dashboard() {
 
       <ConsumptionOperationsSection items={stats.consumptionInsights as ConsumptionDetailedItem[]} onOpenReports={() => navigate("/relatorios")} />
 
-      <PremiumTanksSection
-        items={tankItems}
-        onRegisterFuel={() => navigate("/abastecimento")}
-        onOpenSupply={() => navigate("/reabastecimento")}
-      />
-
-      <ChecklistOverviewSection items={checklistItems} />
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.1fr_0.9fr]">
+        <ChecklistOverviewSection items={checklistItems} />
+        <FuelOperationsSection
+          items={comboItems}
+          onRegisterFuel={() => navigate("/abastecimento")}
+          onOpenSupply={() => navigate("/reabastecimento")}
+        />
+      </div>
 
       <Dialog open={!!selectedChecklist} onOpenChange={() => setSelectedChecklist(null)}>
         <DialogContent className="max-h-[85vh] max-w-lg overflow-y-auto">
@@ -1209,7 +872,7 @@ export default function Dashboard() {
                 <DialogHeader>
                   <DialogTitle className="flex items-center gap-2 text-left">
                     <ClipboardCheck className="h-5 w-5 text-primary" />
-                    Checklist — {getEquipmentDisplayName(equipment)}
+                    Checklist — {equipment?.name || "Equipamento"}
                   </DialogTitle>
                 </DialogHeader>
 

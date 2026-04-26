@@ -95,6 +95,11 @@ function applyTheme(branding: TenantBranding | null) {
   if (secondaryHsl) {
     root.style.setProperty("--secondary", secondaryHsl);
   }
+  if (alertHsl) {
+    root.style.setProperty("--destructive", alertHsl);
+  }
+}
+
 function applyFavicon(url: string | null) {
   if (!url) return;
   let link = document.querySelector<HTMLLinkElement>("link[rel='icon']");
@@ -127,6 +132,7 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
       const row = (Array.isArray(data) ? data[0] : data) as TenantBranding | undefined;
       setBranding(row || null);
       applyTheme(row || null);
+      applyFavicon(row?.favicon_url || null);
     }
     setLoading(false);
   }, [user]);

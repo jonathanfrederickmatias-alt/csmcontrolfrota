@@ -8,10 +8,34 @@ export interface TenantBranding {
   slug: string;
   nome_exibicao: string | null;
   logo_url: string | null;
+  favicon_url: string | null;
   cor_primaria: string | null;
   cor_secundaria: string | null;
   cor_alerta: string | null;
   ativo: boolean;
+  razao_social: string | null;
+  nome_fantasia: string | null;
+  cnpj: string | null;
+  inscricao_estadual: string | null;
+  telefone: string | null;
+  whatsapp: string | null;
+  email_admin: string | null;
+  site: string | null;
+  endereco: string | null;
+  cidade: string | null;
+  estado: string | null;
+  cep: string | null;
+  tipo_empresa: string | null;
+  responsavel_principal: string | null;
+  email_alertas: string | null;
+  whatsapp_alertas: string | null;
+  horario_operacao: string | null;
+  fuso_horario: string | null;
+  moeda: string | null;
+  relatorio_mostrar_logo: boolean;
+  relatorio_mostrar_cnpj: boolean;
+  relatorio_rodape: string | null;
+  relatorio_assinatura: string | null;
 }
 
 interface BrandingContextValue {

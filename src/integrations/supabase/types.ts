@@ -1056,6 +1056,16 @@ export type Database = {
           status: string
         }[]
       }
+      update_my_tenant_branding: {
+        Args: {
+          _cor_alerta?: string
+          _cor_primaria?: string
+          _cor_secundaria?: string
+          _logo_url?: string
+          _nome_exibicao?: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "gestor" | "mecanico" | "abastecedor"

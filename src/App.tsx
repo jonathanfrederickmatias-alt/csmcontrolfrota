@@ -21,6 +21,7 @@ import ObrasPage from "@/pages/ObrasPage";
 import SegurosPage from "@/pages/SegurosPage";
 import UsersPage from "@/pages/UsersPage";
 import TenantsPage from "@/pages/TenantsPage";
+import CompanySettingsPage from "@/pages/CompanySettingsPage";
 import QRChecklist from "@/pages/qr/QRChecklist";
 import QRFuel from "@/pages/qr/QRFuel";
 import QRMaintenanceRequest from "@/pages/qr/QRMaintenanceRequest";
@@ -71,6 +72,7 @@ const App = () => (
                     <Route path="/obras" element={<ObrasPage />} />
                     <Route path="/usuarios" element={<UsersPage />} />
                     <Route path="/empresas" element={<TenantsPage />} />
+                    <Route path="/configuracoes/empresa" element={<CompanySettingsPage />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </AppLayout>

@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Truck, ClipboardCheck, ClipboardList, Wrench, Fuel, QrCode, Menu, X, BarChart2, Droplets, Building2, Users, LogOut, ShieldCheck, BrainCircuit, FileStack } from "lucide-react";
+import { LayoutDashboard, Truck, ClipboardCheck, ClipboardList, Wrench, Fuel, QrCode, Menu, X, BarChart2, Droplets, Building2, Users, LogOut, ShieldCheck, BrainCircuit, FileStack, Palette } from "lucide-react";
 import { useState } from "react";
 import logoDefault from "@/assets/logo-default.png";
 import { useUserRoles } from "@/hooks/useUserRoles";
@@ -25,6 +25,7 @@ const allNavItems = [
   { to: "/qrcode", label: "QR Code", icon: QrCode, roles: ['admin', 'gestor'] },
   { to: "/usuarios", label: "Usuários", icon: Users, roles: ['admin', 'gestor'] },
   { to: "/empresas", label: "Empresas", icon: Building2, roles: ['admin'] },
+  { to: "/configuracoes/empresa", label: "Configurações da Empresa", icon: Palette, roles: ['admin'] },
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -48,7 +49,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Sidebar desktop */}
       <aside className="hidden lg:flex lg:h-screen lg:sticky lg:top-0 lg:flex-col border-r border-sidebar-border bg-sidebar/80 backdrop-blur-xl">
         <Link to="/" className="flex items-center gap-3 border-b border-sidebar-border bg-background/95 p-5 transition-colors hover:bg-background">
-          <img src={logoSrc} alt={displayName} className="w-16 h-12 object-contain" loading="lazy" />
+          <img src={logoSrc} alt={displayName} className="w-16 h-12 object-contain" loading="lazy" onError={(e) => { (e.currentTarget as HTMLImageElement).src = logoDefault; }} />
           <div>
             <h1 className="text-base font-black tracking-tight leading-tight">
               <span className="text-foreground">{displayName}</span>
@@ -91,7 +92,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Mobile header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-background border-b border-border px-4 py-3 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2 text-lg font-black">
-          <img src={logoSrc} alt={displayName} className="w-12 h-10 object-contain" loading="lazy" />
+          <img src={logoSrc} alt={displayName} className="w-12 h-10 object-contain" loading="lazy" onError={(e) => { (e.currentTarget as HTMLImageElement).src = logoDefault; }} />
           <span className="text-foreground">{displayName}</span>
         </Link>
         <button onClick={() => setMobileOpen(!mobileOpen)} className="text-sidebar-foreground p-2">

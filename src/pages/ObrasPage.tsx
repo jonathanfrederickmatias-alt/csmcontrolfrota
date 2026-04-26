@@ -81,7 +81,7 @@ export default function ObrasPage() {
     if (editingObra) {
       await supabase.from('obras').update(payload).eq('id', editingObra.id);
     } else {
-      await supabase.from('obras').insert(payload);
+      await supabase.from('obras').insert([payload]);
     }
     setSaving(false);
     setDialogOpen(false);

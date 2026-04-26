@@ -82,7 +82,7 @@ export default function EquipmentPage() {
       if (error) toast.error("Erro ao atualizar");
       else toast.success("Equipamento atualizado!");
     } else {
-      const { error } = await supabase.from('equipments').insert({
+      const { error } = await supabase.from('equipments').insert([{
         name: form.name,
         type: form.type,
         plate: form.plate || null,
@@ -96,7 +96,7 @@ export default function EquipmentPage() {
         chassis: form.chassis || null,
         status: 'active',
         ownership: activeTab,
-      });
+      }]);
       if (error) toast.error("Erro ao criar");
       else toast.success("Equipamento criado!");
     }

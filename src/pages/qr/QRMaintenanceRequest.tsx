@@ -74,7 +74,7 @@ export default function QRMaintenanceRequest() {
       priority: i.priority,
     }));
 
-    const { error: insertError } = await supabase.from('maintenance_requests').insert({
+    const { error: insertError } = await supabase.from('maintenance_requests').insert([{
       equipment_id: equipmentId,
       description: generalDescription,
       priority: generalPriority,
@@ -82,7 +82,7 @@ export default function QRMaintenanceRequest() {
       operator_name: operatorName,
       photo_start_url: photoUrl || null,
       items: itemsPayload,
-    } as any);
+    } as any]);
 
     if (insertError) {
       console.error('Insert error:', insertError);

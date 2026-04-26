@@ -99,7 +99,7 @@ export default function FuelPage() {
     if (liters && Number(liters) > 0) record.liters = Number(liters);
     else record.liters = 0;
     if (hourMeter && Number(hourMeter) > 0) record.hour_meter = Number(hourMeter);
-    await supabase.from('fuel_records').insert(record);
+    await supabase.from('fuel_records').insert([record]);
     setSaving(false);
     setSaved(true);
     fetchData();
@@ -430,7 +430,7 @@ export default function FuelPage() {
                               fetchData();
                               toast.success('Registro excluído!', {
                                 action: { label: 'Desfazer', onClick: async () => {
-                                  await supabase.from('fuel_records').insert(backup as any);
+                                  await supabase.from('fuel_records').insert([backup as any]);
                                   fetchData();
                                   toast.success('Registro restaurado!');
                                 }},

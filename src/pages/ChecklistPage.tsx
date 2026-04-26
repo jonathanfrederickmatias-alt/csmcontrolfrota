@@ -93,7 +93,7 @@ export default function ChecklistPage() {
     const isConforme = unchecked === 0;
     const status = !isConforme ? (unchecked > 3 ? 'critical' : 'attention') : 'ok';
 
-    await supabase.from('checklists').insert({
+    await supabase.from('checklists').insert([{
       equipment_id: selectedEquipment,
       operator_name: operatorName,
       hour_meter: Number(hourMeter),
@@ -103,7 +103,7 @@ export default function ChecklistPage() {
       type: checklistType,
       photo_url: photoUrl || null,
       observations: generalObservations || null,
-    });
+    }]);
 
     setSaving(false);
 
@@ -139,14 +139,14 @@ export default function ChecklistPage() {
       return;
     }
     setSavingMaintenance(true);
-    await supabase.from('maintenance_requests').insert({
+    await supabase.from('maintenance_requests').insert([{
       equipment_id: selectedEquipment,
       operator_name: operatorName,
       description: maintenanceDesc,
       priority: maintenancePriority,
       status: 'open',
       photo_start_url: maintenancePhotoUrl,
-    });
+    }]);
     setSavingMaintenance(false);
     setSaved(true);
     setTimeout(() => { setSaved(false); resetForm(); }, 2000);

@@ -57,7 +57,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Sidebar desktop */}
       <aside className="hidden lg:flex lg:h-screen lg:sticky lg:top-0 lg:flex-col border-r border-sidebar-border bg-sidebar/80 backdrop-blur-xl">
         <Link to="/" className="flex items-center gap-3 border-b border-sidebar-border bg-background/95 p-5 transition-colors hover:bg-background">
-          <img src={logoSrc} alt={displayName} className="w-16 h-12 object-contain" loading="lazy" onError={(e) => { (e.currentTarget as HTMLImageElement).src = logoDefault; }} />
+          <img src={logoSrc} alt={displayName} className="w-16 h-12 object-contain" loading="lazy" onError={(e) => { (e.currentTarget as HTMLImageElement).src = fallbackLogo; }} />
           <div>
             <h1 className="text-base font-black tracking-tight leading-tight">
               <span className="text-foreground">{displayName}</span>

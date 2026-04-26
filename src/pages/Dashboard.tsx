@@ -1094,18 +1094,6 @@ export default function Dashboard() {
     } satisfies ExecutiveSummaryData;
   }, [autoDiagnostic, equipmentMap, stats.consumptionInsights, stats.criticalOrders, stats.overdueMaintenance, stats.recommendations, stats.stoppedEquipments]);
 
-  const summary = useMemo(
-    () =>
-      buildSystemSummary({
-        overdueCount: stats.overdueMaintenance.length,
-        abnormalCount: stats.consumptionInsights.length,
-        openOrders: stats.activeOrders.length,
-        criticalOrders: stats.criticalOrders.length,
-        stoppedCount: stats.stoppedEquipments.length,
-        recommendedCount: stats.recommendations.length,
-      }),
-    [stats.activeOrders.length, stats.consumptionInsights.length, stats.criticalOrders.length, stats.overdueMaintenance.length, stats.recommendations.length, stats.stoppedEquipments.length],
-  );
 
   const hasCriticalItems =
     stats.overdueMaintenance.length > 0 ||

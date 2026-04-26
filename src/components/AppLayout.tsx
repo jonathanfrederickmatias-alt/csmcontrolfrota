@@ -25,7 +25,7 @@ const allNavItems = [
   { to: "/qrcode", label: "QR Code", icon: QrCode, roles: ['admin', 'gestor'] },
   { to: "/usuarios", label: "Usuários", icon: Users, roles: ['admin', 'gestor'] },
   { to: "/empresas", label: "Empresas", icon: Building2, roles: ['admin'] },
-  { to: "/configuracoes/empresa", label: "Configurações da Empresa", icon: Palette, roles: ['admin'] },
+  { to: "/configuracoes/empresa", label: "Configurações da Empresa", icon: Settings, roles: ['admin'] },
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, ClipboardCheck, PauseCircle, Truck, Wrench } from "lucide-react";
+import { AlertTriangle, ClipboardCheck, Fuel, PauseCircle, Truck, Wrench } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -8,10 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { calculateMaintenanceStatus } from "@/lib/maintenance-utils";
 import {
   ChecklistOverviewItem,
-  DashboardHero,
-  DashboardKpiItem,
   EmptyOperationalState,
-  KpiSummaryGrid,
   MaintenancePriorityItem,
   MaintenancePriorityList,
   ChecklistOverviewSection,
@@ -19,14 +16,10 @@ import {
   WorkOrderStatusItem,
 } from "@/components/dashboard/OperationalDashboardSections";
 import {
-  ActionableAlertItem,
-  ActionableAlertsPanel,
   ConsumptionDetailedItem,
   ConsumptionOperationsSection,
   EquipmentAnomaliesSection,
   EquipmentAnomalyItem,
-  FuelOperationsSection,
-  FuelOpsItem,
   PriorityRankingItem,
   PriorityRankingSection,
   RecommendationItem,
@@ -37,15 +30,32 @@ import {
   AIMaintenanceDecisionsSection,
 } from "@/components/dashboard/AIMaintenanceDecisionsSection";
 import {
-  OperationalCommandDeck,
-  PriorityNowSection,
-  type ExecutiveSignalItem,
-  type PriorityNowItem,
-  type QuickActionItem,
-} from "@/components/dashboard/PremiumOperationsSections";
+  AutoDiagnosticPanel,
+  ExecutiveHeroPanel,
+  ExecutiveSummaryCard,
+  PremiumTanksSection,
+  PriorityDispatchSection,
+  type AutoDiagnosticData,
+  type ExecutiveKpi,
+  type ExecutiveSummaryData,
+  type PremiumTankItem,
+  type PriorityNowExecutiveItem,
+  type RiskLevel,
+} from "@/components/dashboard/ExecutiveDashboardSections";
 import { Camera, MessageSquare, ShieldCheck, ShieldX } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { getEquipmentDisplayName as formatEquipmentDisplayName } from "@/lib/equipment-display";
+
+/* --------------------- Constantes de impacto financeiro --------------------- */
+/* Estimativas operacionais conservadoras usadas como fallback quando não há */
+/* custo real lançado. Nunca substituem a controladoria.                      */
+const FINANCIAL_ESTIMATES = {
+  dailyDowntimeBRL: 1200,        // perda média por equipamento parado / dia
+  overdueRiskBRL: 8500,          // risco de quebra em manutenção atrasada
+  criticalOSExposureBRL: 4200,   // exposição por OS crítica em aberto
+  abnormalConsumptionMonthlyBRL: 4800, // impacto mensal estimado por consumo anormal
+};
+
 
 type DashboardData = {
   equipments: any[];

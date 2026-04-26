@@ -978,6 +978,17 @@ export type Database = {
         Args: { _name: string; _slug: string }
         Returns: string
       }
+      admin_create_user_in_tenant: {
+        Args: {
+          _display_name: string
+          _email: string
+          _password: string
+          _pin?: string
+          _role: Database["public"]["Enums"]["app_role"]
+          _tenant_id: string
+        }
+        Returns: string
+      }
       get_default_tenant_id: { Args: never; Returns: string }
       get_my_roles: {
         Args: never

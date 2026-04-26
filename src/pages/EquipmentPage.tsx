@@ -97,7 +97,7 @@ export default function EquipmentPage() {
         chassis: form.chassis || null,
         status: 'active',
         ownership: activeTab,
-      });
+      } as never);
       if (error) toast.error("Erro ao criar");
       else toast.success("Equipamento criado!");
     }

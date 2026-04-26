@@ -104,7 +104,7 @@ export default function ChecklistPage() {
       type: checklistType,
       photo_url: photoUrl || null,
       observations: generalObservations || null,
-    });
+    } as never);
 
     setSaving(false);
 
@@ -151,7 +151,7 @@ export default function ChecklistPage() {
           priority: maintenancePriority,
           status: 'open',
           photo_start_url: maintenancePhotoUrl,
-        })),
+        })) as never,
       );
 
       if (error) {

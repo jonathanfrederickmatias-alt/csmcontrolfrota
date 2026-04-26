@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Truck, ClipboardCheck, ClipboardList, Wrench, Fuel, QrCode, Menu, X, BarChart2, Droplets, Building2, Users, LogOut, ShieldCheck, BrainCircuit, FileStack, Palette } from "lucide-react";
+import { LayoutDashboard, Truck, ClipboardCheck, ClipboardList, Wrench, Fuel, QrCode, Menu, X, BarChart2, Droplets, Building2, Users, LogOut, ShieldCheck, BrainCircuit, FileStack, Settings } from "lucide-react";
 import { useState } from "react";
 import logoDefault from "@/assets/logo-default.png";
 import { useUserRoles } from "@/hooks/useUserRoles";
@@ -25,7 +25,7 @@ const allNavItems = [
   { to: "/qrcode", label: "QR Code", icon: QrCode, roles: ['admin', 'gestor'] },
   { to: "/usuarios", label: "Usuários", icon: Users, roles: ['admin', 'gestor'] },
   { to: "/empresas", label: "Empresas", icon: Building2, roles: ['admin'] },
-  { to: "/configuracoes/empresa", label: "Configurações da Empresa", icon: Palette, roles: ['admin'] },
+  { to: "/configuracoes/empresa", label: "Configurações da Empresa", icon: Settings, roles: ['admin'] },
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {

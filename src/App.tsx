@@ -19,6 +19,7 @@ import MaintenanceRequestPage from "@/pages/MaintenanceRequestPage";
 import ObrasPage from "@/pages/ObrasPage";
 import SegurosPage from "@/pages/SegurosPage";
 import UsersPage from "@/pages/UsersPage";
+import TenantsPage from "@/pages/TenantsPage";
 import QRChecklist from "@/pages/qr/QRChecklist";
 import QRFuel from "@/pages/qr/QRFuel";
 import QRMaintenanceRequest from "@/pages/qr/QRMaintenanceRequest";
@@ -67,6 +68,7 @@ const App = () => (
                     <Route path="/pedido-manutencao" element={<MaintenanceRequestPage />} />
                     <Route path="/obras" element={<ObrasPage />} />
                     <Route path="/usuarios" element={<UsersPage />} />
+                    <Route path="/empresas" element={<TenantsPage />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </AppLayout>

@@ -81,7 +81,9 @@ export default function ObrasPage() {
     if (editingObra) {
       await supabase.from('obras').update(payload).eq('id', editingObra.id);
     } else {
-      await supabase.from('obras').insert([payload]);
+      const { getMyTenantId } = await import('@/lib/tenant');
+      const tenant_id = await getMyTenantId();
+      await supabase.from('obras').insert([{ ...payload, tenant_id }]);
     }
     setSaving(false);
     setDialogOpen(false);

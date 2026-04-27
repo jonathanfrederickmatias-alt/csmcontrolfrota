@@ -52,7 +52,11 @@ export default function FuelSupplyPage() {
     if (!form.combo_equipment_id || !form.liters || !form.responsible_name) return;
     setLoading(true);
 
+    const { getMyTenantId } = await import('@/lib/tenant');
+    const tenant_id = await getMyTenantId();
+
     const { error } = await supabase.from('fuel_supply_records').insert([{
+      tenant_id,
       combo_equipment_id: form.combo_equipment_id,
       liters: Number(form.liters),
       invoice_number: form.invoice_number || null,

@@ -143,7 +143,10 @@ export default function ChecklistPage() {
       return;
     }
     setSavingMaintenance(true);
+    const { getMyTenantId } = await import('@/lib/tenant');
+    const tenant_id = await getMyTenantId();
     await supabase.from('maintenance_requests').insert([{
+      tenant_id,
       equipment_id: selectedEquipment,
       operator_name: operatorName,
       description: maintenanceDesc,

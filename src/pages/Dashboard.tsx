@@ -296,9 +296,13 @@ export default function Dashboard() {
     const mappedPriority = item.priority === "high" ? "urgent" : item.priority === "medium" ? "high" : "medium";
     const description = `${item.recommendation}${item.suggestedParts.length > 0 ? ` | Peças sugeridas: ${item.suggestedParts.join(", ")}` : ""}${item.downtimeHours > 0 ? ` | Parada estimada: ${item.downtimeHours.toFixed(1)}h` : ""}`;
 
+    const { getMyTenantId } = await import("@/lib/tenant");
+    const tenant_id = await getMyTenantId();
+
     const { data: requestData, error: requestError } = await supabase
       .from("maintenance_requests")
       .insert([{
+        tenant_id,
         equipment_id: item.equipmentId,
         description,
         priority: mappedPriority,
@@ -316,6 +320,7 @@ export default function Dashboard() {
     }
 
     const { error: workOrderError } = await supabase.from("work_orders").insert([{
+      tenant_id,
       equipment_id: item.equipmentId,
       maintenance_request_id: requestData.id,
       description,

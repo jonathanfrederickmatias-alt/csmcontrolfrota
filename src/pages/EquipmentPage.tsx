@@ -82,7 +82,10 @@ export default function EquipmentPage() {
       if (error) toast.error("Erro ao atualizar");
       else toast.success("Equipamento atualizado!");
     } else {
+      const { getMyTenantId } = await import('@/lib/tenant');
+      const tenant_id = await getMyTenantId();
       const { error } = await supabase.from('equipments').insert([{
+        tenant_id,
         name: form.name,
         type: form.type,
         plate: form.plate || null,

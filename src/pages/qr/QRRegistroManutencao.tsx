@@ -64,22 +64,91 @@ export default function QRRegistroManutencao() {
   const [history, setHistory] = useState<MaintenanceHistoryRow[]>([]);
   const [workOrders, setWorkOrders] = useState<WorkOrderRow[]>([]);
 
-  useEffect(() => {
+  // Create dialog
+  const [createOpen, setCreateOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    description: "",
+    hourMeter: "",
+    operatorName: "",
+    serviceExecuted: "",
+    notes: "",
+    laborCost: "",
+    partsCost: "",
+    photoUrl: "",
+  });
+  const [parts, setParts] = useState<PartItem[]>([]);
+
+  const resetForm = () => {
+    setForm({ description: "", hourMeter: "", operatorName: "", serviceExecuted: "", notes: "", laborCost: "", partsCost: "", photoUrl: "" });
+    setParts([]);
+  };
+
+  const fetchAll = useCallback(async () => {
     if (!equipmentId) return;
-    (async () => {
-      const [{ data: eq }, { data: hist }, { data: wos }] = await Promise.all([
-        supabase.from("equipments").select("*").eq("id", equipmentId).maybeSingle(),
-        supabase.from("maintenance_history").select("*").eq("equipment_id", equipmentId).order("executed_at", { ascending: false }),
-        supabase.from("work_orders").select("*").eq("equipment_id", equipmentId).eq("status", "done").order("completed_at", { ascending: false }),
-      ]);
-      setEquipment(eq as DBEquipment | null);
-      setHistory((hist || []) as MaintenanceHistoryRow[]);
-      setWorkOrders((wos || []) as WorkOrderRow[]);
-      setLoading(false);
-    })();
+    const [{ data: eq }, { data: hist }, { data: wos }] = await Promise.all([
+      supabase.from("equipments").select("*").eq("id", equipmentId).maybeSingle(),
+      supabase.from("maintenance_history").select("*").eq("equipment_id", equipmentId).order("executed_at", { ascending: false }),
+      supabase.from("work_orders").select("*").eq("equipment_id", equipmentId).eq("status", "done").order("completed_at", { ascending: false }),
+    ]);
+    setEquipment(eq as DBEquipment | null);
+    setHistory((hist || []) as MaintenanceHistoryRow[]);
+    setWorkOrders((wos || []) as WorkOrderRow[]);
+    setLoading(false);
   }, [equipmentId]);
 
-  // Mescla histórico + OS concluídas, priorizando OS quando existir mesmo registro
+  useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  const openCreate = () => {
+    resetForm();
+    setForm((f) => ({ ...f, hourMeter: equipment?.current_hour_meter ? String(equipment.current_hour_meter) : "" }));
+    setCreateOpen(true);
+  };
+
+  const submitCreate = async () => {
+    if (!equipmentId) return;
+    if (!form.description.trim()) { toast.error("Informe a descrição do serviço"); return; }
+    if (!form.operatorName.trim()) { toast.error("Informe o nome do responsável"); return; }
+    const hm = parseFloat(form.hourMeter.replace(",", "."));
+    if (!hm || hm < 0) { toast.error("Informe o horímetro/km"); return; }
+
+    setSaving(true);
+    const partsText = parts
+      .filter((p) => p.code || p.description)
+      .map((p) => `${p.code || "—"}${p.description ? ` (${p.description})` : ""}${p.quantity ? ` x${p.quantity}` : ""}`)
+      .join(", ");
+
+    const notesBlocks = [
+      form.serviceExecuted && `Serviço executado: ${form.serviceExecuted}`,
+      partsText && `Peças: ${partsText}`,
+      form.notes && `Observações: ${form.notes}`,
+      `Registrado via QR Code`,
+    ].filter(Boolean).join("\n");
+
+    const { error } = await supabase.from("maintenance_history").insert({
+      equipment_id: equipmentId,
+      description: form.description.trim(),
+      hour_meter: hm,
+      operator_name: form.operatorName.trim(),
+      notes: notesBlocks,
+      labor_cost: parseFloat((form.laborCost || "0").replace(",", ".")) || 0,
+      parts_cost: parseFloat((form.partsCost || "0").replace(",", ".")) || 0,
+      photo_url: form.photoUrl || null,
+      executed_at: new Date().toISOString(),
+    } as any);
+
+    setSaving(false);
+    if (error) {
+      toast.error("Erro ao salvar: " + error.message);
+      return;
+    }
+    toast.success("Registro de manutenção criado!");
+    setCreateOpen(false);
+    resetForm();
+    fetchAll();
+  };
+
+  // Mescla histórico + OS concluídas
   const items = useMemo(() => {
     const merged = history.map((h) => {
       const wo = workOrders.find((w) => w.completed_at && h.description.includes(`OS #${w.os_number}`));

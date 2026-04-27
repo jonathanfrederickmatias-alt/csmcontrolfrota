@@ -15,6 +15,7 @@ export interface DBEquipment {
   year?: number;
   chassis?: string;
   ownership: 'own' | 'third_party';
+  tenant_id?: string;
   created_at: string;
   updated_at: string;
 }

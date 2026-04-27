@@ -791,21 +791,23 @@ export default function MaintenancePage() {
                           )}
                         </div>
                       </div>
-                      {canEdit && (
-                        <div className="flex gap-2 shrink-0">
+                      <div className="flex gap-2 shrink-0">
+                        {canEdit && (
                           <button onClick={() => handleEditPlan(plan)} className="text-muted-foreground hover:text-primary p-2 transition-colors">
                             <Edit2 className="w-4 h-4" />
                           </button>
-                          {plan.status !== 'ok' && (
-                            <Button size="sm" variant="outline" onClick={() => handleComplete(plan)} className="text-success border-success/30 hover:bg-success/10">
-                              <CheckCircle className="w-3 h-3 mr-1" />Concluir
-                            </Button>
-                          )}
+                        )}
+                        {canComplete && plan.status !== 'ok' && (
+                          <Button size="sm" variant="outline" onClick={() => handleComplete(plan)} className="text-success border-success/30 hover:bg-success/10">
+                            <CheckCircle className="w-3 h-3 mr-1" />Concluir
+                          </Button>
+                        )}
+                        {canEdit && (
                           <button onClick={() => handleDelete(plan.id)} className="text-muted-foreground hover:text-destructive p-2 transition-colors">
                             <Trash2 className="w-4 h-4" />
                           </button>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
                   </div>
                 );

@@ -1578,6 +1578,98 @@ export default function MaintenancePage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Complete Plan Dialog */}
+      <Dialog open={!!completePlan} onOpenChange={(v) => !v && setCompletePlanState(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 text-success" /> Concluir Manutenção
+            </DialogTitle>
+          </DialogHeader>
+          {completePlan && (() => {
+            const eq = equipments.find(e => e.id === completePlan.equipment_id);
+            const isVehicle = eq?.type === 'vehicle' || eq?.type === 'truck' || eq?.type === 'car';
+            const unitLabel = isVehicle ? 'Quilometragem (km)' : 'Horímetro (h)';
+            return (
+              <div className="space-y-3">
+                <div className="bg-secondary/50 rounded-lg p-3 text-sm">
+                  <p className="font-semibold">{completePlan.description}</p>
+                  <p className="text-muted-foreground text-xs mt-1">
+                    Equipamento: {eq ? eqLabel(eq) : '—'}
+                  </p>
+                  <p className="text-muted-foreground text-xs">
+                    Atual: {eq?.current_hour_meter || 0}{isVehicle ? ' km' : ' h'} • Intervalo: {completePlan.interval_hours}{isVehicle ? ' km' : ' h'}
+                  </p>
+                </div>
+                <div>
+                  <Label>{unitLabel} em que foi executada *</Label>
+                  <Input
+                    type="number"
+                    inputMode="decimal"
+                    value={completeForm.hourMeter}
+                    onChange={e => setCompleteForm({ ...completeForm, hourMeter: e.target.value })}
+                    placeholder="Ex: 1250"
+                  />
+                </div>
+                <div>
+                  <Label>Executado por</Label>
+                  <Input
+                    value={completeForm.operatorName}
+                    onChange={e => setCompleteForm({ ...completeForm, operatorName: e.target.value })}
+                    placeholder="Nome do mecânico / responsável"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label>Custo Mão de Obra (R$)</Label>
+                    <Input
+                      type="number"
+                      inputMode="decimal"
+                      value={completeForm.laborCost}
+                      onChange={e => setCompleteForm({ ...completeForm, laborCost: e.target.value })}
+                      placeholder="0,00"
+                    />
+                  </div>
+                  <div>
+                    <Label>Custo Peças (R$)</Label>
+                    <Input
+                      type="number"
+                      inputMode="decimal"
+                      value={completeForm.partsCost}
+                      onChange={e => setCompleteForm({ ...completeForm, partsCost: e.target.value })}
+                      placeholder="0,00"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label>Observações</Label>
+                  <Textarea
+                    value={completeForm.notes}
+                    onChange={e => setCompleteForm({ ...completeForm, notes: e.target.value })}
+                    placeholder="Peças trocadas, serviços realizados, detalhes técnicos..."
+                    rows={3}
+                  />
+                </div>
+                <div className="bg-primary/5 rounded-lg p-2 text-xs text-muted-foreground">
+                  Próxima manutenção será agendada para: <strong className="text-primary">
+                    {(parseFloat(completeForm.hourMeter) || 0) + completePlan.interval_hours}{isVehicle ? ' km' : ' h'}
+                  </strong>
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <Button variant="outline" onClick={() => setCompletePlanState(null)} className="flex-1">
+                    Cancelar
+                  </Button>
+                  <Button onClick={submitCompletePlan} disabled={completeSaving || !completeForm.hourMeter} className="flex-1 bg-success hover:bg-success/90 text-success-foreground">
+                    {completeSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                    <CheckCircle className="w-4 h-4 mr-1" /> Confirmar Conclusão
+                  </Button>
+                </div>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -106,6 +106,11 @@ export default function MaintenancePage() {
   const [newOsForm, setNewOsForm] = useState({ equipmentId: '', description: '', priority: 'medium', operator_name: '' });
   const [newOsSaving, setNewOsSaving] = useState(false);
 
+  // Complete plan dialog
+  const [completePlan, setCompletePlanState] = useState<DBMaintenancePlan | null>(null);
+  const [completeForm, setCompleteForm] = useState({ hourMeter: '', operatorName: '', notes: '', laborCost: '', partsCost: '' });
+  const [completeSaving, setCompleteSaving] = useState(false);
+
   // Controlled tab
   const [activeTab, setActiveTab] = useState('plans');
 
@@ -175,10 +180,28 @@ export default function MaintenancePage() {
     fetchAll();
   };
 
-  const handleComplete = async (plan: DBMaintenancePlan) => {
+  const handleComplete = (plan: DBMaintenancePlan) => {
     const eq = equipments.find(e => e.id === plan.equipment_id);
     const currentHM = eq?.current_hour_meter || 0;
+    setCompletePlanState(plan);
+    setCompleteForm({
+      hourMeter: String(currentHM || ''),
+      operatorName: '',
+      notes: '',
+      laborCost: '',
+      partsCost: '',
+    });
+  };
 
+  const submitCompletePlan = async () => {
+    if (!completePlan) return;
+    const hm = parseFloat(completeForm.hourMeter);
+    if (isNaN(hm) || hm < 0) {
+      toast({ title: 'Horímetro/Km inválido', description: 'Informe um valor numérico válido.', variant: 'destructive' });
+      return;
+    }
+    setCompleteSaving(true);
+    const plan = completePlan;
     const { getMyTenantId } = await import('@/lib/tenant');
     const tenant_id = await getMyTenantId();
 
@@ -188,18 +211,28 @@ export default function MaintenancePage() {
       equipment_id: plan.equipment_id,
       plan_id: plan.id,
       description: plan.description,
-      hour_meter: currentHM,
+      hour_meter: hm,
+      operator_name: completeForm.operatorName || null,
+      notes: completeForm.notes || null,
+      labor_cost: completeForm.laborCost ? parseFloat(completeForm.laborCost) : 0,
+      parts_cost: completeForm.partsCost ? parseFloat(completeForm.partsCost) : 0,
     }]);
 
-    // Update plan
+    // Update plan + equipment horímetro
     await supabase.from('maintenance_plans').update({
-      last_done_at: currentHM,
-      next_due_at: currentHM + plan.interval_hours,
+      last_done_at: hm,
+      next_due_at: hm + plan.interval_hours,
       status: 'ok',
       last_executed_at: new Date().toISOString(),
     }).eq('id', plan.id);
 
-    toast({ title: 'Manutenção concluída e registrada no histórico!', description: `Próxima em ${currentHM + plan.interval_hours}h` });
+    await supabase.from('equipments').update({
+      current_hour_meter: Math.max(hm, equipments.find(e => e.id === plan.equipment_id)?.current_hour_meter || 0),
+    }).eq('id', plan.equipment_id);
+
+    setCompleteSaving(false);
+    setCompletePlanState(null);
+    toast({ title: 'Manutenção concluída e registrada no histórico!', description: `Próxima em ${hm + plan.interval_hours}h` });
     fetchAll();
   };
 
@@ -1543,6 +1576,98 @@ export default function MaintenancePage() {
               {newOsSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Criar OS
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Complete Plan Dialog */}
+      <Dialog open={!!completePlan} onOpenChange={(v) => !v && setCompletePlanState(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 text-success" /> Concluir Manutenção
+            </DialogTitle>
+          </DialogHeader>
+          {completePlan && (() => {
+            const eq = equipments.find(e => e.id === completePlan.equipment_id);
+            const isVehicle = eq?.type === 'truck';
+            const unitLabel = isVehicle ? 'Quilometragem (km)' : 'Horímetro (h)';
+            return (
+              <div className="space-y-3">
+                <div className="bg-secondary/50 rounded-lg p-3 text-sm">
+                  <p className="font-semibold">{completePlan.description}</p>
+                  <p className="text-muted-foreground text-xs mt-1">
+                    Equipamento: {eq ? eqLabel(eq) : '—'}
+                  </p>
+                  <p className="text-muted-foreground text-xs">
+                    Atual: {eq?.current_hour_meter || 0}{isVehicle ? ' km' : ' h'} • Intervalo: {completePlan.interval_hours}{isVehicle ? ' km' : ' h'}
+                  </p>
+                </div>
+                <div>
+                  <Label>{unitLabel} em que foi executada *</Label>
+                  <Input
+                    type="number"
+                    inputMode="decimal"
+                    value={completeForm.hourMeter}
+                    onChange={e => setCompleteForm({ ...completeForm, hourMeter: e.target.value })}
+                    placeholder="Ex: 1250"
+                  />
+                </div>
+                <div>
+                  <Label>Executado por</Label>
+                  <Input
+                    value={completeForm.operatorName}
+                    onChange={e => setCompleteForm({ ...completeForm, operatorName: e.target.value })}
+                    placeholder="Nome do mecânico / responsável"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label>Custo Mão de Obra (R$)</Label>
+                    <Input
+                      type="number"
+                      inputMode="decimal"
+                      value={completeForm.laborCost}
+                      onChange={e => setCompleteForm({ ...completeForm, laborCost: e.target.value })}
+                      placeholder="0,00"
+                    />
+                  </div>
+                  <div>
+                    <Label>Custo Peças (R$)</Label>
+                    <Input
+                      type="number"
+                      inputMode="decimal"
+                      value={completeForm.partsCost}
+                      onChange={e => setCompleteForm({ ...completeForm, partsCost: e.target.value })}
+                      placeholder="0,00"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label>Observações</Label>
+                  <Textarea
+                    value={completeForm.notes}
+                    onChange={e => setCompleteForm({ ...completeForm, notes: e.target.value })}
+                    placeholder="Peças trocadas, serviços realizados, detalhes técnicos..."
+                    rows={3}
+                  />
+                </div>
+                <div className="bg-primary/5 rounded-lg p-2 text-xs text-muted-foreground">
+                  Próxima manutenção será agendada para: <strong className="text-primary">
+                    {(parseFloat(completeForm.hourMeter) || 0) + completePlan.interval_hours}{isVehicle ? ' km' : ' h'}
+                  </strong>
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <Button variant="outline" onClick={() => setCompletePlanState(null)} className="flex-1">
+                    Cancelar
+                  </Button>
+                  <Button onClick={submitCompletePlan} disabled={completeSaving || !completeForm.hourMeter} className="flex-1 bg-success hover:bg-success/90 text-success-foreground">
+                    {completeSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                    <CheckCircle className="w-4 h-4 mr-1" /> Confirmar Conclusão
+                  </Button>
+                </div>
+              </div>
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </div>

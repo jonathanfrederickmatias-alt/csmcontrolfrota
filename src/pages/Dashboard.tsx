@@ -829,6 +829,56 @@ export default function Dashboard() {
         refreshing={isRefreshing}
       />
 
+      <ExecutiveKpiBar
+        items={[
+          {
+            id: "availability",
+            label: "Disponibilidade",
+            value: `${data.equipments.length ? Math.round((stats.activeEquipments / data.equipments.length) * 100) : 0}%`,
+            hint: `${stats.activeEquipments}/${data.equipments.length} equipamentos ativos`,
+            tone: stats.stoppedEquipments.length > 0 ? "warning" : "ok",
+            icon: KpiIcons.Activity,
+            onClick: () => navigate("/equipamentos"),
+          },
+          {
+            id: "stopped",
+            label: "Parados",
+            value: String(stats.stoppedEquipments.length),
+            hint: "Impacto direto na frente de obra",
+            tone: stats.stoppedEquipments.length > 0 ? "critical" : "ok",
+            icon: KpiIcons.PauseCircle,
+            onClick: () => navigate("/equipamentos"),
+          },
+          {
+            id: "overdue",
+            label: "Manutenção atrasada",
+            value: String(stats.overdueMaintenance.length),
+            hint: "Planos preventivos vencidos",
+            tone: stats.overdueMaintenance.length > 0 ? "critical" : "ok",
+            icon: KpiIcons.Wrench,
+            onClick: () => navigate("/manutencao"),
+          },
+          {
+            id: "consumption",
+            label: "Consumo fora",
+            value: String(stats.consumptionInsights.length),
+            hint: "Equipamentos com desvio acima da média",
+            tone: stats.consumptionInsights.length > 0 ? "warning" : "ok",
+            icon: KpiIcons.Fuel,
+            onClick: () => navigate("/relatorios"),
+          },
+          {
+            id: "critical-os",
+            label: "OS críticas",
+            value: String(stats.criticalOrders.length),
+            hint: "Ordens prioritárias em aberto",
+            tone: stats.criticalOrders.length > 0 ? "critical" : "ok",
+            icon: KpiIcons.AlertOctagon,
+            onClick: () => navigate("/manutencao"),
+          },
+        ] satisfies ExecutiveKpi[]}
+      />
+
       <ActionableAlertsPanel items={actionableAlerts} />
       <KpiSummaryGrid items={kpis} />
 

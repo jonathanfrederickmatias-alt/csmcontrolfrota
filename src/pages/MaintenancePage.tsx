@@ -1589,7 +1589,7 @@ export default function MaintenancePage() {
           </DialogHeader>
           {completePlan && (() => {
             const eq = equipments.find(e => e.id === completePlan.equipment_id);
-            const isVehicle = eq?.type === 'vehicle' || eq?.type === 'truck' || eq?.type === 'car';
+            const isVehicle = eq?.type === 'truck';
             const unitLabel = isVehicle ? 'Quilometragem (km)' : 'Horímetro (h)';
             return (
               <div className="space-y-3">

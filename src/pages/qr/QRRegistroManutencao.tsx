@@ -1,14 +1,20 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { DBEquipment } from "@/lib/supabase-types";
 import PublicLayout from "@/components/PublicLayout";
-import { Loader2, Lock, ArrowLeft, History, Wrench, Clock, User, DollarSign, FileText, Package, Image as ImageIcon } from "lucide-react";
+import { Loader2, Lock, ArrowLeft, History, Wrench, Clock, User, DollarSign, FileText, Package, Image as ImageIcon, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import PhotoUpload from "@/components/PhotoUpload";
 import { toast } from "sonner";
 
 const REGISTRO_PIN = "0123";
+
+interface PartItem { code: string; description: string; quantity: string; }
 
 interface MaintenanceHistoryRow {
   id: string;

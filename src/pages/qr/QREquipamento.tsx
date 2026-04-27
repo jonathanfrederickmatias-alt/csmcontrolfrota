@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { DBEquipment } from "@/lib/supabase-types";
-import { ClipboardCheck, Fuel, Wrench, ChevronRight, Loader2 } from "lucide-react";
+import { ClipboardCheck, Fuel, Wrench, ChevronRight, Loader2, History } from "lucide-react";
 import PublicLayout from "@/components/PublicLayout";
 
 export default function QREquipamento() {
@@ -66,6 +66,15 @@ export default function QREquipamento() {
       bg: "bg-primary/10",
       border: "border-primary/20",
       path: `/qr/abastecimento?equipment=${id}`,
+    },
+    {
+      label: "Registro de Manutenção",
+      description: "Histórico de serviços executados (requer PIN)",
+      icon: History,
+      color: "text-accent-foreground",
+      bg: "bg-accent/20",
+      border: "border-accent/30",
+      path: `/qr/registro-manutencao?equipment=${id}`,
     },
   ];
 

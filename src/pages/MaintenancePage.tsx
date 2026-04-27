@@ -106,6 +106,11 @@ export default function MaintenancePage() {
   const [newOsForm, setNewOsForm] = useState({ equipmentId: '', description: '', priority: 'medium', operator_name: '' });
   const [newOsSaving, setNewOsSaving] = useState(false);
 
+  // Complete plan dialog
+  const [completePlan, setCompletePlanState] = useState<DBMaintenancePlan | null>(null);
+  const [completeForm, setCompleteForm] = useState({ hourMeter: '', operatorName: '', notes: '', laborCost: '', partsCost: '' });
+  const [completeSaving, setCompleteSaving] = useState(false);
+
   // Controlled tab
   const [activeTab, setActiveTab] = useState('plans');
 

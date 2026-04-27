@@ -190,6 +190,7 @@ export default function MaintenancePage() {
       notes: '',
       laborCost: '',
       partsCost: '',
+      photoUrl: '',
     });
   };
 

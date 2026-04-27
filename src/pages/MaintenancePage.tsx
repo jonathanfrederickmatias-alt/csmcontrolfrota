@@ -180,10 +180,28 @@ export default function MaintenancePage() {
     fetchAll();
   };
 
-  const handleComplete = async (plan: DBMaintenancePlan) => {
+  const handleComplete = (plan: DBMaintenancePlan) => {
     const eq = equipments.find(e => e.id === plan.equipment_id);
     const currentHM = eq?.current_hour_meter || 0;
+    setCompletePlanState(plan);
+    setCompleteForm({
+      hourMeter: String(currentHM || ''),
+      operatorName: '',
+      notes: '',
+      laborCost: '',
+      partsCost: '',
+    });
+  };
 
+  const submitCompletePlan = async () => {
+    if (!completePlan) return;
+    const hm = parseFloat(completeForm.hourMeter);
+    if (isNaN(hm) || hm < 0) {
+      toast({ title: 'Horímetro/Km inválido', description: 'Informe um valor numérico válido.', variant: 'destructive' });
+      return;
+    }
+    setCompleteSaving(true);
+    const plan = completePlan;
     const { getMyTenantId } = await import('@/lib/tenant');
     const tenant_id = await getMyTenantId();
 
@@ -193,18 +211,28 @@ export default function MaintenancePage() {
       equipment_id: plan.equipment_id,
       plan_id: plan.id,
       description: plan.description,
-      hour_meter: currentHM,
+      hour_meter: hm,
+      operator_name: completeForm.operatorName || null,
+      notes: completeForm.notes || null,
+      labor_cost: completeForm.laborCost ? parseFloat(completeForm.laborCost) : 0,
+      parts_cost: completeForm.partsCost ? parseFloat(completeForm.partsCost) : 0,
     }]);
 
-    // Update plan
+    // Update plan + equipment horímetro
     await supabase.from('maintenance_plans').update({
-      last_done_at: currentHM,
-      next_due_at: currentHM + plan.interval_hours,
+      last_done_at: hm,
+      next_due_at: hm + plan.interval_hours,
       status: 'ok',
       last_executed_at: new Date().toISOString(),
     }).eq('id', plan.id);
 
-    toast({ title: 'Manutenção concluída e registrada no histórico!', description: `Próxima em ${currentHM + plan.interval_hours}h` });
+    await supabase.from('equipments').update({
+      current_hour_meter: Math.max(hm, equipments.find(e => e.id === plan.equipment_id)?.current_hour_meter || 0),
+    }).eq('id', plan.equipment_id);
+
+    setCompleteSaving(false);
+    setCompletePlanState(null);
+    toast({ title: 'Manutenção concluída e registrada no histórico!', description: `Próxima em ${hm + plan.interval_hours}h` });
     fetchAll();
   };
 

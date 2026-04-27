@@ -551,7 +551,7 @@ export default function QRRegistroManutencao() {
               <Label className="mb-2 block">Foto</Label>
               <PhotoUpload
                 value={form.photoUrl}
-                onChange={(url) => setForm({ ...form, photoUrl: url })}
+                onUploaded={(url) => setForm({ ...form, photoUrl: url })}
               />
             </div>
           </div>

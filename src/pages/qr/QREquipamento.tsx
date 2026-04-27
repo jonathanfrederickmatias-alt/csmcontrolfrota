@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { DBEquipment } from "@/lib/supabase-types";
-import { ClipboardCheck, Fuel, Wrench, ChevronRight, Loader2 } from "lucide-react";
+import { ClipboardCheck, Fuel, Wrench, ChevronRight, Loader2, History } from "lucide-react";
 import PublicLayout from "@/components/PublicLayout";
 
 export default function QREquipamento() {

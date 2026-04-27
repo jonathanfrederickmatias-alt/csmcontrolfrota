@@ -460,6 +460,7 @@ export type Database = {
           notes: string | null
           operator_name: string | null
           parts_cost: number | null
+          photo_url: string | null
           plan_id: string | null
           tenant_id: string
         }
@@ -474,6 +475,7 @@ export type Database = {
           notes?: string | null
           operator_name?: string | null
           parts_cost?: number | null
+          photo_url?: string | null
           plan_id?: string | null
           tenant_id: string
         }
@@ -488,6 +490,7 @@ export type Database = {
           notes?: string | null
           operator_name?: string | null
           parts_cost?: number | null
+          photo_url?: string | null
           plan_id?: string | null
           tenant_id?: string
         }

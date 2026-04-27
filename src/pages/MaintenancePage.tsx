@@ -108,7 +108,7 @@ export default function MaintenancePage() {
 
   // Complete plan dialog
   const [completePlan, setCompletePlanState] = useState<DBMaintenancePlan | null>(null);
-  const [completeForm, setCompleteForm] = useState({ hourMeter: '', operatorName: '', notes: '', laborCost: '', partsCost: '' });
+  const [completeForm, setCompleteForm] = useState({ hourMeter: '', operatorName: '', notes: '', laborCost: '', partsCost: '', photoUrl: '' });
   const [completeSaving, setCompleteSaving] = useState(false);
 
   // Controlled tab
@@ -190,6 +190,7 @@ export default function MaintenancePage() {
       notes: '',
       laborCost: '',
       partsCost: '',
+      photoUrl: '',
     });
   };
 
@@ -216,6 +217,7 @@ export default function MaintenancePage() {
       notes: completeForm.notes || null,
       labor_cost: completeForm.laborCost ? parseFloat(completeForm.laborCost) : 0,
       parts_cost: completeForm.partsCost ? parseFloat(completeForm.partsCost) : 0,
+      photo_url: completeForm.photoUrl || null,
     }]);
 
     // Update plan + equipment horímetro
@@ -1651,6 +1653,12 @@ export default function MaintenancePage() {
                     rows={3}
                   />
                 </div>
+                <PhotoUpload
+                  label="Foto da Execução"
+                  value={completeForm.photoUrl}
+                  onUploaded={(url) => setCompleteForm({ ...completeForm, photoUrl: url })}
+                  acceptFiles
+                />
                 <div className="bg-primary/5 rounded-lg p-2 text-xs text-muted-foreground">
                   Próxima manutenção será agendada para: <strong className="text-primary">
                     {(parseFloat(completeForm.hourMeter) || 0) + completePlan.interval_hours}{isVehicle ? ' km' : ' h'}

@@ -11,10 +11,11 @@ let inflight: Promise<string | null> | null = null;
 export async function getMyTenantId(): Promise<string> {
   if (cachedTenantId) return cachedTenantId;
   if (!inflight) {
-    inflight = supabase.rpc("get_my_tenant_id").then(({ data, error }) => {
+    inflight = (async () => {
+      const { data, error } = await supabase.rpc("get_my_tenant_id");
       if (error) throw error;
       return (data as string | null) ?? null;
-    });
+    })();
   }
   const value = await inflight;
   inflight = null;

@@ -240,20 +240,25 @@ export default function QRRegistroManutencao() {
         <ArrowLeft className="w-4 h-4" /> Voltar
       </button>
 
-      <div className="mb-6">
-        <div className="flex items-center gap-2 mb-1">
-          <History className="w-5 h-5 text-primary" />
-          <h1 className="text-xl font-black text-gradient">Registro de Manutenção</h1>
-        </div>
-        {equipment && (
-          <div className="text-sm text-muted-foreground">
-            <span className="font-bold text-foreground">{equipment.name}</span>
-            {equipment.plate && <span className="ml-2 font-mono">({equipment.plate})</span>}
+      <div className="mb-6 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <History className="w-5 h-5 text-primary" />
+            <h1 className="text-xl font-black text-gradient">Registro de Manutenção</h1>
           </div>
-        )}
-        <p className="text-xs text-muted-foreground mt-1">
-          {items.length} {items.length === 1 ? "registro encontrado" : "registros encontrados"}
-        </p>
+          {equipment && (
+            <div className="text-sm text-muted-foreground">
+              <span className="font-bold text-foreground">{equipment.name}</span>
+              {equipment.plate && <span className="ml-2 font-mono">({equipment.plate})</span>}
+            </div>
+          )}
+          <p className="text-xs text-muted-foreground mt-1">
+            {items.length} {items.length === 1 ? "registro encontrado" : "registros encontrados"}
+          </p>
+        </div>
+        <Button onClick={openCreate} size="sm" className="gap-1 flex-shrink-0">
+          <Plus className="w-4 h-4" /> Novo
+        </Button>
       </div>
 
       {items.length === 0 ? (

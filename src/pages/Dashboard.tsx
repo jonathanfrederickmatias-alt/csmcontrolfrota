@@ -30,6 +30,7 @@ import {
   RecommendationItem,
   RecommendedActionsSection,
 } from "@/components/dashboard/OperationalCommandCenterSections";
+import { ExecutiveKpiBar, type ExecutiveKpi, KpiIcons } from "@/components/dashboard/ExecutiveKpiBar";
 import {
   AIMaintenanceDecision,
   AIMaintenanceDecisionsSection,

@@ -410,6 +410,163 @@ export default function QRRegistroManutencao() {
           })}
         </div>
       )}
+
+      {/* Novo registro dialog */}
+      <Dialog open={createOpen} onOpenChange={(o) => !saving && setCreateOpen(o)}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Wrench className="w-5 h-5 text-primary" /> Novo Registro de Manutenção
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div>
+              <Label>Descrição do serviço *</Label>
+              <Input
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                placeholder="Ex: Troca de óleo e filtros"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>
+                  {equipment?.type === "truck" ? "Quilometragem (km)" : "Horímetro (h)"} *
+                </Label>
+                <Input
+                  inputMode="decimal"
+                  value={form.hourMeter}
+                  onChange={(e) => setForm({ ...form, hourMeter: e.target.value })}
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <Label>Responsável *</Label>
+                <Input
+                  value={form.operatorName}
+                  onChange={(e) => setForm({ ...form, operatorName: e.target.value })}
+                  placeholder="Nome do mecânico"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label>Serviço executado</Label>
+              <Textarea
+                rows={2}
+                value={form.serviceExecuted}
+                onChange={(e) => setForm({ ...form, serviceExecuted: e.target.value })}
+                placeholder="Detalhe o que foi feito"
+              />
+            </div>
+
+            {/* Peças */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <Label className="flex items-center gap-1"><Package className="w-3.5 h-3.5" /> Peças utilizadas</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setParts([...parts, { code: "", description: "", quantity: "" }])}
+                >
+                  <Plus className="w-3 h-3 mr-1" /> Adicionar
+                </Button>
+              </div>
+              {parts.length === 0 && (
+                <p className="text-xs text-muted-foreground">Nenhuma peça adicionada.</p>
+              )}
+              <div className="space-y-2">
+                {parts.map((p, idx) => (
+                  <div key={idx} className="grid grid-cols-[1fr_1fr_70px_auto] gap-2 items-center">
+                    <Input
+                      placeholder="Código"
+                      value={p.code}
+                      onChange={(e) => {
+                        const next = [...parts]; next[idx] = { ...p, code: e.target.value }; setParts(next);
+                      }}
+                    />
+                    <Input
+                      placeholder="Descrição"
+                      value={p.description}
+                      onChange={(e) => {
+                        const next = [...parts]; next[idx] = { ...p, description: e.target.value }; setParts(next);
+                      }}
+                    />
+                    <Input
+                      placeholder="Qtd"
+                      inputMode="decimal"
+                      value={p.quantity}
+                      onChange={(e) => {
+                        const next = [...parts]; next[idx] = { ...p, quantity: e.target.value }; setParts(next);
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setParts(parts.filter((_, i) => i !== idx))}
+                    >
+                      <Trash2 className="w-4 h-4 text-destructive" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Custo mão de obra (R$)</Label>
+                <Input
+                  inputMode="decimal"
+                  value={form.laborCost}
+                  onChange={(e) => setForm({ ...form, laborCost: e.target.value })}
+                  placeholder="0,00"
+                />
+              </div>
+              <div>
+                <Label>Custo peças (R$)</Label>
+                <Input
+                  inputMode="decimal"
+                  value={form.partsCost}
+                  onChange={(e) => setForm({ ...form, partsCost: e.target.value })}
+                  placeholder="0,00"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label>Observações técnicas</Label>
+              <Textarea
+                rows={2}
+                value={form.notes}
+                onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                placeholder="Informações adicionais"
+              />
+            </div>
+
+            <div>
+              <Label className="mb-2 block">Foto</Label>
+              <PhotoUpload
+                value={form.photoUrl}
+                onChange={(url) => setForm({ ...form, photoUrl: url })}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateOpen(false)} disabled={saving}>
+              Cancelar
+            </Button>
+            <Button onClick={submitCreate} disabled={saving}>
+              {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+              Salvar registro
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PublicLayout>
   );
 }

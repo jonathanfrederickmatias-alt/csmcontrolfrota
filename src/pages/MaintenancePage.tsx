@@ -108,7 +108,7 @@ export default function MaintenancePage() {
 
   // Complete plan dialog
   const [completePlan, setCompletePlanState] = useState<DBMaintenancePlan | null>(null);
-  const [completeForm, setCompleteForm] = useState({ hourMeter: '', operatorName: '', notes: '', laborCost: '', partsCost: '' });
+  const [completeForm, setCompleteForm] = useState({ hourMeter: '', operatorName: '', notes: '', laborCost: '', partsCost: '', photoUrl: '' });
   const [completeSaving, setCompleteSaving] = useState(false);
 
   // Controlled tab

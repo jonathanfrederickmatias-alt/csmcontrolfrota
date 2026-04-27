@@ -217,6 +217,7 @@ export default function MaintenancePage() {
       notes: completeForm.notes || null,
       labor_cost: completeForm.laborCost ? parseFloat(completeForm.laborCost) : 0,
       parts_cost: completeForm.partsCost ? parseFloat(completeForm.partsCost) : 0,
+      photo_url: completeForm.photoUrl || null,
     }]);
 
     // Update plan + equipment horímetro

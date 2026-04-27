@@ -1653,6 +1653,12 @@ export default function MaintenancePage() {
                     rows={3}
                   />
                 </div>
+                <PhotoUpload
+                  label="Foto da Execução"
+                  value={completeForm.photoUrl}
+                  onUploaded={(url) => setCompleteForm({ ...completeForm, photoUrl: url })}
+                  acceptFiles
+                />
                 <div className="bg-primary/5 rounded-lg p-2 text-xs text-muted-foreground">
                   Próxima manutenção será agendada para: <strong className="text-primary">
                     {(parseFloat(completeForm.hourMeter) || 0) + completePlan.interval_hours}{isVehicle ? ' km' : ' h'}

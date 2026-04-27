@@ -1,14 +1,20 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { DBEquipment } from "@/lib/supabase-types";
 import PublicLayout from "@/components/PublicLayout";
-import { Loader2, Lock, ArrowLeft, History, Wrench, Clock, User, DollarSign, FileText, Package, Image as ImageIcon } from "lucide-react";
+import { Loader2, Lock, ArrowLeft, History, Wrench, Clock, User, DollarSign, FileText, Package, Image as ImageIcon, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import PhotoUpload from "@/components/PhotoUpload";
 import { toast } from "sonner";
 
 const REGISTRO_PIN = "0123";
+
+interface PartItem { code: string; description: string; quantity: string; }
 
 interface MaintenanceHistoryRow {
   id: string;
@@ -58,22 +64,91 @@ export default function QRRegistroManutencao() {
   const [history, setHistory] = useState<MaintenanceHistoryRow[]>([]);
   const [workOrders, setWorkOrders] = useState<WorkOrderRow[]>([]);
 
-  useEffect(() => {
+  // Create dialog
+  const [createOpen, setCreateOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    description: "",
+    hourMeter: "",
+    operatorName: "",
+    serviceExecuted: "",
+    notes: "",
+    laborCost: "",
+    partsCost: "",
+    photoUrl: "",
+  });
+  const [parts, setParts] = useState<PartItem[]>([]);
+
+  const resetForm = () => {
+    setForm({ description: "", hourMeter: "", operatorName: "", serviceExecuted: "", notes: "", laborCost: "", partsCost: "", photoUrl: "" });
+    setParts([]);
+  };
+
+  const fetchAll = useCallback(async () => {
     if (!equipmentId) return;
-    (async () => {
-      const [{ data: eq }, { data: hist }, { data: wos }] = await Promise.all([
-        supabase.from("equipments").select("*").eq("id", equipmentId).maybeSingle(),
-        supabase.from("maintenance_history").select("*").eq("equipment_id", equipmentId).order("executed_at", { ascending: false }),
-        supabase.from("work_orders").select("*").eq("equipment_id", equipmentId).eq("status", "done").order("completed_at", { ascending: false }),
-      ]);
-      setEquipment(eq as DBEquipment | null);
-      setHistory((hist || []) as MaintenanceHistoryRow[]);
-      setWorkOrders((wos || []) as WorkOrderRow[]);
-      setLoading(false);
-    })();
+    const [{ data: eq }, { data: hist }, { data: wos }] = await Promise.all([
+      supabase.from("equipments").select("*").eq("id", equipmentId).maybeSingle(),
+      supabase.from("maintenance_history").select("*").eq("equipment_id", equipmentId).order("executed_at", { ascending: false }),
+      supabase.from("work_orders").select("*").eq("equipment_id", equipmentId).eq("status", "done").order("completed_at", { ascending: false }),
+    ]);
+    setEquipment(eq as DBEquipment | null);
+    setHistory((hist || []) as MaintenanceHistoryRow[]);
+    setWorkOrders((wos || []) as WorkOrderRow[]);
+    setLoading(false);
   }, [equipmentId]);
 
-  // Mescla histórico + OS concluídas, priorizando OS quando existir mesmo registro
+  useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  const openCreate = () => {
+    resetForm();
+    setForm((f) => ({ ...f, hourMeter: equipment?.current_hour_meter ? String(equipment.current_hour_meter) : "" }));
+    setCreateOpen(true);
+  };
+
+  const submitCreate = async () => {
+    if (!equipmentId) return;
+    if (!form.description.trim()) { toast.error("Informe a descrição do serviço"); return; }
+    if (!form.operatorName.trim()) { toast.error("Informe o nome do responsável"); return; }
+    const hm = parseFloat(form.hourMeter.replace(",", "."));
+    if (!hm || hm < 0) { toast.error("Informe o horímetro/km"); return; }
+
+    setSaving(true);
+    const partsText = parts
+      .filter((p) => p.code || p.description)
+      .map((p) => `${p.code || "—"}${p.description ? ` (${p.description})` : ""}${p.quantity ? ` x${p.quantity}` : ""}`)
+      .join(", ");
+
+    const notesBlocks = [
+      form.serviceExecuted && `Serviço executado: ${form.serviceExecuted}`,
+      partsText && `Peças: ${partsText}`,
+      form.notes && `Observações: ${form.notes}`,
+      `Registrado via QR Code`,
+    ].filter(Boolean).join("\n");
+
+    const { error } = await supabase.from("maintenance_history").insert({
+      equipment_id: equipmentId,
+      description: form.description.trim(),
+      hour_meter: hm,
+      operator_name: form.operatorName.trim(),
+      notes: notesBlocks,
+      labor_cost: parseFloat((form.laborCost || "0").replace(",", ".")) || 0,
+      parts_cost: parseFloat((form.partsCost || "0").replace(",", ".")) || 0,
+      photo_url: form.photoUrl || null,
+      executed_at: new Date().toISOString(),
+    } as any);
+
+    setSaving(false);
+    if (error) {
+      toast.error("Erro ao salvar: " + error.message);
+      return;
+    }
+    toast.success("Registro de manutenção criado!");
+    setCreateOpen(false);
+    resetForm();
+    fetchAll();
+  };
+
+  // Mescla histórico + OS concluídas
   const items = useMemo(() => {
     const merged = history.map((h) => {
       const wo = workOrders.find((w) => w.completed_at && h.description.includes(`OS #${w.os_number}`));
@@ -165,20 +240,25 @@ export default function QRRegistroManutencao() {
         <ArrowLeft className="w-4 h-4" /> Voltar
       </button>
 
-      <div className="mb-6">
-        <div className="flex items-center gap-2 mb-1">
-          <History className="w-5 h-5 text-primary" />
-          <h1 className="text-xl font-black text-gradient">Registro de Manutenção</h1>
-        </div>
-        {equipment && (
-          <div className="text-sm text-muted-foreground">
-            <span className="font-bold text-foreground">{equipment.name}</span>
-            {equipment.plate && <span className="ml-2 font-mono">({equipment.plate})</span>}
+      <div className="mb-6 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <History className="w-5 h-5 text-primary" />
+            <h1 className="text-xl font-black text-gradient">Registro de Manutenção</h1>
           </div>
-        )}
-        <p className="text-xs text-muted-foreground mt-1">
-          {items.length} {items.length === 1 ? "registro encontrado" : "registros encontrados"}
-        </p>
+          {equipment && (
+            <div className="text-sm text-muted-foreground">
+              <span className="font-bold text-foreground">{equipment.name}</span>
+              {equipment.plate && <span className="ml-2 font-mono">({equipment.plate})</span>}
+            </div>
+          )}
+          <p className="text-xs text-muted-foreground mt-1">
+            {items.length} {items.length === 1 ? "registro encontrado" : "registros encontrados"}
+          </p>
+        </div>
+        <Button onClick={openCreate} size="sm" className="gap-1 flex-shrink-0">
+          <Plus className="w-4 h-4" /> Novo
+        </Button>
       </div>
 
       {items.length === 0 ? (
@@ -330,6 +410,163 @@ export default function QRRegistroManutencao() {
           })}
         </div>
       )}
+
+      {/* Novo registro dialog */}
+      <Dialog open={createOpen} onOpenChange={(o) => !saving && setCreateOpen(o)}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Wrench className="w-5 h-5 text-primary" /> Novo Registro de Manutenção
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div>
+              <Label>Descrição do serviço *</Label>
+              <Input
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                placeholder="Ex: Troca de óleo e filtros"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>
+                  {equipment?.type === "truck" ? "Quilometragem (km)" : "Horímetro (h)"} *
+                </Label>
+                <Input
+                  inputMode="decimal"
+                  value={form.hourMeter}
+                  onChange={(e) => setForm({ ...form, hourMeter: e.target.value })}
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <Label>Responsável *</Label>
+                <Input
+                  value={form.operatorName}
+                  onChange={(e) => setForm({ ...form, operatorName: e.target.value })}
+                  placeholder="Nome do mecânico"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label>Serviço executado</Label>
+              <Textarea
+                rows={2}
+                value={form.serviceExecuted}
+                onChange={(e) => setForm({ ...form, serviceExecuted: e.target.value })}
+                placeholder="Detalhe o que foi feito"
+              />
+            </div>
+
+            {/* Peças */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <Label className="flex items-center gap-1"><Package className="w-3.5 h-3.5" /> Peças utilizadas</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setParts([...parts, { code: "", description: "", quantity: "" }])}
+                >
+                  <Plus className="w-3 h-3 mr-1" /> Adicionar
+                </Button>
+              </div>
+              {parts.length === 0 && (
+                <p className="text-xs text-muted-foreground">Nenhuma peça adicionada.</p>
+              )}
+              <div className="space-y-2">
+                {parts.map((p, idx) => (
+                  <div key={idx} className="grid grid-cols-[1fr_1fr_70px_auto] gap-2 items-center">
+                    <Input
+                      placeholder="Código"
+                      value={p.code}
+                      onChange={(e) => {
+                        const next = [...parts]; next[idx] = { ...p, code: e.target.value }; setParts(next);
+                      }}
+                    />
+                    <Input
+                      placeholder="Descrição"
+                      value={p.description}
+                      onChange={(e) => {
+                        const next = [...parts]; next[idx] = { ...p, description: e.target.value }; setParts(next);
+                      }}
+                    />
+                    <Input
+                      placeholder="Qtd"
+                      inputMode="decimal"
+                      value={p.quantity}
+                      onChange={(e) => {
+                        const next = [...parts]; next[idx] = { ...p, quantity: e.target.value }; setParts(next);
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setParts(parts.filter((_, i) => i !== idx))}
+                    >
+                      <Trash2 className="w-4 h-4 text-destructive" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Custo mão de obra (R$)</Label>
+                <Input
+                  inputMode="decimal"
+                  value={form.laborCost}
+                  onChange={(e) => setForm({ ...form, laborCost: e.target.value })}
+                  placeholder="0,00"
+                />
+              </div>
+              <div>
+                <Label>Custo peças (R$)</Label>
+                <Input
+                  inputMode="decimal"
+                  value={form.partsCost}
+                  onChange={(e) => setForm({ ...form, partsCost: e.target.value })}
+                  placeholder="0,00"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label>Observações técnicas</Label>
+              <Textarea
+                rows={2}
+                value={form.notes}
+                onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                placeholder="Informações adicionais"
+              />
+            </div>
+
+            <div>
+              <Label className="mb-2 block">Foto</Label>
+              <PhotoUpload
+                value={form.photoUrl}
+                onUploaded={(url) => setForm({ ...form, photoUrl: url })}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateOpen(false)} disabled={saving}>
+              Cancelar
+            </Button>
+            <Button onClick={submitCreate} disabled={saving}>
+              {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+              Salvar registro
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PublicLayout>
   );
 }

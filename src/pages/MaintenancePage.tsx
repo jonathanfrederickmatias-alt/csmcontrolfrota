@@ -149,7 +149,10 @@ export default function MaintenancePage() {
       }).eq('id', editPlan.id);
       toast({ title: 'Plano atualizado com sucesso!' });
     } else {
+      const { getMyTenantId } = await import('@/lib/tenant');
+      const tenant_id = await getMyTenantId();
       await supabase.from('maintenance_plans').insert([{
+        tenant_id,
         equipment_id: form.equipmentId,
         description: form.description,
         interval_hours: interval,
@@ -176,8 +179,12 @@ export default function MaintenancePage() {
     const eq = equipments.find(e => e.id === plan.equipment_id);
     const currentHM = eq?.current_hour_meter || 0;
 
+    const { getMyTenantId } = await import('@/lib/tenant');
+    const tenant_id = await getMyTenantId();
+
     // Save to history
     await supabase.from('maintenance_history').insert([{
+      tenant_id,
       equipment_id: plan.equipment_id,
       plan_id: plan.id,
       description: plan.description,
@@ -209,7 +216,10 @@ export default function MaintenancePage() {
 
   const handleSaveHistory = async () => {
     setHistorySaving(true);
+    const { getMyTenantId } = await import('@/lib/tenant');
+    const tenant_id = await getMyTenantId();
     await supabase.from('maintenance_history').insert([{
+      tenant_id,
       equipment_id: historyForm.equipmentId,
       description: historyForm.description,
       hour_meter: Number(historyForm.hourMeter),
@@ -387,8 +397,11 @@ export default function MaintenancePage() {
   const handleCreateOS = async () => {
     if (!newOsForm.equipmentId || !newOsForm.description) return;
     setNewOsSaving(true);
+    const { getMyTenantId } = await import('@/lib/tenant');
+    const tenant_id = await getMyTenantId();
     // Create maintenance request first (required by work_orders FK)
     const { data: reqData, error: reqErr } = await supabase.from('maintenance_requests').insert([{
+      tenant_id,
       equipment_id: newOsForm.equipmentId,
       description: newOsForm.description,
       priority: newOsForm.priority,
@@ -404,6 +417,7 @@ export default function MaintenancePage() {
 
     // Create work order
     const { error: osErr } = await supabase.from('work_orders').insert([{
+      tenant_id,
       equipment_id: newOsForm.equipmentId,
       maintenance_request_id: reqData.id,
       description: newOsForm.description,

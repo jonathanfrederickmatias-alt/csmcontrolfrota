@@ -93,7 +93,11 @@ export default function ChecklistPage() {
     const isConforme = unchecked === 0;
     const status = !isConforme ? (unchecked > 3 ? 'critical' : 'attention') : 'ok';
 
+    const { getMyTenantId } = await import('@/lib/tenant');
+    const tenant_id = await getMyTenantId();
+
     await supabase.from('checklists').insert([{
+      tenant_id,
       equipment_id: selectedEquipment,
       operator_name: operatorName,
       hour_meter: Number(hourMeter),
@@ -139,7 +143,10 @@ export default function ChecklistPage() {
       return;
     }
     setSavingMaintenance(true);
+    const { getMyTenantId } = await import('@/lib/tenant');
+    const tenant_id = await getMyTenantId();
     await supabase.from('maintenance_requests').insert([{
+      tenant_id,
       equipment_id: selectedEquipment,
       operator_name: operatorName,
       description: maintenanceDesc,

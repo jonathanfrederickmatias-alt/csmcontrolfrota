@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { DBEquipment } from '@/lib/supabase-types';
+import { getMyTenantId } from '@/lib/tenant';
 
 export function useEquipments() {
   const [equipments, setEquipments] = useState<DBEquipment[]>([]);
@@ -14,8 +15,9 @@ export function useEquipments() {
 
   useEffect(() => { fetch(); }, [fetch]);
 
-  const save = async (eq: Omit<DBEquipment, 'id' | 'created_at' | 'updated_at'>) => {
-    const { error } = await supabase.from('equipments').insert([eq]);
+  const save = async (eq: Omit<DBEquipment, 'id' | 'created_at' | 'updated_at' | 'tenant_id'>) => {
+    const tenant_id = await getMyTenantId();
+    const { error } = await supabase.from('equipments').insert([{ ...eq, tenant_id }]);
     if (!error) fetch();
     return error;
   };

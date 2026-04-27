@@ -30,6 +30,7 @@ import {
   RecommendationItem,
   RecommendedActionsSection,
 } from "@/components/dashboard/OperationalCommandCenterSections";
+import { ExecutiveKpiBar, type ExecutiveKpi, KpiIcons } from "@/components/dashboard/ExecutiveKpiBar";
 import {
   AIMaintenanceDecision,
   AIMaintenanceDecisionsSection,
@@ -296,9 +297,13 @@ export default function Dashboard() {
     const mappedPriority = item.priority === "high" ? "urgent" : item.priority === "medium" ? "high" : "medium";
     const description = `${item.recommendation}${item.suggestedParts.length > 0 ? ` | Peças sugeridas: ${item.suggestedParts.join(", ")}` : ""}${item.downtimeHours > 0 ? ` | Parada estimada: ${item.downtimeHours.toFixed(1)}h` : ""}`;
 
+    const { getMyTenantId } = await import("@/lib/tenant");
+    const tenant_id = await getMyTenantId();
+
     const { data: requestData, error: requestError } = await supabase
       .from("maintenance_requests")
       .insert([{
+        tenant_id,
         equipment_id: item.equipmentId,
         description,
         priority: mappedPriority,
@@ -316,6 +321,7 @@ export default function Dashboard() {
     }
 
     const { error: workOrderError } = await supabase.from("work_orders").insert([{
+      tenant_id,
       equipment_id: item.equipmentId,
       maintenance_request_id: requestData.id,
       description,
@@ -821,6 +827,56 @@ export default function Dashboard() {
         onRefresh={fetchData}
         onSignOut={signOut}
         refreshing={isRefreshing}
+      />
+
+      <ExecutiveKpiBar
+        items={[
+          {
+            id: "availability",
+            label: "Disponibilidade",
+            value: `${data.equipments.length ? Math.round((stats.activeEquipments / data.equipments.length) * 100) : 0}%`,
+            hint: `${stats.activeEquipments}/${data.equipments.length} equipamentos ativos`,
+            tone: stats.stoppedEquipments.length > 0 ? "warning" : "ok",
+            icon: KpiIcons.Activity,
+            onClick: () => navigate("/equipamentos"),
+          },
+          {
+            id: "stopped",
+            label: "Parados",
+            value: String(stats.stoppedEquipments.length),
+            hint: "Impacto direto na frente de obra",
+            tone: stats.stoppedEquipments.length > 0 ? "critical" : "ok",
+            icon: KpiIcons.PauseCircle,
+            onClick: () => navigate("/equipamentos"),
+          },
+          {
+            id: "overdue",
+            label: "Manutenção atrasada",
+            value: String(stats.overdueMaintenance.length),
+            hint: "Planos preventivos vencidos",
+            tone: stats.overdueMaintenance.length > 0 ? "critical" : "ok",
+            icon: KpiIcons.Wrench,
+            onClick: () => navigate("/manutencao"),
+          },
+          {
+            id: "consumption",
+            label: "Consumo fora",
+            value: String(stats.consumptionInsights.length),
+            hint: "Equipamentos com desvio acima da média",
+            tone: stats.consumptionInsights.length > 0 ? "warning" : "ok",
+            icon: KpiIcons.Fuel,
+            onClick: () => navigate("/relatorios"),
+          },
+          {
+            id: "critical-os",
+            label: "OS críticas",
+            value: String(stats.criticalOrders.length),
+            hint: "Ordens prioritárias em aberto",
+            tone: stats.criticalOrders.length > 0 ? "critical" : "ok",
+            icon: KpiIcons.AlertOctagon,
+            onClick: () => navigate("/manutencao"),
+          },
+        ] satisfies ExecutiveKpi[]}
       />
 
       <ActionableAlertsPanel items={actionableAlerts} />

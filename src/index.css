@@ -6,39 +6,40 @@
 
 @layer base {
   :root {
-    --background: 210 20% 95%;
-    --foreground: 220 20% 15%;
+    /* Premium ERP palette — light gray bg, navy primary */
+    --background: 214 32% 97%;          /* #F5F7FA */
+    --foreground: 222 47% 11%;          /* near-black slate */
 
     --card: 0 0% 100%;
-    --card-foreground: 220 20% 15%;
+    --card-foreground: 222 47% 11%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 20% 15%;
+    --popover-foreground: 222 47% 11%;
 
-    --primary: 210 80% 45%;
+    --primary: 224 76% 33%;             /* #1E3A8A navy */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 15% 90%;
-    --secondary-foreground: 220 20% 25%;
+    --secondary: 214 28% 94%;
+    --secondary-foreground: 222 30% 25%;
 
-    --muted: 210 12% 88%;
-    --muted-foreground: 220 10% 45%;
+    --muted: 214 22% 92%;
+    --muted-foreground: 215 16% 47%;
 
-    --accent: 210 70% 40%;
+    --accent: 25 95% 53%;               /* #F97316 orange accent */
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 72% 51%;
+    --destructive: 0 74% 50%;           /* #DC2626 critical red */
     --destructive-foreground: 0 0% 100%;
 
-    --success: 142 71% 40%;
+    --success: 142 70% 38%;             /* #16A34A green */
     --success-foreground: 0 0% 100%;
 
-    --warning: 38 92% 50%;
-    --warning-foreground: 220 20% 10%;
+    --warning: 48 96% 53%;              /* #FACC15 yellow attention */
+    --warning-foreground: 222 47% 11%;
 
-    --border: 210 15% 85%;
-    --input: 210 15% 85%;
-    --ring: 210 80% 45%;
+    --border: 214 22% 88%;
+    --input: 214 22% 88%;
+    --ring: 224 76% 33%;
 
     --radius: 0.75rem;
 

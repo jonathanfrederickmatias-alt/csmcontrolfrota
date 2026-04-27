@@ -95,7 +95,12 @@ export default function QRChecklist() {
     const isConforme = unchecked === 0;
     const status = !isConforme ? (unchecked > 3 ? 'critical' : 'attention') : 'ok';
 
+    const eq = equipments.find(e => e.id === selectedEquipment);
+    const tenant_id = eq?.tenant_id;
+    if (!tenant_id) { setSaving(false); toast.error('Equipamento sem empresa associada.'); return; }
+
     await supabase.from('checklists').insert([{
+      tenant_id,
       equipment_id: selectedEquipment,
       operator_name: operatorName,
       hour_meter: Number(hourMeter),
@@ -137,7 +142,11 @@ export default function QRChecklist() {
   const handleSaveMaintenance = async () => {
     // Photo is optional for maintenance request
     setSavingMaintenance(true);
+    const eq = equipments.find(e => e.id === selectedEquipment);
+    const tenant_id = eq?.tenant_id;
+    if (!tenant_id) { setSavingMaintenance(false); toast.error('Equipamento sem empresa associada.'); return; }
     await supabase.from('maintenance_requests').insert([{
+      tenant_id,
       equipment_id: selectedEquipment,
       operator_name: operatorName,
       description: maintenanceDesc,

@@ -44,6 +44,7 @@ const App = () => (
             <Route path="/qr/checklist" element={<QRChecklist />} />
             <Route path="/qr/abastecimento" element={<QRFuel />} />
             <Route path="/qr/pedido-manutencao" element={<QRMaintenanceRequest />} />
+            <Route path="/qr/registro-manutencao" element={<QRRegistroManutencao />} />
             <Route path="/qr/mecanico" element={<QRMechanicOS />} />
             <Route path="/qr/imprimir" element={<QRPrintPage />} />
 

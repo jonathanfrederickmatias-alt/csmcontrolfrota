@@ -145,4 +145,19 @@ export interface DBWorkOrder {
   completed_at?: string;
   created_at: string;
   updated_at: string;
+  maintenance_type?: string | null;
+  part_code?: string | null;
+  invoice_number?: string | null;
+  service_executed?: string | null;
+  cause_identified?: string | null;
+  technical_observations?: string | null;
+  labor_cost?: number | null;
+  parts_cost?: number | null;
+  execution_meter?: number | null;
+  machine_released?: boolean | null;
+  final_status?: string | null;
+  maintenance_plan_id?: string | null;
+  parts?: any;
+  photo_start_url?: string | null;
+  photo_end_url?: string | null;
 }

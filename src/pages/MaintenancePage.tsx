@@ -75,6 +75,7 @@ export default function MaintenancePage() {
   const [planStatusFilter, setPlanStatusFilter] = useState('all');
   const [requestStatusFilter, setRequestStatusFilter] = useState('all');
   const [osStatusFilter, setOsStatusFilter] = useState('all');
+  const [completedFilter, setCompletedFilter] = useState('all');
   // Photo dialog state
   const [photoDialog, setPhotoDialog] = useState<{ requestId: string; targetStatus: 'in_progress' | 'done'; label: string } | null>(null);
   const [photoUrl, setPhotoUrl] = useState('');
@@ -316,6 +317,11 @@ export default function MaintenancePage() {
     .filter(o => osFilter === 'all' || o.equipment_id === osFilter)
     .filter(o => osStatusFilter === 'all' || o.status === osStatusFilter);
 
+  // Serviços Realizados: histórico (vem de OS concluídas + planos concluídos + manuais)
+  const filteredCompleted = (completedFilter === 'all' ? history : history.filter(h => h.equipment_id === completedFilter))
+    .slice()
+    .sort((a, b) => new Date(b.executed_at).getTime() - new Date(a.executed_at).getTime());
+
   const handleOsStatusChange = async (os: DBWorkOrder, newStatus: string) => {
     if (newStatus === 'done') {
       setClosureOS(os);
@@ -480,10 +486,11 @@ export default function MaintenancePage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="w-full grid grid-cols-4">
+        <TabsList className="w-full grid grid-cols-2 md:grid-cols-5">
           <TabsTrigger value="os" className="gap-1.5"><Clipboard className="w-4 h-4" /> OS</TabsTrigger>
           <TabsTrigger value="plans" className="gap-1.5"><Wrench className="w-4 h-4" /> Planos</TabsTrigger>
           <TabsTrigger value="requests" className="gap-1.5"><AlertTriangle className="w-4 h-4" /> Pedidos</TabsTrigger>
+          <TabsTrigger value="completed" className="gap-1.5"><CheckCircle className="w-4 h-4" /> Realizados</TabsTrigger>
           <TabsTrigger value="history" className="gap-1.5"><History className="w-4 h-4" /> Histórico</TabsTrigger>
         </TabsList>
 
@@ -1082,6 +1089,160 @@ export default function MaintenancePage() {
             </div>
           )}
           </div>
+        </TabsContent>
+
+        {/* ===== SERVIÇOS REALIZADOS ===== */}
+        <TabsContent value="completed" className="space-y-4 mt-4">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <Select value={completedFilter} onValueChange={setCompletedFilter}>
+              <SelectTrigger className="w-72"><SelectValue placeholder="Filtrar por equipamento" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os equipamentos</SelectItem>
+                {equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eqLabel(eq)}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <div className="flex gap-2 flex-wrap">
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => {
+                const wb = XLSX.utils.book_new();
+                const data = filteredCompleted.map(h => {
+                  const eq = equipments.find(e => e.id === h.equipment_id);
+                  const plan = plans.find(p => p.id === h.plan_id);
+                  const osMatch = h.description.match(/^OS #(\d+)/);
+                  const linkedOS = osMatch ? workOrders.find(o => o.os_number === Number(osMatch[1])) : undefined;
+                  return {
+                    Data: new Date(h.executed_at).toLocaleDateString('pt-BR'),
+                    Equipamento: eq?.name || '—',
+                    Identificador: eq?.cost_center || eq?.plate || '—',
+                    Origem: osMatch ? `OS #${osMatch[1]}` : (plan ? 'Plano' : 'Manual'),
+                    'Tipo de manutenção': linkedOS?.maintenance_type || '—',
+                    Serviço: h.description,
+                    'Horímetro/Km': h.hour_meter,
+                    Mecânico: h.operator_name || '—',
+                    'Peças': linkedOS?.part_code || '—',
+                    'Custo Mão de Obra': linkedOS?.labor_cost ?? h.labor_cost ?? 0,
+                    'Custo Peças': linkedOS?.parts_cost ?? h.parts_cost ?? 0,
+                    'Nota Fiscal': linkedOS?.invoice_number || '—',
+                    Observações: h.notes || '—',
+                  };
+                });
+                const ws = XLSX.utils.json_to_sheet(data);
+                XLSX.utils.book_append_sheet(wb, ws, 'Serviços Realizados');
+                const filterName = completedFilter === 'all' ? '' : `_${equipments.find(e => e.id === completedFilter)?.name || ''}`;
+                XLSX.writeFile(wb, `Servicos_Realizados${filterName}.xlsx`);
+              }}>
+                <FileSpreadsheet className="w-4 h-4 text-success" /> Excel
+              </Button>
+              <Button size="sm" className="gap-1.5" onClick={() => {
+                const filterName = completedFilter === 'all' ? 'Todos os equipamentos' : equipments.find(e => e.id === completedFilter)?.name || 'Filtrado';
+                const selectedEq = completedFilter !== 'all' ? equipments.find(e => e.id === completedFilter) : undefined;
+                const eqDetails = selectedEq ? {
+                  name: selectedEq.name,
+                  plate: selectedEq.plate || undefined,
+                  model: selectedEq.model || undefined,
+                  brand: selectedEq.brand || undefined,
+                  costCenter: selectedEq.cost_center || undefined,
+                  year: selectedEq.year || undefined,
+                  currentHourMeter: selectedEq.current_hour_meter,
+                } : undefined;
+                const rows = filteredCompleted.map(h => {
+                  const eq = equipments.find(e => e.id === h.equipment_id);
+                  const plan = plans.find(p => p.id === h.plan_id);
+                  return {
+                    equipment: eq ? eqLabel(eq) : '—',
+                    description: h.description,
+                    hourMeter: h.hour_meter,
+                    executedAt: new Date(h.executed_at).toLocaleDateString('pt-BR'),
+                    operator: h.operator_name || undefined,
+                    notes: h.notes || undefined,
+                    planDescription: plan?.description || undefined,
+                  };
+                });
+                exportMaintenanceHistoryPDF(rows, filterName, eqDetails);
+              }}>
+                <FileText className="w-4 h-4" /> PDF
+              </Button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="glass-card rounded-xl p-4">
+              <p className="text-xs text-muted-foreground">Total de serviços</p>
+              <p className="text-2xl font-black text-primary">{filteredCompleted.length}</p>
+            </div>
+            <div className="glass-card rounded-xl p-4">
+              <p className="text-xs text-muted-foreground">OS concluídas</p>
+              <p className="text-2xl font-black text-success">{filteredCompleted.filter(h => /^OS #\d+/.test(h.description)).length}</p>
+            </div>
+            <div className="glass-card rounded-xl p-4">
+              <p className="text-xs text-muted-foreground">Planos executados</p>
+              <p className="text-2xl font-black text-warning">{filteredCompleted.filter(h => h.plan_id).length}</p>
+            </div>
+            <div className="glass-card rounded-xl p-4">
+              <p className="text-xs text-muted-foreground">Custo total</p>
+              <p className="text-2xl font-black">
+                {filteredCompleted.reduce((acc, h) => {
+                  const osMatch = h.description.match(/^OS #(\d+)/);
+                  const linkedOS = osMatch ? workOrders.find(o => o.os_number === Number(osMatch[1])) : undefined;
+                  const labor = linkedOS?.labor_cost ?? h.labor_cost ?? 0;
+                  const parts = linkedOS?.parts_cost ?? h.parts_cost ?? 0;
+                  return acc + Number(labor) + Number(parts);
+                }, 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </p>
+            </div>
+          </div>
+
+          {filteredCompleted.length === 0 ? (
+            <div className="glass-card rounded-xl p-8 text-center">
+              <CheckCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">Nenhum serviço concluído encontrado.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {filteredCompleted.map(h => {
+                const eq = equipments.find(e => e.id === h.equipment_id);
+                const plan = plans.find(p => p.id === h.plan_id);
+                const osMatch = h.description.match(/^OS #(\d+)/);
+                const linkedOS = osMatch ? workOrders.find(o => o.os_number === Number(osMatch[1])) : undefined;
+                const origin = osMatch ? `OS #${osMatch[1]}` : (plan ? 'Plano Preventivo' : 'Registro Manual');
+                const originBg = osMatch ? 'bg-primary/15 text-primary' : (plan ? 'bg-warning/15 text-warning' : 'bg-secondary text-muted-foreground');
+                const labor = Number(linkedOS?.labor_cost ?? h.labor_cost ?? 0);
+                const parts = Number(linkedOS?.parts_cost ?? h.parts_cost ?? 0);
+                const total = labor + parts;
+                return (
+                  <div key={h.id} className="glass-card rounded-xl p-4 border-l-4 border-l-success">
+                    <div className="flex items-start justify-between gap-3 flex-wrap">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${originBg}`}>{origin}</span>
+                          {linkedOS?.maintenance_type && <span className="text-[10px] px-2 py-0.5 rounded-full bg-secondary text-muted-foreground capitalize">{linkedOS.maintenance_type}</span>}
+                          <span className="text-xs text-muted-foreground">{new Date(h.executed_at).toLocaleString('pt-BR')}</span>
+                        </div>
+                        <p className="font-semibold text-sm">{h.description}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          <strong>{eq ? eqLabel(eq) : '—'}</strong>
+                        </p>
+                        {h.operator_name && <p className="text-xs text-muted-foreground">👤 Mecânico: {h.operator_name}</p>}
+                        {linkedOS?.part_code && <p className="text-xs text-muted-foreground">🔧 Peças: <span className="font-mono">{linkedOS.part_code}</span></p>}
+                        {linkedOS?.invoice_number && <p className="text-xs text-muted-foreground">🧾 NF: {linkedOS.invoice_number}</p>}
+                        {plan && <p className="text-xs text-muted-foreground">📋 Plano: {plan.description}</p>}
+                        {h.notes && <p className="text-xs text-muted-foreground italic mt-1 whitespace-pre-line">{h.notes}</p>}
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-xs text-muted-foreground">Horímetro/Km</p>
+                        <p className="text-lg font-mono font-bold">{h.hour_meter}</p>
+                        {total > 0 && (
+                          <>
+                            <p className="text-xs text-muted-foreground mt-1">Custo</p>
+                            <p className="text-sm font-bold text-success">{total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </TabsContent>
 
         {/* ===== HISTÓRICO ===== */}

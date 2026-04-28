@@ -316,6 +316,11 @@ export default function MaintenancePage() {
     .filter(o => osFilter === 'all' || o.equipment_id === osFilter)
     .filter(o => osStatusFilter === 'all' || o.status === osStatusFilter);
 
+  // Serviços Realizados: histórico (vem de OS concluídas + planos concluídos + manuais)
+  const filteredCompleted = (completedFilter === 'all' ? history : history.filter(h => h.equipment_id === completedFilter))
+    .slice()
+    .sort((a, b) => new Date(b.executed_at).getTime() - new Date(a.executed_at).getTime());
+
   const handleOsStatusChange = async (os: DBWorkOrder, newStatus: string) => {
     if (newStatus === 'done') {
       setClosureOS(os);

@@ -486,10 +486,9 @@ export default function MaintenancePage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="w-full grid grid-cols-2 md:grid-cols-5">
+        <TabsList className="w-full grid grid-cols-2 md:grid-cols-4">
           <TabsTrigger value="os" className="gap-1.5"><Clipboard className="w-4 h-4" /> OS</TabsTrigger>
           <TabsTrigger value="plans" className="gap-1.5"><Wrench className="w-4 h-4" /> Planos</TabsTrigger>
-          <TabsTrigger value="requests" className="gap-1.5"><AlertTriangle className="w-4 h-4" /> Pedidos</TabsTrigger>
           <TabsTrigger value="completed" className="gap-1.5"><CheckCircle className="w-4 h-4" /> Realizados</TabsTrigger>
           <TabsTrigger value="history" className="gap-1.5"><History className="w-4 h-4" /> Histórico</TabsTrigger>
         </TabsList>

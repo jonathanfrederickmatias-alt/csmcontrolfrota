@@ -75,13 +75,14 @@ export default function QRRegistroManutencao() {
     notes: "",
     laborCost: "",
     partsCost: "",
-    photoUrl: "",
   });
   const [parts, setParts] = useState<PartItem[]>([]);
+  const [photos, setPhotos] = useState<string[]>([]);
 
   const resetForm = () => {
-    setForm({ description: "", hourMeter: "", operatorName: "", serviceExecuted: "", notes: "", laborCost: "", partsCost: "", photoUrl: "" });
+    setForm({ description: "", hourMeter: "", operatorName: "", serviceExecuted: "", notes: "", laborCost: "", partsCost: "" });
     setParts([]);
+    setPhotos([]);
   };
 
   const fetchAll = useCallback(async () => {

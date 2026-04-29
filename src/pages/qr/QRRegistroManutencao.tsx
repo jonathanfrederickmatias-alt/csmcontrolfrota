@@ -119,10 +119,12 @@ export default function QRRegistroManutencao() {
       .map((p) => `${p.code || "—"}${p.description ? ` (${p.description})` : ""}${p.quantity ? ` x${p.quantity}` : ""}`)
       .join(", ");
 
+    const extraPhotos = photos.slice(1).filter(Boolean);
     const notesBlocks = [
       form.serviceExecuted && `Serviço executado: ${form.serviceExecuted}`,
       partsText && `Peças: ${partsText}`,
       form.notes && `Observações: ${form.notes}`,
+      extraPhotos.length > 0 && `Fotos adicionais:\n${extraPhotos.join("\n")}`,
       `Registrado via QR Code`,
     ].filter(Boolean).join("\n");
 
@@ -134,7 +136,7 @@ export default function QRRegistroManutencao() {
       notes: notesBlocks,
       labor_cost: parseFloat((form.laborCost || "0").replace(",", ".")) || 0,
       parts_cost: parseFloat((form.partsCost || "0").replace(",", ".")) || 0,
-      photo_url: form.photoUrl || null,
+      photo_url: photos[0] || null,
       executed_at: new Date().toISOString(),
     } as any);
 

@@ -75,13 +75,14 @@ export default function QRRegistroManutencao() {
     notes: "",
     laborCost: "",
     partsCost: "",
-    photoUrl: "",
   });
   const [parts, setParts] = useState<PartItem[]>([]);
+  const [photos, setPhotos] = useState<string[]>([]);
 
   const resetForm = () => {
-    setForm({ description: "", hourMeter: "", operatorName: "", serviceExecuted: "", notes: "", laborCost: "", partsCost: "", photoUrl: "" });
+    setForm({ description: "", hourMeter: "", operatorName: "", serviceExecuted: "", notes: "", laborCost: "", partsCost: "" });
     setParts([]);
+    setPhotos([]);
   };
 
   const fetchAll = useCallback(async () => {
@@ -118,10 +119,12 @@ export default function QRRegistroManutencao() {
       .map((p) => `${p.code || "—"}${p.description ? ` (${p.description})` : ""}${p.quantity ? ` x${p.quantity}` : ""}`)
       .join(", ");
 
+    const extraPhotos = photos.slice(1).filter(Boolean);
     const notesBlocks = [
       form.serviceExecuted && `Serviço executado: ${form.serviceExecuted}`,
       partsText && `Peças: ${partsText}`,
       form.notes && `Observações: ${form.notes}`,
+      extraPhotos.length > 0 && `Fotos adicionais:\n${extraPhotos.join("\n")}`,
       `Registrado via QR Code`,
     ].filter(Boolean).join("\n");
 
@@ -133,7 +136,7 @@ export default function QRRegistroManutencao() {
       notes: notesBlocks,
       labor_cost: parseFloat((form.laborCost || "0").replace(",", ".")) || 0,
       parts_cost: parseFloat((form.partsCost || "0").replace(",", ".")) || 0,
-      photo_url: form.photoUrl || null,
+      photo_url: photos[0] || null,
       executed_at: new Date().toISOString(),
     } as any);
 
@@ -548,11 +551,41 @@ export default function QRRegistroManutencao() {
             </div>
 
             <div>
-              <Label className="mb-2 block">Foto</Label>
-              <PhotoUpload
-                value={form.photoUrl}
-                onUploaded={(url) => setForm({ ...form, photoUrl: url })}
-              />
+              <div className="flex items-center justify-between mb-2">
+                <Label className="flex items-center gap-1">
+                  <ImageIcon className="w-3.5 h-3.5" /> Fotos {photos.length > 0 && <span className="text-xs text-muted-foreground">({photos.length})</span>}
+                </Label>
+              </div>
+              <div className="space-y-2">
+                {photos.map((url, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <div className="flex-1">
+                      <PhotoUpload
+                        label={`Foto ${idx + 1}`}
+                        value={url}
+                        onUploaded={(u) => {
+                          const next = [...photos];
+                          if (u) next[idx] = u; else next.splice(idx, 1);
+                          setPhotos(next);
+                        }}
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setPhotos(photos.filter((_, i) => i !== idx))}
+                    >
+                      <Trash2 className="w-4 h-4 text-destructive" />
+                    </Button>
+                  </div>
+                ))}
+                <PhotoUpload
+                  label={photos.length === 0 ? "Adicionar foto" : "Adicionar outra foto"}
+                  value=""
+                  onUploaded={(u) => { if (u) setPhotos([...photos, u]); }}
+                />
+              </div>
             </div>
           </div>
 

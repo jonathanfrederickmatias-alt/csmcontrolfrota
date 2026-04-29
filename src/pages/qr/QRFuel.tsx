@@ -144,7 +144,7 @@ export default function QRFuel() {
             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 mt-1"
           >
             <option value="">Selecionar comboio...</option>
-            {combos.map(c => <option key={c.id} value={c.id}>{c.name} ({c.current_fuel || 0}L)</option>)}
+            {combos.map(c => <option key={c.id} value={c.id}>{c.plate ? `${c.plate} - ` : ''}{c.name} ({c.current_fuel || 0}L)</option>)}
           </select>
         </div>
         {!preselected && (
@@ -156,7 +156,7 @@ export default function QRFuel() {
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 mt-1"
             >
               <option value="">Selecionar máquina...</option>
-              {targets.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+              {targets.map(t => <option key={t.id} value={t.id}>{t.plate ? `${t.plate} - ` : ''}{t.name}</option>)}
             </select>
           </div>
         )}

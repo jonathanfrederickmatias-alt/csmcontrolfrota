@@ -1189,6 +1189,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      verify_fuel_pin: {
+        Args: { input_pin: string }
+        Returns: {
+          tenant_id: string
+          user_id: string
+          valid: boolean
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "gestor" | "mecanico" | "abastecedor"

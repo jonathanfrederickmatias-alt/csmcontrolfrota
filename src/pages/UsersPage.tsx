@@ -61,7 +61,7 @@ export default function UsersPage() {
     setLoading(true);
     const { data: profiles } = await supabase.from('profiles').select('*');
     const { data: allRoles } = await supabase.from('user_roles').select('*');
-    const { data: pins } = await supabase.from('fuel_pins').select('*');
+    const { data: pins } = await supabase.from('fuel_pins').select('user_id');
 
     if (profiles && allRoles) {
       const mapped: UserWithRole[] = profiles.map((p: any) => ({
@@ -69,7 +69,7 @@ export default function UsersPage() {
         display_name: p.display_name,
         email: p.display_name,
         roles: allRoles.filter((r: any) => r.user_id === p.user_id).map((r: any) => r.role as AppRole),
-        pin: pins?.find((pin: any) => pin.user_id === p.user_id)?.pin,
+        hasPin: !!pins?.find((pin: any) => pin.user_id === p.user_id),
       }));
       setUsers(mapped);
     }

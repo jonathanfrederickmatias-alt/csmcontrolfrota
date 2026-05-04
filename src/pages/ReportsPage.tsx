@@ -220,57 +220,114 @@ export default function ReportsPage() {
     const wb = XLSX.utils.book_new();
     const suffix = selectedEquipment === 'all' ? '' : `_${selectedEqName}`;
 
-    const fuelSheet = XLSX.utils.json_to_sheet(
-      filteredFuel.map(r => {
-        const target = equipments.find(e => e.id === r.target_equipment_id);
-        const combo = equipments.find(e => e.id === r.combo_equipment_id);
-        return { Data: r.date, Equipamento: target?.name || '—', Comboio: combo?.name || '—', Litros: r.liters, Horímetro: (r as any).hour_meter || '—', Responsável: r.operator_name };
-      })
-    );
+    const toDate = (v?: string | null) => {
+      if (!v) return null;
+      // 'YYYY-MM-DD' or ISO timestamp — both produce a valid Date
+      const d = v.length === 10 ? new Date(v + 'T12:00:00') : new Date(v);
+      return isNaN(d.getTime()) ? null : d;
+    };
+
+    const applyFormats = (ws: XLSX.WorkSheet, dateCols: string[], dateTimeCols: string[] = []) => {
+      const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+      // Find column indexes from header row
+      const headerByCol: Record<number, string> = {};
+      for (let c = range.s.c; c <= range.e.c; c++) {
+        const cell = ws[XLSX.utils.encode_cell({ r: 0, c })];
+        if (cell && typeof cell.v === 'string') headerByCol[c] = cell.v;
+      }
+      for (let r = range.s.r + 1; r <= range.e.r; r++) {
+        for (let c = range.s.c; c <= range.e.c; c++) {
+          const header = headerByCol[c];
+          if (!header) continue;
+          const addr = XLSX.utils.encode_cell({ r, c });
+          const cell = ws[addr];
+          if (!cell || cell.v == null || cell.v === '—') continue;
+          if (dateCols.includes(header) && cell.v instanceof Date) {
+            cell.t = 'd';
+            cell.z = 'dd/mm/yyyy';
+          } else if (dateTimeCols.includes(header) && cell.v instanceof Date) {
+            cell.t = 'd';
+            cell.z = 'dd/mm/yyyy hh:mm';
+          }
+        }
+      }
+    };
+
+    const fuelRows = filteredFuel.map(r => {
+      const target = equipments.find(e => e.id === r.target_equipment_id);
+      const combo = equipments.find(e => e.id === r.combo_equipment_id);
+      return {
+        Data: toDate(r.date) || r.date,
+        'Prefixo Equipamento': target?.cost_center || target?.plate || '—',
+        Equipamento: target ? eqLabel(target, 60) : '—',
+        'Prefixo Comboio': combo?.cost_center || combo?.plate || '—',
+        Comboio: combo ? eqLabel(combo, 60) : '—',
+        Litros: Number(r.liters),
+        Horímetro: (r as any).hour_meter ?? '—',
+        Responsável: r.operator_name,
+      };
+    });
+    const fuelSheet = XLSX.utils.json_to_sheet(fuelRows, { cellDates: true });
+    applyFormats(fuelSheet, ['Data']);
+    fuelSheet['!cols'] = [{ wch: 12 }, { wch: 16 }, { wch: 30 }, { wch: 16 }, { wch: 30 }, { wch: 8 }, { wch: 12 }, { wch: 20 }];
     XLSX.utils.book_append_sheet(wb, fuelSheet, 'Abastecimentos');
 
-    const clSheet = XLSX.utils.json_to_sheet(
-      filteredChecklists.map(c => {
-        const eq = equipments.find(e => e.id === c.equipment_id);
-        const ncItems = Array.isArray(c.items) ? (c.items as any[]).filter(i => i.checked === false) : [];
-        const ncText = ncItems.map(i => i.label + (i.observation ? ` (${i.observation})` : '')).join('; ');
-        return {
-          Data: c.date, Equipamento: eq?.name || '—', Operador: c.operator_name, Tipo: c.type,
-          Horímetro: c.hour_meter, Status: checklistStatusLabels[c.status] || c.status,
-          'Não Conformidades': ncText || 'Conforme',
-        };
-      })
-    );
+    const clRows = filteredChecklists.map(c => {
+      const eq = equipments.find(e => e.id === c.equipment_id);
+      const ncItems = Array.isArray(c.items) ? (c.items as any[]).filter(i => i.checked === false) : [];
+      const ncText = ncItems.map(i => i.label + (i.observation ? ` (${i.observation})` : '')).join('; ');
+      return {
+        Data: toDate(c.date) || c.date,
+        'Prefixo Equipamento': eq?.cost_center || eq?.plate || '—',
+        Equipamento: eq ? eqLabel(eq, 60) : '—',
+        Operador: c.operator_name,
+        Tipo: c.type,
+        Horímetro: c.hour_meter,
+        Status: checklistStatusLabels[c.status] || c.status,
+        'Não Conformidades': ncText || 'Conforme',
+      };
+    });
+    const clSheet = XLSX.utils.json_to_sheet(clRows, { cellDates: true });
+    applyFormats(clSheet, ['Data']);
+    clSheet['!cols'] = [{ wch: 12 }, { wch: 16 }, { wch: 30 }, { wch: 20 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 50 }];
     XLSX.utils.book_append_sheet(wb, clSheet, 'Checklists');
 
-    const osSheet = XLSX.utils.json_to_sheet(
-      filteredOrders.map(o => {
-        const eq = equipments.find(e => e.id === o.equipment_id);
-        return {
-          'OS #': o.os_number, Equipamento: eq?.name || '—', Descrição: o.description,
-          Prioridade: priorityLabels[o.priority] || o.priority,
-          Status: osStatusLabels[o.status] || o.status,
-          Mecânico: o.mechanic_name || '—',
-          'Peças Trocadas': formatParts(o),
-          'Data Abertura': new Date(o.created_at).toLocaleDateString('pt-BR'),
-          Início: o.started_at ? new Date(o.started_at).toLocaleString('pt-BR') : '—',
-          Conclusão: o.completed_at ? new Date(o.completed_at).toLocaleString('pt-BR') : '—',
-        };
-      })
-    );
+    const osRows = filteredOrders.map(o => {
+      const eq = equipments.find(e => e.id === o.equipment_id);
+      return {
+        'OS #': o.os_number,
+        'Prefixo Equipamento': eq?.cost_center || eq?.plate || '—',
+        Equipamento: eq ? eqLabel(eq, 60) : '—',
+        Descrição: o.description,
+        Prioridade: priorityLabels[o.priority] || o.priority,
+        Status: osStatusLabels[o.status] || o.status,
+        Mecânico: o.mechanic_name || '—',
+        'Peças Trocadas': formatParts(o),
+        'Data Abertura': toDate(o.created_at) || '—',
+        Início: o.started_at ? toDate(o.started_at) : '—',
+        Conclusão: o.completed_at ? toDate(o.completed_at) : '—',
+      };
+    });
+    const osSheet = XLSX.utils.json_to_sheet(osRows, { cellDates: true });
+    applyFormats(osSheet, ['Data Abertura'], ['Início', 'Conclusão']);
+    osSheet['!cols'] = [{ wch: 8 }, { wch: 16 }, { wch: 30 }, { wch: 40 }, { wch: 10 }, { wch: 14 }, { wch: 20 }, { wch: 30 }, { wch: 14 }, { wch: 18 }, { wch: 18 }];
     XLSX.utils.book_append_sheet(wb, osSheet, 'Ordens de Serviço');
 
-    const mpSheet = XLSX.utils.json_to_sheet(
-      filteredPlans.map(p => {
-        const eq = equipments.find(e => e.id === p.equipment_id);
-        return {
-          Equipamento: eq?.name || '—', Descrição: p.description,
-          'Intervalo (h)': p.interval_hours, 'Próxima (h)': p.next_due_at,
-          Status: p.status === 'ok' ? 'OK' : p.status === 'approaching' ? 'Próxima' : 'Atrasada',
-          'Última execução': p.last_executed_at ? new Date(p.last_executed_at).toLocaleDateString('pt-BR') : '—',
-        };
-      })
-    );
+    const mpRows = filteredPlans.map(p => {
+      const eq = equipments.find(e => e.id === p.equipment_id);
+      return {
+        'Prefixo Equipamento': eq?.cost_center || eq?.plate || '—',
+        Equipamento: eq ? eqLabel(eq, 60) : '—',
+        Descrição: p.description,
+        'Intervalo (h)': p.interval_hours,
+        'Próxima (h)': p.next_due_at,
+        Status: p.status === 'ok' ? 'OK' : p.status === 'approaching' ? 'Próxima' : 'Atrasada',
+        'Última execução': p.last_executed_at ? toDate(p.last_executed_at) : '—',
+      };
+    });
+    const mpSheet = XLSX.utils.json_to_sheet(mpRows, { cellDates: true });
+    applyFormats(mpSheet, ['Última execução']);
+    mpSheet['!cols'] = [{ wch: 16 }, { wch: 30 }, { wch: 40 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 16 }];
     XLSX.utils.book_append_sheet(wb, mpSheet, 'Manutenções');
 
     XLSX.writeFile(wb, `CSMCONTROL_Relatorio_${period}${suffix}.xlsx`);

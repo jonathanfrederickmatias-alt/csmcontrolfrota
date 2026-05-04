@@ -109,7 +109,7 @@ export default function UsersPage() {
     setEditName(user.display_name);
     setEditRole(user.roles[0] || 'gestor');
     setEditPassword('');
-    setEditPin(user.pin || '');
+    setEditPin('');
     setEditDialogOpen(true);
   };
 
@@ -296,7 +296,7 @@ export default function UsersPage() {
                   </TableCell>
                   <TableCell>
                     {u.roles.includes('abastecedor') ? (
-                      <span className="text-xs font-mono">{u.pin || '----'}</span>
+                      <span className="text-xs font-mono">{u.hasPin ? '••••' : '----'}</span>
                     ) : (
                       <span className="text-xs text-muted-foreground">—</span>
                     )}
@@ -315,7 +315,7 @@ export default function UsersPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => { setSelectedUser(u); setNewPin(u.pin || ''); setPinDialogOpen(true); }}
+                          onClick={() => { setSelectedUser(u); setNewPin(''); setPinDialogOpen(true); }}
                         >
                           <Key className="w-4 h-4" />
                         </Button>

@@ -15,9 +15,14 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
-    // Verify caller is admin
-    const authHeader = req.headers.get('Authorization')!;
-    const token = authHeader.replace('Bearer ', '');
+    // Verify caller is admin — defensively check header presence
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader || !authHeader.toLowerCase().startsWith('bearer ')) {
+      return new Response(JSON.stringify({ error: 'Não autenticado' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const token = authHeader.slice(7).trim();
     const { data: { user: caller } } = await createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, {
       global: { headers: { Authorization: `Bearer ${token}` } },
     }).auth.getUser();
@@ -52,7 +57,17 @@ Deno.serve(async (req) => {
       });
 
       if (createError) {
-        return new Response(JSON.stringify({ error: createError.message }), {
+        console.error('createUser error:', createError);
+        const msg = (createError.message || '').toLowerCase();
+        let userMessage = 'Não foi possível criar o usuário.';
+        if (msg.includes('duplicate') || msg.includes('already') || msg.includes('registered')) {
+          userMessage = 'Já existe um usuário com este e-mail.';
+        } else if (msg.includes('password')) {
+          userMessage = 'Senha inválida (mínimo 6 caracteres).';
+        } else if (msg.includes('email')) {
+          userMessage = 'E-mail inválido.';
+        }
+        return new Response(JSON.stringify({ error: userMessage }), {
           status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
@@ -96,7 +111,8 @@ Deno.serve(async (req) => {
       if (password) {
         const { error: pwError } = await supabaseAdmin.auth.admin.updateUserById(userId, { password });
         if (pwError) {
-          return new Response(JSON.stringify({ error: pwError.message }), {
+          console.error('updateUser password error:', pwError);
+          return new Response(JSON.stringify({ error: 'Não foi possível atualizar a senha.' }), {
             status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
@@ -156,7 +172,8 @@ Deno.serve(async (req) => {
 
       const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);
       if (deleteError) {
-        return new Response(JSON.stringify({ error: deleteError.message }), {
+        console.error('deleteUser error:', deleteError);
+        return new Response(JSON.stringify({ error: 'Não foi possível excluir o usuário.' }), {
           status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
@@ -170,7 +187,8 @@ Deno.serve(async (req) => {
       status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
+    console.error('manage-users unexpected error:', err);
+    return new Response(JSON.stringify({ error: 'Erro interno. Tente novamente.' }), {
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }

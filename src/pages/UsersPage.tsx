@@ -17,7 +17,7 @@ interface UserWithRole {
   display_name: string;
   email: string;
   roles: AppRole[];
-  pin?: string;
+  hasPin?: boolean;
 }
 
 const ROLE_LABELS: Record<AppRole, string> = {
@@ -61,7 +61,7 @@ export default function UsersPage() {
     setLoading(true);
     const { data: profiles } = await supabase.from('profiles').select('*');
     const { data: allRoles } = await supabase.from('user_roles').select('*');
-    const { data: pins } = await supabase.from('fuel_pins').select('*');
+    const { data: pins } = await supabase.from('fuel_pins').select('user_id');
 
     if (profiles && allRoles) {
       const mapped: UserWithRole[] = profiles.map((p: any) => ({
@@ -69,7 +69,7 @@ export default function UsersPage() {
         display_name: p.display_name,
         email: p.display_name,
         roles: allRoles.filter((r: any) => r.user_id === p.user_id).map((r: any) => r.role as AppRole),
-        pin: pins?.find((pin: any) => pin.user_id === p.user_id)?.pin,
+        hasPin: !!pins?.find((pin: any) => pin.user_id === p.user_id),
       }));
       setUsers(mapped);
     }
@@ -109,7 +109,7 @@ export default function UsersPage() {
     setEditName(user.display_name);
     setEditRole(user.roles[0] || 'gestor');
     setEditPassword('');
-    setEditPin(user.pin || '');
+    setEditPin('');
     setEditDialogOpen(true);
   };
 
@@ -296,7 +296,7 @@ export default function UsersPage() {
                   </TableCell>
                   <TableCell>
                     {u.roles.includes('abastecedor') ? (
-                      <span className="text-xs font-mono">{u.pin || '----'}</span>
+                      <span className="text-xs font-mono">{u.hasPin ? '••••' : '----'}</span>
                     ) : (
                       <span className="text-xs text-muted-foreground">—</span>
                     )}
@@ -315,7 +315,7 @@ export default function UsersPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => { setSelectedUser(u); setNewPin(u.pin || ''); setPinDialogOpen(true); }}
+                          onClick={() => { setSelectedUser(u); setNewPin(''); setPinDialogOpen(true); }}
                         >
                           <Key className="w-4 h-4" />
                         </Button>

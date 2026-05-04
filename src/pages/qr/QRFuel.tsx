@@ -41,8 +41,9 @@ export default function QRFuel() {
   const selectedTarget = equipments.find(e => e.id === targetId);
 
   const handleVerifyPin = async () => {
-    const { data } = await supabase.from('fuel_pins').select('pin').eq('pin', pin).maybeSingle();
-    if (data) { setPinVerified(true); setPinError(false); }
+    const { data, error } = await supabase.rpc('verify_fuel_pin', { input_pin: pin });
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!error && row?.valid) { setPinVerified(true); setPinError(false); }
     else setPinError(true);
   };
 

@@ -17,7 +17,7 @@ interface UserWithRole {
   display_name: string;
   email: string;
   roles: AppRole[];
-  pin?: string;
+  hasPin?: boolean;
 }
 
 const ROLE_LABELS: Record<AppRole, string> = {

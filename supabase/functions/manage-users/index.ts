@@ -57,7 +57,17 @@ Deno.serve(async (req) => {
       });
 
       if (createError) {
-        return new Response(JSON.stringify({ error: createError.message }), {
+        console.error('createUser error:', createError);
+        const msg = (createError.message || '').toLowerCase();
+        let userMessage = 'Não foi possível criar o usuário.';
+        if (msg.includes('duplicate') || msg.includes('already') || msg.includes('registered')) {
+          userMessage = 'Já existe um usuário com este e-mail.';
+        } else if (msg.includes('password')) {
+          userMessage = 'Senha inválida (mínimo 6 caracteres).';
+        } else if (msg.includes('email')) {
+          userMessage = 'E-mail inválido.';
+        }
+        return new Response(JSON.stringify({ error: userMessage }), {
           status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
@@ -101,7 +111,8 @@ Deno.serve(async (req) => {
       if (password) {
         const { error: pwError } = await supabaseAdmin.auth.admin.updateUserById(userId, { password });
         if (pwError) {
-          return new Response(JSON.stringify({ error: pwError.message }), {
+          console.error('updateUser password error:', pwError);
+          return new Response(JSON.stringify({ error: 'Não foi possível atualizar a senha.' }), {
             status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }

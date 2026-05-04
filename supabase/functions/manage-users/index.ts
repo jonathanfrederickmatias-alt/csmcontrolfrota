@@ -172,7 +172,8 @@ Deno.serve(async (req) => {
 
       const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);
       if (deleteError) {
-        return new Response(JSON.stringify({ error: deleteError.message }), {
+        console.error('deleteUser error:', deleteError);
+        return new Response(JSON.stringify({ error: 'Não foi possível excluir o usuário.' }), {
           status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
@@ -186,7 +187,8 @@ Deno.serve(async (req) => {
       status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
+    console.error('manage-users unexpected error:', err);
+    return new Response(JSON.stringify({ error: 'Erro interno. Tente novamente.' }), {
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }

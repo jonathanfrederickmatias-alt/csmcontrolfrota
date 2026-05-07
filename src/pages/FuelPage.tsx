@@ -31,6 +31,7 @@ export default function FuelPage() {
   const [photoUrl, setPhotoUrl] = useState('');
   const [extraItems, setExtraItems] = useState<FuelSupplyExtraItem[]>([]);
   const [fuelType, setFuelType] = useState('');
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   // Detail & Edit state
   const [detailRecord, setDetailRecord] = useState<DBFuelRecord | null>(null);
   const [editRecord, setEditRecord] = useState<DBFuelRecord | null>(null);
@@ -88,7 +89,7 @@ export default function FuelPage() {
   const handleSave = async () => {
     setSaving(true);
     const record: any = {
-      date: new Date().toISOString().split('T')[0],
+      date: date || new Date().toISOString().split('T')[0],
       operator_name: operatorName,
       photo_url: photoUrl || null,
       extra_items: extraItems.filter(i => i.name.trim()),
@@ -105,7 +106,7 @@ export default function FuelPage() {
     fetchData();
     setTimeout(() => {
       setSaved(false);
-      setComboId(''); setTargetId(''); setLiters(''); setOperatorName(''); setPhotoUrl(''); setHourMeter(''); setExtraItems([]); setFuelType('');
+      setComboId(''); setTargetId(''); setLiters(''); setOperatorName(''); setPhotoUrl(''); setHourMeter(''); setExtraItems([]); setFuelType(''); setDate(new Date().toISOString().split('T')[0]);
     }, 2000);
   };
 
@@ -336,6 +337,10 @@ export default function FuelPage() {
                   <SelectItem value="Álcool">Álcool</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div>
+              <Label>Data *</Label>
+              <Input type="date" value={date} max={new Date().toISOString().split('T')[0]} onChange={e => setDate(e.target.value)} />
             </div>
           </div>
           <div className="mt-4">

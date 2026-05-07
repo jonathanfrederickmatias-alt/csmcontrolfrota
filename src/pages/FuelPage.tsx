@@ -31,6 +31,7 @@ export default function FuelPage() {
   const [photoUrl, setPhotoUrl] = useState('');
   const [extraItems, setExtraItems] = useState<FuelSupplyExtraItem[]>([]);
   const [fuelType, setFuelType] = useState('');
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   // Detail & Edit state
   const [detailRecord, setDetailRecord] = useState<DBFuelRecord | null>(null);
   const [editRecord, setEditRecord] = useState<DBFuelRecord | null>(null);

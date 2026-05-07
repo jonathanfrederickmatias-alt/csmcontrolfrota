@@ -338,6 +338,10 @@ export default function FuelPage() {
                 </SelectContent>
               </Select>
             </div>
+            <div>
+              <Label>Data *</Label>
+              <Input type="date" value={date} max={new Date().toISOString().split('T')[0]} onChange={e => setDate(e.target.value)} />
+            </div>
           </div>
           <div className="mt-4">
             <PhotoUpload label="Foto do Abastecimento" required={!hasExtraItems} onUploaded={setPhotoUrl} acceptFiles />

@@ -106,7 +106,7 @@ export default function FuelPage() {
     fetchData();
     setTimeout(() => {
       setSaved(false);
-      setComboId(''); setTargetId(''); setLiters(''); setOperatorName(''); setPhotoUrl(''); setHourMeter(''); setExtraItems([]); setFuelType('');
+      setComboId(''); setTargetId(''); setLiters(''); setOperatorName(''); setPhotoUrl(''); setHourMeter(''); setExtraItems([]); setFuelType(''); setDate(new Date().toISOString().split('T')[0]);
     }, 2000);
   };
 

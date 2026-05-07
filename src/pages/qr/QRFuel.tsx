@@ -28,6 +28,7 @@ export default function QRFuel() {
   const [photoUrl, setPhotoUrl] = useState('');
   const [extraItems, setExtraItems] = useState<FuelSupplyExtraItem[]>([]);
   const [fuelType, setFuelType] = useState('');
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
     supabase.from('equipments').select('*').order('name').then(({ data }) => {
@@ -50,7 +51,7 @@ export default function QRFuel() {
   const handleSave = async () => {
     setSaving(true);
     const record: any = {
-      date: new Date().toISOString().split('T')[0],
+      date: date || new Date().toISOString().split('T')[0],
       operator_name: operatorName,
       photo_url: photoUrl || null,
       extra_items: extraItems.filter(i => i.name.trim()),
@@ -161,6 +162,10 @@ export default function QRFuel() {
             </select>
           </div>
         )}
+        <div>
+          <Label>Data *</Label>
+          <Input type="date" value={date} onChange={e => setDate(e.target.value)} max={new Date().toISOString().split('T')[0]} />
+        </div>
         <div>
           <Label>Tipo de Combustível</Label>
           <select

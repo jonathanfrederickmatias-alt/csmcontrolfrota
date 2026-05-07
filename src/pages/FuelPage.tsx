@@ -89,7 +89,7 @@ export default function FuelPage() {
   const handleSave = async () => {
     setSaving(true);
     const record: any = {
-      date: new Date().toISOString().split('T')[0],
+      date: date || new Date().toISOString().split('T')[0],
       operator_name: operatorName,
       photo_url: photoUrl || null,
       extra_items: extraItems.filter(i => i.name.trim()),

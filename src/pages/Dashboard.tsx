@@ -92,6 +92,7 @@ type StatsSummary = {
   priorityRanking: PriorityRankingItem[];
   recommendations: RecommendationItem[];
   lowFuelCombos: any[];
+  staleMeterEquipments: { id: string; name: string; daysSince: number | null; never: boolean }[];
 };
 
 type AIMaintenanceDecisionPayload = AIMaintenanceDecision;

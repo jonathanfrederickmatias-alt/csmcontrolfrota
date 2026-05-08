@@ -341,6 +341,22 @@ export default function Dashboard() {
     setCreatingAiDecisionId(null);
   }, [fetchData]);
 
+  const handleIgnoreStaleEquipment = useCallback(async (equipmentId: string, equipmentName: string) => {
+    const { error } = await supabase
+      .from("equipments")
+      .update({ track_hour_meter: false })
+      .eq("id", equipmentId);
+    if (error) {
+      toast({ title: "Erro ao desconsiderar", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({
+      title: "Equipamento desconsiderado",
+      description: `${equipmentName} não aparecerá mais no alerta de horímetro.`,
+    });
+    fetchData();
+  }, [fetchData]);
+
   const today = new Date().toISOString().split("T")[0];
   const todayLabel = new Date().toLocaleDateString("pt-BR", {
     weekday: "long",

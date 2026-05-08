@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, ClipboardCheck, PauseCircle, Truck, Wrench } from "lucide-react";
+import { AlertTriangle, ClipboardCheck, PauseCircle, Truck, Wrench, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -92,6 +92,7 @@ type StatsSummary = {
   priorityRanking: PriorityRankingItem[];
   recommendations: RecommendationItem[];
   lowFuelCombos: any[];
+  staleMeterEquipments: { id: string; name: string; daysSince: number | null; never: boolean }[];
 };
 
 type AIMaintenanceDecisionPayload = AIMaintenanceDecision;
@@ -559,7 +560,35 @@ export default function Dashboard() {
     const inProgressRequests = data.requests.filter((request: any) => request.status === "in_progress").length;
     const activeEquipments = data.equipments.filter((equipment: any) => equipment.status === "active").length;
 
+    // Equipamentos sem atualização de horímetro há mais de 5 dias
+    const STALE_DAYS = 5;
+    const nowMs = Date.now();
+    const lastMeterByEquipment: Record<string, number> = {};
+    const considerRecord = (equipmentId: string | null | undefined, hourMeter: any, dateStr: string | null | undefined, createdAt: string | null | undefined) => {
+      if (!equipmentId) return;
+      const hm = Number(hourMeter);
+      if (!hm || hm <= 0) return;
+      const ts = dateStr ? new Date(`${dateStr}T00:00:00`).getTime() : createdAt ? new Date(createdAt).getTime() : 0;
+      if (!ts) return;
+      if (!lastMeterByEquipment[equipmentId] || ts > lastMeterByEquipment[equipmentId]) {
+        lastMeterByEquipment[equipmentId] = ts;
+      }
+    };
+    data.checklists.forEach((c: any) => considerRecord(c.equipment_id, c.hour_meter, c.date, c.created_at));
+    data.fuelRecords.forEach((f: any) => considerRecord(f.target_equipment_id, f.hour_meter, f.date, f.created_at));
+
+    const staleMeterEquipments = data.equipments
+      .filter((eq: any) => eq.status === "active")
+      .map((eq: any) => {
+        const last = lastMeterByEquipment[eq.id];
+        const daysSince = last ? Math.floor((nowMs - last) / (1000 * 60 * 60 * 24)) : null;
+        return { id: eq.id, name: eq.name, daysSince, never: !last };
+      })
+      .filter((item: any) => item.never || (item.daysSince !== null && item.daysSince > STALE_DAYS))
+      .sort((a: any, b: any) => (b.daysSince ?? 9999) - (a.daysSince ?? 9999));
+
     return {
+      staleMeterEquipments,
       todayChecklists,
       checklistCounts,
       maintenanceItems,
@@ -656,8 +685,38 @@ export default function Dashboard() {
           },
         ],
       },
+      {
+        id: "stale-hourmeter",
+        label: "Horímetro desatualizado",
+        value: stats.staleMeterEquipments.length,
+        description:
+          stats.staleMeterEquipments.length > 0
+            ? `Equipamentos sem atualização de horímetro há mais de 5 dias${
+                stats.staleMeterEquipments[0]
+                  ? ` · ${stats.staleMeterEquipments[0].name}${
+                      stats.staleMeterEquipments[0].never
+                        ? " (sem leituras)"
+                        : ` (${stats.staleMeterEquipments[0].daysSince} dias)`
+                    }`
+                  : ""
+              }.`
+            : "Todos os equipamentos ativos com leitura de horímetro recente (≤ 5 dias).",
+        icon: Clock,
+        tone: stats.staleMeterEquipments.length > 0 ? "warning" : "ok",
+        actions: [
+          {
+            label: "Registrar checklist",
+            variant: stats.staleMeterEquipments.length > 0 ? "destructive" : "outline",
+            onClick: () => navigate("/checklist"),
+          },
+          {
+            label: "Ver equipamentos",
+            onClick: () => navigate("/equipamentos"),
+          },
+        ],
+      },
     ],
-    [navigate, stats.consumptionInsights.length, stats.criticalOrders.length, stats.overdueMaintenance.length, stats.stoppedEquipments.length],
+    [navigate, stats.consumptionInsights.length, stats.criticalOrders.length, stats.overdueMaintenance.length, stats.staleMeterEquipments, stats.stoppedEquipments.length],
   );
 
   const kpis = useMemo<DashboardKpiItem[]>(

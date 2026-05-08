@@ -578,7 +578,7 @@ export default function Dashboard() {
     data.fuelRecords.forEach((f: any) => considerRecord(f.target_equipment_id, f.hour_meter, f.date, f.created_at));
 
     const staleMeterEquipments = data.equipments
-      .filter((eq: any) => eq.status === "active")
+      .filter((eq: any) => eq.status === "active" && eq.track_hour_meter !== false)
       .map((eq: any) => {
         const last = lastMeterByEquipment[eq.id];
         const daysSince = last ? Math.floor((nowMs - last) / (1000 * 60 * 60 * 24)) : null;

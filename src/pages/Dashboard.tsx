@@ -685,8 +685,38 @@ export default function Dashboard() {
           },
         ],
       },
+      {
+        id: "stale-hourmeter",
+        label: "Horímetro desatualizado",
+        value: stats.staleMeterEquipments.length,
+        description:
+          stats.staleMeterEquipments.length > 0
+            ? `Equipamentos sem atualização de horímetro há mais de 5 dias${
+                stats.staleMeterEquipments[0]
+                  ? ` · ${stats.staleMeterEquipments[0].name}${
+                      stats.staleMeterEquipments[0].never
+                        ? " (sem leituras)"
+                        : ` (${stats.staleMeterEquipments[0].daysSince} dias)`
+                    }`
+                  : ""
+              }.`
+            : "Todos os equipamentos ativos com leitura de horímetro recente (≤ 5 dias).",
+        icon: Clock,
+        tone: stats.staleMeterEquipments.length > 0 ? "warning" : "ok",
+        actions: [
+          {
+            label: "Registrar checklist",
+            variant: stats.staleMeterEquipments.length > 0 ? "destructive" : "outline",
+            onClick: () => navigate("/checklist"),
+          },
+          {
+            label: "Ver equipamentos",
+            onClick: () => navigate("/equipamentos"),
+          },
+        ],
+      },
     ],
-    [navigate, stats.consumptionInsights.length, stats.criticalOrders.length, stats.overdueMaintenance.length, stats.stoppedEquipments.length],
+    [navigate, stats.consumptionInsights.length, stats.criticalOrders.length, stats.overdueMaintenance.length, stats.staleMeterEquipments, stats.stoppedEquipments.length],
   );
 
   const kpis = useMemo<DashboardKpiItem[]>(

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, ClipboardCheck, PauseCircle, Truck, Wrench } from "lucide-react";
+import { AlertTriangle, ClipboardCheck, PauseCircle, Truck, Wrench, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";

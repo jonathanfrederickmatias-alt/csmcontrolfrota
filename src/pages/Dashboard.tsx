@@ -955,6 +955,47 @@ export default function Dashboard() {
       />
 
       <ActionableAlertsPanel items={actionableAlerts} />
+
+      {stats.staleMeterEquipments.length > 0 && (
+        <section className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4 text-warning" />
+            <h2 className="text-base font-black text-foreground">Horímetro desatualizado</h2>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Equipamentos ativos sem leitura de horímetro há mais de 5 dias. Use "Desconsiderar" para excluir do alerta os equipamentos que não devem ser monitorados.
+          </p>
+          <div className="rounded-lg border border-warning/30 bg-warning/5">
+            <div className="divide-y divide-border">
+              {stats.staleMeterEquipments.map((item) => (
+                <div key={item.id} className="flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-foreground truncate">{item.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {item.never ? "Sem leituras de horímetro registradas" : `Última leitura há ${item.daysSince} dias`}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2 sm:justify-end">
+                    <button
+                      onClick={() => navigate("/checklist")}
+                      className="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-secondary/50"
+                    >
+                      Atualizar via checklist
+                    </button>
+                    <button
+                      onClick={() => handleIgnoreStaleEquipment(item.id, item.name)}
+                      className="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-secondary/50"
+                    >
+                      Desconsiderar
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
       <KpiSummaryGrid items={kpis} />
 
       {!hasCriticalItems && <EmptyOperationalState />}

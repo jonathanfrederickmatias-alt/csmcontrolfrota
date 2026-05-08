@@ -1,0 +1,1 @@
+ALTER TABLE public.equipments ADD COLUMN IF NOT EXISTS track_hour_meter boolean NOT NULL DEFAULT true;

@@ -99,6 +99,7 @@ export type Database = {
           plate: string | null
           status: string
           tenant_id: string
+          track_hour_meter: boolean
           type: string
           updated_at: string
           year: number | null
@@ -120,6 +121,7 @@ export type Database = {
           plate?: string | null
           status?: string
           tenant_id: string
+          track_hour_meter?: boolean
           type: string
           updated_at?: string
           year?: number | null
@@ -141,6 +143,7 @@ export type Database = {
           plate?: string | null
           status?: string
           tenant_id?: string
+          track_hour_meter?: boolean
           type?: string
           updated_at?: string
           year?: number | null

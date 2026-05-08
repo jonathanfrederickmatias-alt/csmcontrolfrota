@@ -92,7 +92,7 @@ type StatsSummary = {
   priorityRanking: PriorityRankingItem[];
   recommendations: RecommendationItem[];
   lowFuelCombos: any[];
-  staleMeterEquipments: { id: string; name: string; daysSince: number | null; never: boolean }[];
+  staleMeterEquipments: { id: string; name: string; prefix: string | null; daysSince: number | null; never: boolean }[];
 };
 
 type AIMaintenanceDecisionPayload = AIMaintenanceDecision;
@@ -598,7 +598,8 @@ export default function Dashboard() {
       .map((eq: any) => {
         const last = lastMeterByEquipment[eq.id];
         const daysSince = last ? Math.floor((nowMs - last) / (1000 * 60 * 60 * 24)) : null;
-        return { id: eq.id, name: eq.name, daysSince, never: !last };
+        const prefix = eq.cost_center || eq.plate || null;
+        return { id: eq.id, name: eq.name, prefix, daysSince, never: !last };
       })
       .filter((item: any) => item.never || (item.daysSince !== null && item.daysSince > STALE_DAYS))
       .sort((a: any, b: any) => (b.daysSince ?? 9999) - (a.daysSince ?? 9999));
@@ -970,7 +971,11 @@ export default function Dashboard() {
               {stats.staleMeterEquipments.map((item) => (
                 <div key={item.id} className="flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
-                    <p className="text-sm font-bold text-foreground truncate">{item.name}</p>
+                    <p className="text-sm font-bold text-foreground truncate">
+                      {item.prefix ? <span className="text-primary">{item.prefix}</span> : null}
+                      {item.prefix ? " · " : ""}
+                      {item.name}
+                    </p>
                     <p className="text-xs text-muted-foreground">
                       {item.never ? "Sem leituras de horímetro registradas" : `Última leitura há ${item.daysSince} dias`}
                     </p>

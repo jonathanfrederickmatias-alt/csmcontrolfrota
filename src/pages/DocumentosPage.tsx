@@ -115,7 +115,7 @@ export default function DocumentosPage() {
 
     const { error } = editing
       ? await supabase.from("equipment_documents").update(payload).eq("id", editing.id)
-      : await supabase.from("equipment_documents").insert([payload]);
+      : await supabase.from("equipment_documents").insert([payload as any]);
 
     if (error) return toast.error(error.message);
     toast.success(editing ? "Documento atualizado" : "Documento cadastrado");

@@ -81,6 +81,51 @@ export type Database = {
           },
         ]
       }
+      equipment_documents: {
+        Row: {
+          created_at: string
+          document_name: string | null
+          document_number: string | null
+          document_type: string
+          equipment_id: string
+          expiry_date: string | null
+          id: string
+          issue_date: string | null
+          notes: string | null
+          photo_url: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          document_name?: string | null
+          document_number?: string | null
+          document_type: string
+          equipment_id: string
+          expiry_date?: string | null
+          id?: string
+          issue_date?: string | null
+          notes?: string | null
+          photo_url?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          document_name?: string | null
+          document_number?: string | null
+          document_type?: string
+          equipment_id?: string
+          expiry_date?: string | null
+          id?: string
+          issue_date?: string | null
+          notes?: string | null
+          photo_url?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       equipments: {
         Row: {
           brand: string | null

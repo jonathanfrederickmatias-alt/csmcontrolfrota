@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Truck, ClipboardCheck, ClipboardList, Wrench, Fuel, QrCode, Menu, X, BarChart2, Droplets, Building2, Users, LogOut, ShieldCheck } from "lucide-react";
+import { LayoutDashboard, Truck, ClipboardCheck, ClipboardList, Wrench, Fuel, QrCode, Menu, X, BarChart2, Droplets, Building2, Users, LogOut, ShieldCheck, FileText } from "lucide-react";
 import { useState } from "react";
 import csmLogo from "@/assets/csm-logo.png";
 import { useUserRoles } from "@/hooks/useUserRoles";
@@ -16,6 +16,7 @@ const allNavItems = [
   { to: "/abastecimento", label: "Abastecimento", icon: Fuel, roles: ['admin', 'gestor', 'abastecedor'] },
   { to: "/reabastecimento", label: "Reabastecimento", icon: Droplets, roles: ['admin', 'gestor'] },
   { to: "/seguros", label: "Seguros", icon: ShieldCheck, roles: ['admin', 'gestor'] },
+  { to: "/documentos", label: "Documentos", icon: FileText, roles: ['admin', 'gestor'] },
   { to: "/relatorios", label: "Relatórios", icon: BarChart2, roles: ['admin', 'gestor'] },
   { to: "/obras", label: "Obras", icon: Building2, roles: ['admin', 'gestor', 'abastecedor'] },
   { to: "/qrcode", label: "QR Code", icon: QrCode, roles: ['admin', 'gestor'] },

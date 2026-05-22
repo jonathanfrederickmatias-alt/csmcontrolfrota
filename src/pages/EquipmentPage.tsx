@@ -221,6 +221,7 @@ export default function EquipmentPage() {
             </div>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Detail Panel */}

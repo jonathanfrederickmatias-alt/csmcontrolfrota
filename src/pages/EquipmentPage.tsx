@@ -118,6 +118,51 @@ export default function EquipmentPage() {
     fetchData();
   };
 
+  const handlePrint = () => {
+    const title = activeTab === 'own' ? 'Equipamentos Próprios' : 'Equipamentos Terceiros';
+    const rows = filteredEquipments.map(eq => `
+      <tr>
+        <td>${eq.name}</td>
+        <td>${typeLabels[eq.type] || eq.type}</td>
+        <td>${eq.plate || '-'}</td>
+        <td>${eq.brand || '-'}</td>
+        <td>${eq.model || '-'}</td>
+        <td>${eq.year || '-'}</td>
+        <td>${eq.chassis || '-'}</td>
+        <td>${eq.cost_center || '-'}</td>
+        <td style="text-align:right">${eq.current_hour_meter}h</td>
+        <td>${statusLabels[eq.status] || eq.status}</td>
+      </tr>
+    `).join('');
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>
+      <style>
+        body{font-family:Arial,sans-serif;padding:20px;color:#111}
+        h1{font-size:18px;margin:0 0 4px}
+        .sub{font-size:11px;color:#555;margin-bottom:16px}
+        table{width:100%;border-collapse:collapse;font-size:11px}
+        th,td{border:1px solid #ccc;padding:6px 8px;text-align:left}
+        th{background:#f1f5f9}
+        tr:nth-child(even) td{background:#fafafa}
+        @page{size:A4 landscape;margin:12mm}
+      </style></head><body>
+      <h1>CSMCONTROLFROTA — ${title}</h1>
+      <div class="sub">Gerado em ${new Date().toLocaleString('pt-BR')} · Total: ${filteredEquipments.length}</div>
+      <table>
+        <thead><tr>
+          <th>Nome</th><th>Tipo</th><th>Placa/Série</th><th>Marca</th><th>Modelo</th>
+          <th>Ano</th><th>Chassi</th><th>C. Custo</th><th>Horímetro</th><th>Status</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <script>window.onload=()=>{window.print();}<\/script>
+      </body></html>`;
+    const w = window.open('', '_blank');
+    if (!w) { toast.error('Permita pop-ups para imprimir'); return; }
+    w.document.write(html);
+    w.document.close();
+  };
+
+
   const typeLabels: Record<string, string> = { machine: 'Máquina', truck: 'Caminhão', combo: 'Comboio' };
   const statusLabels: Record<string, string> = { active: 'Ativo', maintenance: 'Em Manutenção', inactive: 'Inativo' };
   const statusColors: Record<string, string> = { active: 'bg-green-500/10 text-green-500', maintenance: 'bg-yellow-500/10 text-yellow-500', inactive: 'bg-red-500/10 text-red-500' };

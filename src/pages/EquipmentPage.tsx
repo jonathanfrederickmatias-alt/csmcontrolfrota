@@ -13,7 +13,7 @@ import { toast } from "sonner";
 type EqType = 'machine' | 'truck' | 'combo';
 type OwnershipType = 'own' | 'third_party';
 
-const emptyForm = { name: '', type: 'machine' as EqType, plate: '', model: '', brand: '', costCenter: '', fuelCapacity: '', currentFuel: '', hourMeter: '', year: '', chassis: '' };
+const emptyForm = { name: '', type: 'machine' as EqType, plate: '', model: '', brand: '', costCenter: '', fuelCapacity: '', currentFuel: '', hourMeter: '', year: '', chassis: '', obraId: '' };
 
 export default function EquipmentPage() {
   const [equipments, setEquipments] = useState<DBEquipment[]>([]);

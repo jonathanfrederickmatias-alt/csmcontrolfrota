@@ -86,6 +86,7 @@ export default function EquipmentPage() {
         current_fuel: form.currentFuel ? Number(form.currentFuel) : 0,
         year: form.year ? Number(form.year) : null,
         chassis: form.chassis || null,
+        obra_id: form.obraId || null,
       }).eq('id', editingId);
       if (error) toast.error("Erro ao atualizar");
       else toast.success("Equipamento atualizado!");

@@ -262,6 +262,15 @@ export default function EquipmentPage() {
               <div><Label>Centro de Custo</Label><Input value={form.costCenter} onChange={e => setForm({...form, costCenter: e.target.value})} /></div>
               <div><Label>Ano</Label><Input type="number" value={form.year} onChange={e => setForm({...form, year: e.target.value})} placeholder="Ex: 2024" /></div>
               <div><Label>Chassi</Label><Input value={form.chassis} onChange={e => setForm({...form, chassis: e.target.value})} placeholder="Ex: 9BW..." /></div>
+              <div><Label>Obra</Label>
+                <Select value={form.obraId || 'none'} onValueChange={v => setForm({...form, obraId: v === 'none' ? '' : v})}>
+                  <SelectTrigger><SelectValue placeholder="Selecione a obra" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sem obra</SelectItem>
+                    {obras.map(o => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
               {editingId && (
                 <div><Label>Horímetro</Label><Input type="number" value={form.hourMeter} onChange={e => setForm({...form, hourMeter: e.target.value})} /></div>
               )}

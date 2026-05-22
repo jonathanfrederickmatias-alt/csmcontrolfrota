@@ -28,12 +28,18 @@ export default function EquipmentPage() {
   const [activeTab, setActiveTab] = useState<OwnershipType>('own');
 
   const fetchData = async () => {
-    const { data } = await supabase.from('equipments').select('*').order('created_at');
-    setEquipments((data || []) as DBEquipment[]);
+    const [{ data: eqs }, { data: obs }] = await Promise.all([
+      supabase.from('equipments').select('*').order('created_at'),
+      supabase.from('obras').select('id, name').order('name'),
+    ]);
+    setEquipments((eqs || []) as DBEquipment[]);
+    setObras((obs || []) as { id: string; name: string }[]);
     setLoading(false);
   };
 
   useEffect(() => { fetchData(); }, []);
+
+  const obraNameById = (id?: string) => (id ? obras.find(o => o.id === id)?.name : undefined);
 
   const filteredEquipments = equipments
     .filter(eq => (eq.ownership || 'own') === activeTab)

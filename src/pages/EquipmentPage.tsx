@@ -301,6 +301,12 @@ export default function EquipmentPage() {
                     <p className="text-xs text-muted-foreground">Horímetro</p>
                     <p className="font-mono font-bold text-primary text-lg">{selectedEq.current_hour_meter}h</p>
                   </div>
+                  {obraNameById(selectedEq.obra_id) && (
+                    <div className="col-span-2 bg-secondary/50 rounded-lg p-3">
+                      <p className="text-xs text-muted-foreground">Obra</p>
+                      <p className="font-semibold text-foreground">{obraNameById(selectedEq.obra_id)}</p>
+                    </div>
+                  )}
                   {selectedEq.plate && (
                     <div className="bg-secondary/50 rounded-lg p-3">
                       <p className="text-xs text-muted-foreground">Placa/Série</p>

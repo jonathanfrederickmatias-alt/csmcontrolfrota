@@ -137,6 +137,7 @@ export default function EquipmentPage() {
         <td>${eq.year || '-'}</td>
         <td>${eq.chassis || '-'}</td>
         <td>${eq.cost_center || '-'}</td>
+        <td>${obraNameById(eq.obra_id) || '-'}</td>
         <td style="text-align:right">${eq.current_hour_meter}h</td>
         <td>${statusLabels[eq.status] || eq.status}</td>
       </tr>
@@ -157,7 +158,7 @@ export default function EquipmentPage() {
       <table>
         <thead><tr>
           <th>Nome</th><th>Tipo</th><th>Placa/Série</th><th>Marca</th><th>Modelo</th>
-          <th>Ano</th><th>Chassi</th><th>C. Custo</th><th>Horímetro</th><th>Status</th>
+          <th>Ano</th><th>Chassi</th><th>C. Custo</th><th>Obra</th><th>Horímetro</th><th>Status</th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>

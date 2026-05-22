@@ -177,7 +177,11 @@ export default function EquipmentPage() {
           <h1 className="text-3xl font-black text-gradient">Equipamentos</h1>
           <p className="text-muted-foreground mt-1">Cadastro e gestão da frota</p>
         </div>
-        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditingId(null); setForm(emptyForm); } }}>
+        <div className="flex gap-2">
+          <Button variant="outline" className="gap-2" onClick={() => handlePrint()}>
+            <Printer className="w-4 h-4" /> Imprimir
+          </Button>
+          <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditingId(null); setForm(emptyForm); } }}>
           <DialogTrigger asChild>
             <Button className="gap-2" onClick={openNew}><Plus className="w-4 h-4" /> Novo</Button>
           </DialogTrigger>

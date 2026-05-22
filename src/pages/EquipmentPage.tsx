@@ -13,10 +13,11 @@ import { toast } from "sonner";
 type EqType = 'machine' | 'truck' | 'combo';
 type OwnershipType = 'own' | 'third_party';
 
-const emptyForm = { name: '', type: 'machine' as EqType, plate: '', model: '', brand: '', costCenter: '', fuelCapacity: '', currentFuel: '', hourMeter: '', year: '', chassis: '' };
+const emptyForm = { name: '', type: 'machine' as EqType, plate: '', model: '', brand: '', costCenter: '', fuelCapacity: '', currentFuel: '', hourMeter: '', year: '', chassis: '', obraId: '' };
 
 export default function EquipmentPage() {
   const [equipments, setEquipments] = useState<DBEquipment[]>([]);
+  const [obras, setObras] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
@@ -27,12 +28,18 @@ export default function EquipmentPage() {
   const [activeTab, setActiveTab] = useState<OwnershipType>('own');
 
   const fetchData = async () => {
-    const { data } = await supabase.from('equipments').select('*').order('created_at');
-    setEquipments((data || []) as DBEquipment[]);
+    const [{ data: eqs }, { data: obs }] = await Promise.all([
+      supabase.from('equipments').select('*').order('created_at'),
+      supabase.from('obras').select('id, name').order('name'),
+    ]);
+    setEquipments((eqs || []) as DBEquipment[]);
+    setObras((obs || []) as { id: string; name: string }[]);
     setLoading(false);
   };
 
   useEffect(() => { fetchData(); }, []);
+
+  const obraNameById = (id?: string) => (id ? obras.find(o => o.id === id)?.name : undefined);
 
   const filteredEquipments = equipments
     .filter(eq => (eq.ownership || 'own') === activeTab)
@@ -58,6 +65,7 @@ export default function EquipmentPage() {
       hourMeter: eq.current_hour_meter?.toString() || '0',
       year: eq.year?.toString() || '',
       chassis: eq.chassis || '',
+      obraId: eq.obra_id || '',
     });
     setOpen(true);
     setSelectedEq(null);
@@ -78,6 +86,7 @@ export default function EquipmentPage() {
         current_fuel: form.currentFuel ? Number(form.currentFuel) : 0,
         year: form.year ? Number(form.year) : null,
         chassis: form.chassis || null,
+        obra_id: form.obraId || null,
       }).eq('id', editingId);
       if (error) toast.error("Erro ao atualizar");
       else toast.success("Equipamento atualizado!");
@@ -97,6 +106,7 @@ export default function EquipmentPage() {
         current_fuel: form.currentFuel ? Number(form.currentFuel) : 0,
         year: form.year ? Number(form.year) : null,
         chassis: form.chassis || null,
+        obra_id: form.obraId || null,
         status: 'active',
         ownership: activeTab,
       }]);
@@ -130,6 +140,7 @@ export default function EquipmentPage() {
         <td>${eq.year || '-'}</td>
         <td>${eq.chassis || '-'}</td>
         <td>${eq.cost_center || '-'}</td>
+        <td>${obraNameById(eq.obra_id) || '-'}</td>
         <td style="text-align:right">${eq.current_hour_meter}h</td>
         <td>${statusLabels[eq.status] || eq.status}</td>
       </tr>
@@ -150,7 +161,7 @@ export default function EquipmentPage() {
       <table>
         <thead><tr>
           <th>Nome</th><th>Tipo</th><th>Placa/Série</th><th>Marca</th><th>Modelo</th>
-          <th>Ano</th><th>Chassi</th><th>C. Custo</th><th>Horímetro</th><th>Status</th>
+          <th>Ano</th><th>Chassi</th><th>C. Custo</th><th>Obra</th><th>Horímetro</th><th>Status</th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>
@@ -197,6 +208,7 @@ export default function EquipmentPage() {
             {eq.brand && <p className="text-xs text-muted-foreground">Marca: {eq.brand}</p>}
             {eq.chassis && <p className="text-xs text-muted-foreground">Chassi: {eq.chassis}</p>}
             {eq.year && <p className="text-xs text-muted-foreground">Ano: {eq.year}</p>}
+            {obraNameById(eq.obra_id) && <p className="text-xs text-muted-foreground">Obra: {obraNameById(eq.obra_id)}</p>}
             <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
               <div>
                 <p className="text-xs text-muted-foreground">Horímetro</p>
@@ -250,6 +262,15 @@ export default function EquipmentPage() {
               <div><Label>Centro de Custo</Label><Input value={form.costCenter} onChange={e => setForm({...form, costCenter: e.target.value})} /></div>
               <div><Label>Ano</Label><Input type="number" value={form.year} onChange={e => setForm({...form, year: e.target.value})} placeholder="Ex: 2024" /></div>
               <div><Label>Chassi</Label><Input value={form.chassis} onChange={e => setForm({...form, chassis: e.target.value})} placeholder="Ex: 9BW..." /></div>
+              <div><Label>Obra</Label>
+                <Select value={form.obraId || 'none'} onValueChange={v => setForm({...form, obraId: v === 'none' ? '' : v})}>
+                  <SelectTrigger><SelectValue placeholder="Selecione a obra" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sem obra</SelectItem>
+                    {obras.map(o => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
               {editingId && (
                 <div><Label>Horímetro</Label><Input type="number" value={form.hourMeter} onChange={e => setForm({...form, hourMeter: e.target.value})} /></div>
               )}
@@ -292,6 +313,12 @@ export default function EquipmentPage() {
                     <p className="text-xs text-muted-foreground">Horímetro</p>
                     <p className="font-mono font-bold text-primary text-lg">{selectedEq.current_hour_meter}h</p>
                   </div>
+                  {obraNameById(selectedEq.obra_id) && (
+                    <div className="col-span-2 bg-secondary/50 rounded-lg p-3">
+                      <p className="text-xs text-muted-foreground">Obra</p>
+                      <p className="font-semibold text-foreground">{obraNameById(selectedEq.obra_id)}</p>
+                    </div>
+                  )}
                   {selectedEq.plate && (
                     <div className="bg-secondary/50 rounded-lg p-3">
                       <p className="text-xs text-muted-foreground">Placa/Série</p>

@@ -65,6 +65,7 @@ export default function EquipmentPage() {
       hourMeter: eq.current_hour_meter?.toString() || '0',
       year: eq.year?.toString() || '',
       chassis: eq.chassis || '',
+      obraId: eq.obra_id || '',
     });
     setOpen(true);
     setSelectedEq(null);

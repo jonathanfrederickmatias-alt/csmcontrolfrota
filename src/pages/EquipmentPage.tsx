@@ -205,6 +205,7 @@ export default function EquipmentPage() {
             {eq.brand && <p className="text-xs text-muted-foreground">Marca: {eq.brand}</p>}
             {eq.chassis && <p className="text-xs text-muted-foreground">Chassi: {eq.chassis}</p>}
             {eq.year && <p className="text-xs text-muted-foreground">Ano: {eq.year}</p>}
+            {obraNameById(eq.obra_id) && <p className="text-xs text-muted-foreground">Obra: {obraNameById(eq.obra_id)}</p>}
             <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
               <div>
                 <p className="text-xs text-muted-foreground">Horímetro</p>

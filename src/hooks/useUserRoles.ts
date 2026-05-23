@@ -10,18 +10,38 @@ export function useUserRoles() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    setLoading(true);
+
     if (!user) {
       setRoles([]);
       setLoading(false);
       return;
     }
 
-    supabase.rpc('get_my_roles').then(({ data, error }) => {
-      if (!error && data) {
+    const fetchRoles = async () => {
+      const { data, error } = await supabase.rpc('get_my_roles');
+
+      if (!error && data && data.length > 0) {
         setRoles(data as AppRole[]);
+        setLoading(false);
+        return;
       }
+
+      const { data: directRoles, error: directError } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id);
+
+      if (!directError && directRoles) {
+        setRoles(directRoles.map((item) => item.role as AppRole));
+      } else {
+        setRoles([]);
+      }
+
       setLoading(false);
-    });
+    };
+
+    fetchRoles();
   }, [user]);
 
   const hasRole = (role: AppRole) => roles.includes(role);

@@ -22,8 +22,8 @@ const statusConfig = {
 const typeLabels = { daily: 'Diário', corrective: 'Corretivo', preventive: 'Preventivo' };
 
 export default function ChecklistListPage() {
-  const { isAdmin, isGestor } = useUserRoles();
-  const canEdit = isAdmin || isGestor;
+  const { isAdmin, isGestor, isAbastecedor } = useUserRoles();
+  const canEdit = isAdmin || isGestor || isAbastecedor;
   const [checklists, setChecklists] = useState<DBChecklist[]>([]);
   const [equipments, setEquipments] = useState<DBEquipment[]>([]);
   const [loading, setLoading] = useState(true);

@@ -33,11 +33,26 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Check admin or gestor role
+    const { data: callerProfile, error: callerProfileError } = await supabaseAdmin
+      .from('profiles')
+      .select('tenant_id')
+      .eq('user_id', caller.id)
+      .maybeSingle();
+
+    if (callerProfileError || !callerProfile?.tenant_id) {
+      return new Response(JSON.stringify({ error: 'Empresa do usuário não encontrada' }), {
+        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const tenantId = callerProfile.tenant_id;
+
+    // Check admin or gestor role in the caller tenant
     const { data: roleData } = await supabaseAdmin
       .from('user_roles')
       .select('role')
       .eq('user_id', caller.id)
+      .eq('tenant_id', tenantId)
       .in('role', ['admin', 'gestor']);
 
     if (!roleData || roleData.length === 0) {
@@ -72,16 +87,32 @@ Deno.serve(async (req) => {
         });
       }
 
+      if (newUser.user) {
+        await supabaseAdmin
+          .from('profiles')
+          .update({ display_name: displayName, tenant_id: tenantId })
+          .eq('user_id', newUser.user.id);
+      }
+
       if (newUser.user && role) {
-        await supabaseAdmin.from('user_roles').insert({
+        const { error: roleInsertError } = await supabaseAdmin.from('user_roles').insert({
           user_id: newUser.user.id,
           role,
+          tenant_id: tenantId,
         });
+
+        if (roleInsertError) {
+          console.error('insert user_roles error:', roleInsertError);
+          return new Response(JSON.stringify({ error: 'Não foi possível definir o perfil do usuário.' }), {
+            status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
 
         if (role === 'abastecedor') {
           await supabaseAdmin.from('fuel_pins').insert({
             user_id: newUser.user.id,
             pin: pin || '1234',
+            tenant_id: tenantId,
           });
         }
       }
@@ -95,6 +126,18 @@ Deno.serve(async (req) => {
       if (!userId) {
         return new Response(JSON.stringify({ error: 'userId é obrigatório' }), {
           status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const { data: targetProfile } = await supabaseAdmin
+        .from('profiles')
+        .select('tenant_id')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (targetProfile?.tenant_id && targetProfile.tenant_id !== tenantId) {
+        return new Response(JSON.stringify({ error: 'Usuário pertence a outra empresa' }), {
+          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
@@ -122,13 +165,20 @@ Deno.serve(async (req) => {
       if (role) {
         // Remove existing roles and set new one
         await supabaseAdmin.from('user_roles').delete().eq('user_id', userId);
-        await supabaseAdmin.from('user_roles').insert({ user_id: userId, role });
+        const { error: roleUpdateError } = await supabaseAdmin.from('user_roles').insert({ user_id: userId, role, tenant_id: tenantId });
+
+        if (roleUpdateError) {
+          console.error('update user_roles error:', roleUpdateError);
+          return new Response(JSON.stringify({ error: 'Não foi possível atualizar o perfil do usuário.' }), {
+            status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
 
         // Handle PIN for abastecedor
         if (role === 'abastecedor') {
           const { data: existingPin } = await supabaseAdmin.from('fuel_pins').select('id').eq('user_id', userId).maybeSingle();
           if (!existingPin) {
-            await supabaseAdmin.from('fuel_pins').insert({ user_id: userId, pin: pin || '1234' });
+            await supabaseAdmin.from('fuel_pins').insert({ user_id: userId, pin: pin || '1234', tenant_id: tenantId });
           } else if (pin) {
             await supabaseAdmin.from('fuel_pins').update({ pin }).eq('user_id', userId);
           }
@@ -144,7 +194,7 @@ Deno.serve(async (req) => {
         if (existingPin) {
           await supabaseAdmin.from('fuel_pins').update({ pin }).eq('user_id', userId);
         } else {
-          await supabaseAdmin.from('fuel_pins').insert({ user_id: userId, pin });
+          await supabaseAdmin.from('fuel_pins').insert({ user_id: userId, pin, tenant_id: tenantId });
         }
       }
 

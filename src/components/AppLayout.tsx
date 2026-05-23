@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 const allNavItems = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, roles: ['admin', 'gestor', 'abastecedor'] },
   { to: "/equipamentos", label: "Equipamentos", icon: Truck, roles: ['admin', 'gestor'] },
-  { to: "/checklist", label: "Checklist", icon: ClipboardCheck, roles: ['admin', 'gestor', 'mecanico'] },
+  { to: "/checklist", label: "Checklist", icon: ClipboardCheck, roles: ['admin', 'gestor', 'mecanico', 'abastecedor'] },
   { to: "/checklists", label: "Checklists Realizados", icon: ClipboardList, roles: ['admin', 'gestor', 'abastecedor'] },
   { to: "/manutencao", label: "Manutenção", icon: Wrench, roles: ['admin', 'gestor', 'abastecedor'] },
   { to: "/mecanico", label: "Painel Mecânico", icon: Wrench, roles: ['mecanico'] },

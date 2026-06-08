@@ -237,7 +237,10 @@ export default function ChecklistPage() {
                 <Select value={selectedEquipment} onValueChange={setSelectedEquipment}>
                   <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
                   <SelectContent position="popper">
-                    {equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eq.name}</SelectItem>)}
+                    {equipments.map(eq => {
+                      const ident = eq.cost_center || eq.plate || '';
+                      return <SelectItem key={eq.id} value={eq.id}>{ident ? `${eq.name} (${ident})` : eq.name}</SelectItem>;
+                    })}
                   </SelectContent>
                 </Select>
               </div>

@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { useUserRoles } from "@/hooks/useUserRoles";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AppLayout from "@/components/AppLayout";
 import Dashboard from "@/pages/Dashboard";
@@ -32,6 +33,16 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+function HomeRoute() {
+  const { isAbastecedor, isAdmin, isGestor, loading } = useUserRoles();
+
+  if (!loading && isAbastecedor && !isAdmin && !isGestor) {
+    return <ChecklistPage />;
+  }
+
+  return <Dashboard />;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -54,7 +65,7 @@ const App = () => (
               <ProtectedRoute>
                 <AppLayout>
                   <Routes>
-                    <Route path="/" element={<Dashboard />} />
+                    <Route path="/" element={<HomeRoute />} />
                     <Route path="/equipamentos" element={<EquipmentPage />} />
                     <Route path="/checklist" element={<ChecklistPage />} />
                     <Route path="/checklists" element={<ChecklistListPage />} />

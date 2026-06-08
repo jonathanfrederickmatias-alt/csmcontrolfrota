@@ -7,7 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 
 const allNavItems = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard, roles: ['admin', 'gestor', 'abastecedor'] },
+  { to: "/", label: "Dashboard", icon: LayoutDashboard, roles: ['admin', 'gestor'] },
   { to: "/equipamentos", label: "Equipamentos", icon: Truck, roles: ['admin', 'gestor'] },
   { to: "/checklist", label: "Checklist", icon: ClipboardCheck, roles: ['admin', 'gestor', 'mecanico', 'abastecedor'] },
   { to: "/checklists", label: "Checklists Realizados", icon: ClipboardList, roles: ['admin', 'gestor', 'abastecedor'] },

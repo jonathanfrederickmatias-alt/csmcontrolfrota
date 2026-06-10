@@ -604,43 +604,60 @@ export default function ReportsPage() {
           </div>
 
 
-          {/* Eficiência de Combustível */}
-          <div className="glass-card rounded-xl p-5 lg:col-span-2">
+          {/* Eficiência - Máquinas (L/h) */}
+          <div className="glass-card rounded-xl p-5">
             <h2 className="font-bold mb-4 flex items-center gap-2">
-              <Calculator className="w-5 h-5 text-success" />
-              Eficiência de Combustível (km/L ou L/h)
+              <Calculator className="w-5 h-5 text-warning" />
+              Consumo de Máquinas (L/h)
             </h2>
             <p className="text-xs text-muted-foreground mb-3">
-              Calculado pela diferença de horímetro/hodômetro entre abastecimentos consecutivos.
-              Caminhões = km/L • Máquinas = L/h
+              Litros consumidos por hora trabalhada, calculado pela diferença de horímetro entre abastecimentos.
             </p>
-            {fuelEfficiency.length === 0 ? (
-              <p className="text-muted-foreground text-sm">Necessário ao menos 2 abastecimentos com horímetro preenchido por equipamento.</p>
+            {fuelEfficiency.filter(f => f.unit === 'L/h').length === 0 ? (
+              <p className="text-muted-foreground text-sm">Necessário ao menos 2 abastecimentos com horímetro preenchido por máquina.</p>
             ) : (
-              <ResponsiveContainer width="100%" height={Math.max(220, fuelEfficiency.length * 40)}>
-                <BarChart data={fuelEfficiency} layout="vertical" margin={{ top: 0, right: 40, bottom: 0, left: 0 }}>
+              <ResponsiveContainer width="100%" height={Math.max(220, fuelEfficiency.filter(f => f.unit === 'L/h').length * 40)}>
+                <BarChart data={fuelEfficiency.filter(f => f.unit === 'L/h')} layout="vertical" margin={{ top: 0, right: 40, bottom: 0, left: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 14% 82%)" />
                   <XAxis type="number" tick={{ fill: 'hsl(220 10% 40%)', fontSize: 11 }} />
                   <YAxis dataKey="name" type="category" width={100} tick={{ fill: 'hsl(220 10% 40%)', fontSize: 11 }} />
                   <Tooltip
                     contentStyle={{ background: 'white', border: '1px solid hsl(220 14% 85%)', borderRadius: 8 }}
-                    formatter={(v: number, _name: string, props: any) => [`${v} ${props.payload.unit}`, 'Eficiência']}
+                    formatter={(v: number) => [`${v} L/h`, 'Consumo']}
                   />
-                  <Bar dataKey="efficiency" fill="hsl(142 71% 45%)" radius={[0, 4, 4, 0]}>
-                    {fuelEfficiency.map((item, i) => (
-                      <Cell key={i} fill={item.unit === 'km/L' ? 'hsl(210 80% 45%)' : 'hsl(38 92% 50%)'} />
-                    ))}
-                  </Bar>
+                  <Bar dataKey="efficiency" fill="hsl(38 92% 50%)" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}
-            {fuelEfficiency.length > 0 && (
-              <div className="flex gap-4 mt-3 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm" style={{ background: 'hsl(210 80% 45%)' }} /> Caminhões (km/L)</span>
-                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm" style={{ background: 'hsl(38 92% 50%)' }} /> Máquinas (L/h)</span>
-              </div>
+          </div>
+
+          {/* Eficiência - Veículos (km/L) */}
+          <div className="glass-card rounded-xl p-5">
+            <h2 className="font-bold mb-4 flex items-center gap-2">
+              <Calculator className="w-5 h-5 text-primary" />
+              Consumo de Veículos (km/L)
+            </h2>
+            <p className="text-xs text-muted-foreground mb-3">
+              Quilômetros rodados por litro, calculado pela diferença de hodômetro entre abastecimentos.
+            </p>
+            {fuelEfficiency.filter(f => f.unit === 'km/L').length === 0 ? (
+              <p className="text-muted-foreground text-sm">Necessário ao menos 2 abastecimentos com hodômetro preenchido por veículo.</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={Math.max(220, fuelEfficiency.filter(f => f.unit === 'km/L').length * 40)}>
+                <BarChart data={fuelEfficiency.filter(f => f.unit === 'km/L')} layout="vertical" margin={{ top: 0, right: 40, bottom: 0, left: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 14% 82%)" />
+                  <XAxis type="number" tick={{ fill: 'hsl(220 10% 40%)', fontSize: 11 }} />
+                  <YAxis dataKey="name" type="category" width={100} tick={{ fill: 'hsl(220 10% 40%)', fontSize: 11 }} />
+                  <Tooltip
+                    contentStyle={{ background: 'white', border: '1px solid hsl(220 14% 85%)', borderRadius: 8 }}
+                    formatter={(v: number) => [`${v} km/L`, 'Consumo']}
+                  />
+                  <Bar dataKey="efficiency" fill="hsl(210 80% 45%)" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
             )}
           </div>
+
 
           {/* Horímetro */}
           <div className="glass-card rounded-xl p-5">

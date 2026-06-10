@@ -500,7 +500,7 @@ export type Database = {
         Row: {
           created_at: string
           description: string
-          equipment_id: string
+          equipment_id: string | null
           executed_at: string
           hour_meter: number
           id: string
@@ -515,7 +515,7 @@ export type Database = {
         Insert: {
           created_at?: string
           description: string
-          equipment_id: string
+          equipment_id?: string | null
           executed_at?: string
           hour_meter?: number
           id?: string
@@ -530,7 +530,7 @@ export type Database = {
         Update: {
           created_at?: string
           description?: string
-          equipment_id?: string
+          equipment_id?: string | null
           executed_at?: string
           hour_meter?: number
           id?: string
@@ -968,7 +968,7 @@ export type Database = {
           completed_at: string | null
           created_at: string
           description: string
-          equipment_id: string
+          equipment_id: string | null
           execution_meter: number
           final_status:
             | Database["public"]["Enums"]["work_order_final_status"]
@@ -1003,7 +1003,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           description: string
-          equipment_id: string
+          equipment_id?: string | null
           execution_meter?: number
           final_status?:
             | Database["public"]["Enums"]["work_order_final_status"]
@@ -1038,7 +1038,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           description?: string
-          equipment_id?: string
+          equipment_id?: string | null
           execution_meter?: number
           final_status?:
             | Database["public"]["Enums"]["work_order_final_status"]

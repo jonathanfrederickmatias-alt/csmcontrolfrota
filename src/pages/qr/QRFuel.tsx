@@ -75,7 +75,8 @@ export default function QRFuel() {
 
   const hasExtraItems = extraItems.some(i => i.name.trim());
   const hasFuel = comboId && targetId && liters && Number(liters) > 0 && photoUrl;
-  const canSave = operatorName && (hasFuel || hasExtraItems);
+  const hourMeterInvalid = !!(selectedTarget && hourMeter && Number(hourMeter) < (selectedTarget.current_hour_meter || 0));
+  const canSave = operatorName && (hasFuel || hasExtraItems) && !hourMeterInvalid;
 
   if (saved) {
     return (

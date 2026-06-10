@@ -121,8 +121,12 @@ export default function EquipmentPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Excluir este equipamento?")) return;
-    await supabase.from('equipments').delete().eq('id', id);
+    if (!confirm("Excluir este equipamento? Histórico de manutenção e OS serão mantidos sem vínculo.")) return;
+    const { error } = await supabase.from('equipments').delete().eq('id', id);
+    if (error) {
+      toast.error(`Erro ao excluir: ${error.message}`);
+      return;
+    }
     setSelectedEq(null);
     toast.success("Equipamento excluído");
     fetchData();

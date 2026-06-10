@@ -205,8 +205,8 @@ export default function FuelPage() {
     pdf.text(`Emitido em: ${now.toLocaleDateString('pt-BR')} ${now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`, pageWidth - margin, 13, { align: 'right' });
 
     let y = 28;
-    const cols = ['Data', 'Comboio', 'Equipamento', 'Combustível', 'Litros', 'Horímetro', 'Operador', 'Itens Extras'];
-    const colW = [22, 45, 45, 28, 18, 22, 38, contentWidth - 218];
+    const cols = ['Data', 'Comboio', 'Prefixo', 'Equipamento', 'Combustível', 'Litros', 'Horímetro', 'Operador', 'Itens Extras'];
+    const colW = [22, 40, 22, 40, 26, 16, 20, 34, contentWidth - 220];
     const colX = [margin];
     for (let i = 1; i < colW.length; i++) colX.push(colX[i - 1] + colW[i - 1]);
 

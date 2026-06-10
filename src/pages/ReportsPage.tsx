@@ -88,16 +88,20 @@ export default function ReportsPage() {
   const selectedEqFull = equipments.find(e => e.id === selectedEquipment);
 
   // Fuel by equipment
-  const fuelByEquipment = filteredEquipments
+  const fuelByEquipmentAll = filteredEquipments
     .filter(e => e.type !== 'combo')
     .map(eq => ({
       name: eqLabel(eq, 20),
       litros: filteredFuel
         .filter(r => r.target_equipment_id === eq.id)
         .reduce((s, r) => s + Number(r.liters), 0),
+      type: eq.type,
     }))
     .filter(d => d.litros > 0)
     .sort((a, b) => b.litros - a.litros);
+  const fuelByEquipment = fuelByEquipmentAll;
+  const fuelByMachines = fuelByEquipmentAll.filter(d => d.type !== 'truck');
+  const fuelByVehicles = fuelByEquipmentAll.filter(d => d.type === 'truck');
 
   // Fuel by day
   const fuelByDay = (() => {

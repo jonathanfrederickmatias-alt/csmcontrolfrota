@@ -244,7 +244,7 @@ export default function FuelPage() {
       }
 
       pdf.setFontSize(7);
-      const values = [row.Data, row.Comboio, row.Equipamento, row['Combustível'], String(row.Litros), String(row.Horímetro), row.Operador, row['Itens Extras']];
+      const values = [row.Data, row.Comboio, row.Prefixo, row.Equipamento, row['Combustível'], String(row.Litros), String(row.Horímetro), row.Operador, row['Itens Extras']];
       values.forEach((v, i) => {
         let text = v || '—';
         // Clip text to fit column

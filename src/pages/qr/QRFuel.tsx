@@ -193,7 +193,7 @@ export default function QRFuel() {
           <Label>Horímetro Atual (opcional)</Label>
           <Input type="number" inputMode="decimal" value={hourMeter} onChange={e => setHourMeter(e.target.value)} placeholder="Ex: 4520" />
           {selectedTarget && hourMeter && Number(hourMeter) < (selectedTarget.current_hour_meter || 0) && (
-            <p className="text-xs text-warning mt-1">Valor menor que o horímetro atual ({selectedTarget.current_hour_meter}h)</p>
+            <p className="text-xs text-destructive mt-1">Horímetro não pode ser menor que o atual ({selectedTarget.current_hour_meter}h). Não é possível registrar.</p>
           )}
         </div>
         <div><Label>Responsável *</Label><Input value={operatorName} onChange={e => setOperatorName(e.target.value)} placeholder="Nome do responsável" /></div>

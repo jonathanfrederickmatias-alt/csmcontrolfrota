@@ -390,7 +390,7 @@ export default function FuelPage() {
                 <div key={r.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 cursor-pointer hover:bg-secondary/80 transition-colors" onClick={() => setDetailRecord(r)}>
                   <div>
                     <p className="text-sm font-medium">
-                      {combo?.name} → {target?.name}
+                      {combo?.name}{combo?.cost_center ? ` (${combo.cost_center})` : ''} → {target?.name}{target?.cost_center ? ` (${target.cost_center})` : ''}
                       {(r as any).fuel_type && <span className="ml-2 text-xs bg-primary/10 text-primary rounded px-1.5 py-0.5">{(r as any).fuel_type}</span>}
                     </p>
                     <p className="text-xs text-muted-foreground">

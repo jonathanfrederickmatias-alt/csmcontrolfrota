@@ -88,16 +88,20 @@ export default function ReportsPage() {
   const selectedEqFull = equipments.find(e => e.id === selectedEquipment);
 
   // Fuel by equipment
-  const fuelByEquipment = filteredEquipments
+  const fuelByEquipmentAll = filteredEquipments
     .filter(e => e.type !== 'combo')
     .map(eq => ({
       name: eqLabel(eq, 20),
       litros: filteredFuel
         .filter(r => r.target_equipment_id === eq.id)
         .reduce((s, r) => s + Number(r.liters), 0),
+      type: eq.type,
     }))
     .filter(d => d.litros > 0)
     .sort((a, b) => b.litros - a.litros);
+  const fuelByEquipment = fuelByEquipmentAll;
+  const fuelByMachines = fuelByEquipmentAll.filter(d => d.type !== 'truck');
+  const fuelByVehicles = fuelByEquipmentAll.filter(d => d.type === 'truck');
 
   // Fuel by day
   const fuelByDay = (() => {
@@ -553,28 +557,52 @@ export default function ReportsPage() {
             )}
           </div>
 
-          {/* Combustível por equipamento */}
+          {/* Combustível por Equipamento (máquinas) */}
           <div className="glass-card rounded-xl p-5">
             <h2 className="font-bold mb-4 flex items-center gap-2">
               <Droplets className="w-5 h-5 text-primary" />
               Combustível por Equipamento (L)
             </h2>
-            {fuelByEquipment.length === 0 ? (
-              <p className="text-muted-foreground text-sm">Nenhum abastecimento no período.</p>
+            {fuelByMachines.length === 0 ? (
+              <p className="text-muted-foreground text-sm">Nenhum abastecimento de equipamento no período.</p>
             ) : (
               <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={fuelByEquipment} layout="vertical" margin={{ top: 0, right: 20, bottom: 0, left: 0 }}>
+                <BarChart data={fuelByMachines} layout="vertical" margin={{ top: 0, right: 20, bottom: 0, left: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 14% 82%)" />
                   <XAxis type="number" tick={{ fill: 'hsl(220 10% 40%)', fontSize: 11 }} />
                   <YAxis dataKey="name" type="category" width={80} tick={{ fill: 'hsl(220 10% 40%)', fontSize: 11 }} />
                   <Tooltip contentStyle={{ background: 'white', border: '1px solid hsl(220 14% 85%)', borderRadius: 8 }} formatter={(v: number) => [`${v}L`, 'Litros']} />
                   <Bar dataKey="litros" fill="hsl(210 80% 45%)" radius={[0, 4, 4, 0]}>
-                    {fuelByEquipment.map((_, i) => (<Cell key={i} fill={COLORS[i % COLORS.length]} />))}
+                    {fuelByMachines.map((_, i) => (<Cell key={i} fill={COLORS[i % COLORS.length]} />))}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
             )}
           </div>
+
+          {/* Combustível por Veículo */}
+          <div className="glass-card rounded-xl p-5">
+            <h2 className="font-bold mb-4 flex items-center gap-2">
+              <Droplets className="w-5 h-5 text-warning" />
+              Combustível por Veículo (L)
+            </h2>
+            {fuelByVehicles.length === 0 ? (
+              <p className="text-muted-foreground text-sm">Nenhum abastecimento de veículo no período.</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={fuelByVehicles} layout="vertical" margin={{ top: 0, right: 20, bottom: 0, left: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 14% 82%)" />
+                  <XAxis type="number" tick={{ fill: 'hsl(220 10% 40%)', fontSize: 11 }} />
+                  <YAxis dataKey="name" type="category" width={80} tick={{ fill: 'hsl(220 10% 40%)', fontSize: 11 }} />
+                  <Tooltip contentStyle={{ background: 'white', border: '1px solid hsl(220 14% 85%)', borderRadius: 8 }} formatter={(v: number) => [`${v}L`, 'Litros']} />
+                  <Bar dataKey="litros" fill="hsl(38 92% 50%)" radius={[0, 4, 4, 0]}>
+                    {fuelByVehicles.map((_, i) => (<Cell key={i} fill={COLORS[i % COLORS.length]} />))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+
 
           {/* Eficiência de Combustível */}
           <div className="glass-card rounded-xl p-5 lg:col-span-2">

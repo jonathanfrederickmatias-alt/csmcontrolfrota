@@ -307,13 +307,13 @@ export default function FuelPage() {
             <div><Label>Comboio {!hasExtraItems && '*'}</Label>
               <Select value={comboId} onValueChange={setComboId}>
                 <SelectTrigger><SelectValue placeholder="Selecionar comboio..." /></SelectTrigger>
-                <SelectContent>{combos.map(c => <SelectItem key={c.id} value={c.id}>{c.plate ? `${c.plate} - ` : ''}{c.name} ({c.current_fuel || 0}L)</SelectItem>)}</SelectContent>
+                <SelectContent>{combos.map(c => <SelectItem key={c.id} value={c.id}>{c.plate ? `${c.plate} - ` : ''}{c.name}{c.cost_center ? ` (${c.cost_center})` : ''} ({c.current_fuel || 0}L)</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div><Label>Equipamento Destino {!hasExtraItems && '*'}</Label>
               <Select value={targetId} onValueChange={setTargetId}>
                 <SelectTrigger><SelectValue placeholder="Selecionar máquina..." /></SelectTrigger>
-                <SelectContent>{targets.map(t => <SelectItem key={t.id} value={t.id}>{t.plate ? `${t.plate} - ` : ''}{t.name}</SelectItem>)}</SelectContent>
+                <SelectContent>{targets.map(t => <SelectItem key={t.id} value={t.id}>{t.plate ? `${t.plate} - ` : ''}{t.name}{t.cost_center ? ` (${t.cost_center})` : ''}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div>
@@ -390,7 +390,7 @@ export default function FuelPage() {
                 <div key={r.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 cursor-pointer hover:bg-secondary/80 transition-colors" onClick={() => setDetailRecord(r)}>
                   <div>
                     <p className="text-sm font-medium">
-                      {combo?.name} → {target?.name}
+                      {combo?.name}{combo?.cost_center ? ` (${combo.cost_center})` : ''} → {target?.name}{target?.cost_center ? ` (${target.cost_center})` : ''}
                       {(r as any).fuel_type && <span className="ml-2 text-xs bg-primary/10 text-primary rounded px-1.5 py-0.5">{(r as any).fuel_type}</span>}
                     </p>
                     <p className="text-xs text-muted-foreground">

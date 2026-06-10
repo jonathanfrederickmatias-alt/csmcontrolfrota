@@ -39,12 +39,25 @@ export default function FuelPage() {
   const [editExtraItems, setEditExtraItems] = useState<FuelSupplyExtraItem[]>([]);
 
   const fetchData = async () => {
-    const [eqRes, frRes] = await Promise.all([
-      supabase.from('equipments').select('*').order('name'),
-      supabase.from('fuel_records').select('*').gte('date', new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]).order('created_at', { ascending: false }),
-    ]);
+    const eqRes = await supabase.from('equipments').select('*').order('name');
     setEquipments((eqRes.data || []) as DBEquipment[]);
-    const fuelData = (frRes.data || []) as DBFuelRecord[];
+
+    // Paginate through all fuel records to bypass the 1000-row default limit
+    const PAGE_SIZE = 1000;
+    let from = 0;
+    const all: DBFuelRecord[] = [];
+    while (true) {
+      const { data, error } = await supabase
+        .from('fuel_records')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .range(from, from + PAGE_SIZE - 1);
+      if (error || !data || data.length === 0) break;
+      all.push(...(data as DBFuelRecord[]));
+      if (data.length < PAGE_SIZE) break;
+      from += PAGE_SIZE;
+    }
+    const fuelData = all;
 
     // For records without hour_meter, try to find from checklists or work_orders of the same day
     const missingHM = fuelData.filter(r => !r.hour_meter);

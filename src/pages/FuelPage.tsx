@@ -50,6 +50,7 @@ export default function FuelPage() {
       const { data, error } = await supabase
         .from('fuel_records')
         .select('*')
+        .order('date', { ascending: false })
         .order('created_at', { ascending: false })
         .range(from, from + PAGE_SIZE - 1);
       if (error || !data || data.length === 0) break;

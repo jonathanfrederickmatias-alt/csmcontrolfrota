@@ -157,6 +157,7 @@ export default function FuelPage() {
       return {
         Data: new Date(r.date + 'T12:00:00').toLocaleDateString('pt-BR'),
         Comboio: combo?.name || '—',
+        Prefixo: (target as any)?.cost_center || (target as any)?.plate || '—',
         Equipamento: target?.name || '—',
         Combustível: (r as any).fuel_type || '—',
         Litros: r.liters,

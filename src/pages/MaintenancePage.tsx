@@ -960,7 +960,14 @@ export default function MaintenancePage() {
                         {plan && <p className="text-xs text-muted-foreground">📋 Plano: {plan.description}</p>}
                         {h.notes && <p className="text-xs text-muted-foreground italic mt-1 whitespace-pre-line">{h.notes}</p>}
                       </div>
-                      <div className="text-right shrink-0">
+                      <div className="text-right shrink-0 flex flex-col items-end gap-1">
+                        <button
+                          onClick={() => openEditHistory(h)}
+                          className="text-muted-foreground hover:text-primary p-1 transition-colors"
+                          title="Editar manutenção realizada"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
                         <p className="text-xs text-muted-foreground">Horímetro/Km</p>
                         <p className="text-lg font-mono font-bold">{h.hour_meter}</p>
                         {total > 0 && (

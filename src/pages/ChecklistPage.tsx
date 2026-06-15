@@ -162,8 +162,8 @@ export default function ChecklistPage() {
     setTimeout(() => { setSaved(false); resetForm(); }, 2000);
   };
 
-  const allAnswered = items.length > 0 && items.every(i => i.checked === true || i.checked === false);
-  const hasNC = items.some(i => i.checked === false);
+  const allAnswered = items.length > 0 && items.every(i => i.checked === true || i.checked === false || i.na === true);
+  const hasNC = items.some(i => i.checked === false && !i.na);
   const canSave = selectedEquipment && operatorName && hourMeter && allAnswered;
 
   return (

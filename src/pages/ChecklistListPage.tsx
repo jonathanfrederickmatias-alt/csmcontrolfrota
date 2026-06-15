@@ -198,7 +198,7 @@ export default function ChecklistListPage() {
                       <span>Operador: {cl.operator_name}</span>
                       <span>Horímetro: {cl.hour_meter}h</span>
                       <span>Data: {new Date(cl.date + 'T12:00:00').toLocaleDateString('pt-BR')}</span>
-                      <span>Itens: {summary.ok}✓ {summary.nc > 0 ? `${summary.nc}✗` : ''} / {summary.total}</span>
+                      <span>Itens: {summary.ok}✓ {summary.nc > 0 ? `${summary.nc}✗` : ''}{summary.na > 0 ? ` ${summary.na}⊘` : ''} / {summary.total}</span>
                     </div>
                     {(cl as any).observations && (
                       <p className="text-xs text-muted-foreground italic mt-1">Obs: {(cl as any).observations}</p>

@@ -23,6 +23,8 @@ const defaultItems = [
   "Extintor de incêndio",
   "Estado geral de limpeza",
   "Funcionamento dos instrumentos do painel",
+  "Calibração dos pneus",
+  "Condições do Tacógrafo",
 ];
 
 type ChecklistType = 'daily' | 'corrective' | 'preventive';

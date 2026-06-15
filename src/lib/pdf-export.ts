@@ -1363,7 +1363,7 @@ export interface ChecklistPDFData {
   status: string;
   observations?: string;
   photoUrl?: string;
-  items: { label: string; checked: boolean; observation?: string }[];
+  items: { label: string; checked: boolean; na?: boolean; observation?: string }[];
 }
 
 export async function exportChecklistPDF(data: ChecklistPDFData) {

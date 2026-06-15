@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { ClipboardList, Loader2, Edit2, Trash2, ShieldCheck, ShieldX, AlertTriangle, Search, ChevronDown, ChevronUp, CheckCircle, XCircle, Camera, Download } from "lucide-react";
+import { ClipboardList, Loader2, Edit2, Trash2, ShieldCheck, ShieldX, AlertTriangle, Search, ChevronDown, ChevronUp, CheckCircle, XCircle, MinusCircle, Camera, Download } from "lucide-react";
 import { toast } from "sonner";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { exportChecklistPDF, ChecklistPDFData } from "@/lib/pdf-export";

@@ -1444,12 +1444,17 @@ export async function exportChecklistPDF(data: ChecklistPDFData) {
   pdf.setFont('helvetica', 'bold');
   pdf.text(statusText, margin + 15, y + 5, { align: 'center' });
 
-  const okCount = data.items.filter(i => i.checked).length;
-  const ncCount = data.items.length - okCount;
+  const okCount = data.items.filter(i => i.checked && !i.na).length;
+  const ncCount = data.items.filter(i => !i.checked && !i.na).length;
+  const naCount = data.items.filter(i => i.na).length;
   pdf.setTextColor(...COLORS.textMuted);
   pdf.setFontSize(8);
   pdf.setFont('helvetica', 'normal');
-  pdf.text(`${okCount} conformes  |  ${ncCount} não conformes  |  ${data.items.length} itens total`, margin + 35, y + 5);
+  const summaryParts = [`${okCount} conformes`];
+  if (ncCount > 0) summaryParts.push(`${ncCount} não conformes`);
+  if (naCount > 0) summaryParts.push(`${naCount} N/A`);
+  summaryParts.push(`${data.items.length} itens total`);
+  pdf.text(summaryParts.join('  |  '), margin + 35, y + 5);
 
   y += 12;
 

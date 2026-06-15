@@ -98,6 +98,7 @@ export interface ChecklistItemDB {
   id: string;
   label: string;
   checked: boolean;
+  na?: boolean;
   observation?: string;
 }
 

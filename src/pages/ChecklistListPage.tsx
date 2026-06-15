@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { ClipboardList, Loader2, Edit2, Trash2, ShieldCheck, ShieldX, AlertTriangle, Search, ChevronDown, ChevronUp, CheckCircle, XCircle, Camera, Download } from "lucide-react";
+import { ClipboardList, Loader2, Edit2, Trash2, ShieldCheck, ShieldX, AlertTriangle, Search, ChevronDown, ChevronUp, CheckCircle, XCircle, MinusCircle, Camera, Download } from "lucide-react";
 import { toast } from "sonner";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { exportChecklistPDF, ChecklistPDFData } from "@/lib/pdf-export";
@@ -104,9 +104,10 @@ export default function ChecklistListPage() {
   });
 
   const getItemsSummary = (items: ChecklistItemDB[]) => {
-    const ok = items.filter(i => i.checked).length;
-    const nc = items.length - ok;
-    return { ok, nc, total: items.length };
+    const ok = items.filter(i => i.checked && !i.na).length;
+    const nc = items.filter(i => !i.checked && !i.na).length;
+    const na = items.filter(i => i.na).length;
+    return { ok, nc, na, total: items.length };
   };
 
   return (
@@ -197,7 +198,7 @@ export default function ChecklistListPage() {
                       <span>Operador: {cl.operator_name}</span>
                       <span>Horímetro: {cl.hour_meter}h</span>
                       <span>Data: {new Date(cl.date + 'T12:00:00').toLocaleDateString('pt-BR')}</span>
-                      <span>Itens: {summary.ok}✓ {summary.nc > 0 ? `${summary.nc}✗` : ''} / {summary.total}</span>
+                      <span>Itens: {summary.ok}✓ {summary.nc > 0 ? `${summary.nc}✗` : ''}{summary.na > 0 ? ` ${summary.na}⊘` : ''} / {summary.total}</span>
                     </div>
                     {(cl as any).observations && (
                       <p className="text-xs text-muted-foreground italic mt-1">Obs: {(cl as any).observations}</p>
@@ -275,13 +276,15 @@ export default function ChecklistListPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                       {(cl.items || []).map((item: any) => (
                         <div key={item.id} className="flex items-start gap-2 text-xs py-1">
-                          {item.checked ? (
+                          {item.na ? (
+                            <MinusCircle className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
+                          ) : item.checked ? (
                             <CheckCircle className="w-3.5 h-3.5 text-success shrink-0 mt-0.5" />
                           ) : (
                             <XCircle className="w-3.5 h-3.5 text-destructive shrink-0 mt-0.5" />
                           )}
                           <div>
-                            <span className={item.checked ? 'text-foreground' : 'text-destructive font-medium'}>{item.label}</span>
+                            <span className={item.na ? 'text-muted-foreground line-through' : item.checked ? 'text-foreground' : 'text-destructive font-medium'}>{item.label}</span>
                             {item.observation && (
                               <p className="text-muted-foreground italic mt-0.5">"{item.observation}"</p>
                             )}

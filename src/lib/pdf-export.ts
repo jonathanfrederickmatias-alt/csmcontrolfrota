@@ -1363,7 +1363,7 @@ export interface ChecklistPDFData {
   status: string;
   observations?: string;
   photoUrl?: string;
-  items: { label: string; checked: boolean; observation?: string }[];
+  items: { label: string; checked: boolean; na?: boolean; observation?: string }[];
 }
 
 export async function exportChecklistPDF(data: ChecklistPDFData) {
@@ -1444,12 +1444,17 @@ export async function exportChecklistPDF(data: ChecklistPDFData) {
   pdf.setFont('helvetica', 'bold');
   pdf.text(statusText, margin + 15, y + 5, { align: 'center' });
 
-  const okCount = data.items.filter(i => i.checked).length;
-  const ncCount = data.items.length - okCount;
+  const okCount = data.items.filter(i => i.checked && !i.na).length;
+  const ncCount = data.items.filter(i => !i.checked && !i.na).length;
+  const naCount = data.items.filter(i => i.na).length;
   pdf.setTextColor(...COLORS.textMuted);
   pdf.setFontSize(8);
   pdf.setFont('helvetica', 'normal');
-  pdf.text(`${okCount} conformes  |  ${ncCount} não conformes  |  ${data.items.length} itens total`, margin + 35, y + 5);
+  const summaryParts = [`${okCount} conformes`];
+  if (ncCount > 0) summaryParts.push(`${ncCount} não conformes`);
+  if (naCount > 0) summaryParts.push(`${naCount} N/A`);
+  summaryParts.push(`${data.items.length} itens total`);
+  pdf.text(summaryParts.join('  |  '), margin + 35, y + 5);
 
   y += 12;
 
@@ -1484,7 +1489,7 @@ export async function exportChecklistPDF(data: ChecklistPDFData) {
     }
 
     // Non-conformity highlight
-    if (!item.checked) {
+    if (!item.checked && !item.na) {
       pdf.setFillColor(255, 240, 240);
       pdf.rect(margin, y, contentWidth, rowHeight, 'F');
     }
@@ -1497,7 +1502,11 @@ export async function exportChecklistPDF(data: ChecklistPDFData) {
 
     // Status
     const midY = y + rowHeight / 2 + 1.5;
-    if (item.checked) {
+    if (item.na) {
+      pdf.setTextColor(...COLORS.textMuted);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('⊘ N/A', colX[1] + 2, midY);
+    } else if (item.checked) {
       pdf.setTextColor(...COLORS.success);
       pdf.setFont('helvetica', 'bold');
       pdf.text('✓ OK', colX[1] + 2, midY);

@@ -16,6 +16,7 @@ const defaultItems = [
   "Condições dos pneus/esteiras","Luzes e sinalização","Freios","Limpador de para-brisa",
   "Vazamentos visíveis","Cintos e dispositivos de segurança","Extintor de incêndio",
   "Estado geral de limpeza","Funcionamento dos instrumentos do painel",
+  "Calibração dos pneus","Condições do Tacógrafo",
 ];
 
 type ChecklistType = 'daily' | 'corrective' | 'preventive';

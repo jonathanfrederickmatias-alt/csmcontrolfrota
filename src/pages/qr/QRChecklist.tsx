@@ -77,7 +77,8 @@ export default function QRChecklist() {
     }
   }, [checklistType]);
 
-  const toggleItem = (id: string, value: boolean) => setItems(prev => prev.map(i => i.id === id ? { ...i, checked: value } : i));
+  const toggleItem = (id: string, value: boolean) => setItems(prev => prev.map(i => i.id === id ? { ...i, checked: value, na: false } : i));
+  const setNa = (id: string, value: boolean) => setItems(prev => prev.map(i => i.id === id ? { ...i, na: value, checked: value ? (null as unknown as boolean) : i.checked } : i));
   const setObservation = (id: string, obs: string) => setItems(prev => prev.map(i => i.id === id ? { ...i, observation: obs } : i));
 
   const addItem = () => {

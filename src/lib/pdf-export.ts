@@ -1489,7 +1489,7 @@ export async function exportChecklistPDF(data: ChecklistPDFData) {
     }
 
     // Non-conformity highlight
-    if (!item.checked) {
+    if (!item.checked && !item.na) {
       pdf.setFillColor(255, 240, 240);
       pdf.rect(margin, y, contentWidth, rowHeight, 'F');
     }
@@ -1502,7 +1502,11 @@ export async function exportChecklistPDF(data: ChecklistPDFData) {
 
     // Status
     const midY = y + rowHeight / 2 + 1.5;
-    if (item.checked) {
+    if (item.na) {
+      pdf.setTextColor(...COLORS.textMuted);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('⊘ N/A', colX[1] + 2, midY);
+    } else if (item.checked) {
       pdf.setTextColor(...COLORS.success);
       pdf.setFont('helvetica', 'bold');
       pdf.text('✓ OK', colX[1] + 2, midY);

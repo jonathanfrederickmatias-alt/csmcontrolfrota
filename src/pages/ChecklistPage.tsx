@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { ClipboardCheck, CheckCircle, Loader2, AlertTriangle, ShieldCheck, ShieldX, Plus, Trash2, Ban } from "lucide-react";
+import { ClipboardCheck, CheckCircle, Loader2, AlertTriangle, ShieldCheck, ShieldX, Plus, Trash2 } from "lucide-react";
 import PhotoUpload from "@/components/PhotoUpload";
 import { toast } from "sonner";
 
@@ -305,7 +305,7 @@ export default function ChecklistPage() {
                           <ShieldX className="w-3.5 h-3.5 mr-1" /><span translate="no">NC</span>
                         </Button>
                         <Button type="button" size="sm" variant={item.na ? "secondary" : "outline"} className={`h-7 px-2 text-xs ${item.na ? 'bg-muted text-muted-foreground' : ''}`} onClick={() => setNa(item.id, !item.na)}>
-                          <Ban className="w-3.5 h-3.5 mr-1" /><span translate="no">N/A</span>
+                          <span translate="no">Não aplica</span>
                         </Button>
                         <Button type="button" size="sm" variant={item.checked === true ? "default" : "outline"} className={`h-7 px-2 text-xs ${item.checked === true ? 'bg-success text-success-foreground hover:bg-success/90' : ''}`} onClick={() => toggleItem(item.id, true)}>
                           <ShieldCheck className="w-3.5 h-3.5 mr-1" /><span translate="no">C</span>

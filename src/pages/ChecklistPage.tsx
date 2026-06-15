@@ -92,7 +92,7 @@ export default function ChecklistPage() {
 
   const handleSaveChecklist = async () => {
     setSaving(true);
-    const unchecked = items.filter(i => i.checked === false).length;
+    const unchecked = items.filter(i => i.checked === false && !i.na).length;
     const isConforme = unchecked === 0;
     const status = !isConforme ? (unchecked > 3 ? 'critical' : 'attention') : 'ok';
 

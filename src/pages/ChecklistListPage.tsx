@@ -104,9 +104,10 @@ export default function ChecklistListPage() {
   });
 
   const getItemsSummary = (items: ChecklistItemDB[]) => {
-    const ok = items.filter(i => i.checked).length;
-    const nc = items.length - ok;
-    return { ok, nc, total: items.length };
+    const ok = items.filter(i => i.checked && !i.na).length;
+    const nc = items.filter(i => !i.checked && !i.na).length;
+    const na = items.filter(i => i.na).length;
+    return { ok, nc, na, total: items.length };
   };
 
   return (

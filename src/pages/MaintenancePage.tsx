@@ -60,7 +60,7 @@ export default function MaintenancePage() {
   const [open, setOpen] = useState(false);
   const [editPlan, setEditPlan] = useState<DBMaintenancePlan | null>(null);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ equipmentId: '', description: '', intervalHours: '', lastDoneAt: '' });
+  const [form, setForm] = useState({ equipmentId: '', description: '', planType: 'horimetro' as 'km' | 'horimetro' | 'tempo', intervalHours: '', lastDoneAt: '', intervalDays: '', lastDoneDate: '' });
 
   // History dialog
   const [historyOpen, setHistoryOpen] = useState(false);

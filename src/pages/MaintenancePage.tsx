@@ -60,7 +60,7 @@ export default function MaintenancePage() {
   const [open, setOpen] = useState(false);
   const [editPlan, setEditPlan] = useState<DBMaintenancePlan | null>(null);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ equipmentId: '', description: '', intervalHours: '', lastDoneAt: '' });
+  const [form, setForm] = useState({ equipmentId: '', description: '', planType: 'horimetro' as 'km' | 'horimetro' | 'tempo', intervalHours: '', lastDoneAt: '', intervalDays: '', lastDoneDate: '' });
 
   // History dialog
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -134,46 +134,74 @@ export default function MaintenancePage() {
 
   useEffect(() => { fetchAll(); }, []);
 
+  const emptyForm = { equipmentId: '', description: '', planType: 'horimetro' as 'km' | 'horimetro' | 'tempo', intervalHours: '', lastDoneAt: '', intervalDays: '', lastDoneDate: '' };
+
+  const computeTempoStatus = (nextDueIso: string): 'ok' | 'approaching' | 'overdue' => {
+    const now = new Date();
+    const next = new Date(nextDueIso);
+    const diffDays = (next.getTime() - now.getTime()) / 86400000;
+    if (diffDays <= 0) return 'overdue';
+    if (diffDays <= 7) return 'approaching';
+    return 'ok';
+  };
+
   const handleSave = async () => {
     setSaving(true);
-    const lastDone = Number(form.lastDoneAt);
-    const interval = Number(form.intervalHours);
     const eq = equipments.find(e => e.id === form.equipmentId);
-    const currentHM = eq?.current_hour_meter || 0;
     const eqType = eq?.type || 'machine';
-    const nextDue = lastDone + interval;
-    const remaining = nextDue - currentHM;
-    const status = calculateMaintenanceStatus(remaining, eqType);
 
-    if (editPlan) {
-      await supabase.from('maintenance_plans').update({
-        equipment_id: form.equipmentId,
-        description: form.description,
+    let payload: any = {
+      equipment_id: form.equipmentId,
+      description: form.description,
+      plan_type: form.planType,
+    };
+
+    if (form.planType === 'tempo') {
+      const days = Number(form.intervalDays);
+      const lastDate = form.lastDoneDate ? new Date(form.lastDoneDate) : new Date();
+      const nextDate = new Date(lastDate.getTime() + days * 86400000);
+      payload = {
+        ...payload,
+        interval_hours: 0,
+        last_done_at: 0,
+        next_due_at: 0,
+        interval_days: days,
+        last_done_date: lastDate.toISOString(),
+        next_due_date: nextDate.toISOString(),
+        status: computeTempoStatus(nextDate.toISOString()),
+      };
+    } else {
+      const lastDone = Number(form.lastDoneAt);
+      const interval = Number(form.intervalHours);
+      const currentHM = eq?.current_hour_meter || 0;
+      const nextDue = lastDone + interval;
+      const remaining = nextDue - currentHM;
+      payload = {
+        ...payload,
         interval_hours: interval,
         last_done_at: lastDone,
         next_due_at: nextDue,
-        status,
-      }).eq('id', editPlan.id);
+        interval_days: null,
+        last_done_date: null,
+        next_due_date: null,
+        status: calculateMaintenanceStatus(remaining, eqType),
+      };
+    }
+
+    if (editPlan) {
+      await supabase.from('maintenance_plans').update(payload).eq('id', editPlan.id);
       toast({ title: 'Plano atualizado com sucesso!' });
     } else {
       const { getMyTenantId } = await import('@/lib/tenant');
       const tenant_id = await getMyTenantId();
-      await supabase.from('maintenance_plans').insert([{
-        tenant_id,
-        equipment_id: form.equipmentId,
-        description: form.description,
-        interval_hours: interval,
-        last_done_at: lastDone,
-        next_due_at: nextDue,
-        status,
-      }]);
+      await supabase.from('maintenance_plans').insert([{ tenant_id, ...payload }]);
       toast({ title: 'Plano criado com sucesso!' });
     }
 
     setSaving(false);
     setOpen(false);
     setEditPlan(null);
-    setForm({ equipmentId: '', description: '', intervalHours: '', lastDoneAt: '' });
+    setForm(emptyForm);
     fetchAll();
   };
 
@@ -187,7 +215,7 @@ export default function MaintenancePage() {
     const currentHM = eq?.current_hour_meter || 0;
     setCompletePlanState(plan);
     setCompleteForm({
-      hourMeter: String(currentHM || ''),
+      hourMeter: plan.plan_type === 'tempo' ? '' : String(currentHM || ''),
       operatorName: '',
       notes: '',
       laborCost: '',
@@ -198,17 +226,17 @@ export default function MaintenancePage() {
 
   const submitCompletePlan = async () => {
     if (!completePlan) return;
-    const hm = parseFloat(completeForm.hourMeter);
-    if (isNaN(hm) || hm < 0) {
+    const plan = completePlan;
+    const isTempo = plan.plan_type === 'tempo';
+    const hm = isTempo ? 0 : parseFloat(completeForm.hourMeter);
+    if (!isTempo && (isNaN(hm) || hm < 0)) {
       toast({ title: 'Horímetro/Km inválido', description: 'Informe um valor numérico válido.', variant: 'destructive' });
       return;
     }
     setCompleteSaving(true);
-    const plan = completePlan;
     const { getMyTenantId } = await import('@/lib/tenant');
     const tenant_id = await getMyTenantId();
 
-    // Save to history
     await supabase.from('maintenance_history').insert([{
       tenant_id,
       equipment_id: plan.equipment_id,
@@ -222,21 +250,34 @@ export default function MaintenancePage() {
       photo_url: completeForm.photoUrl || null,
     }]);
 
-    // Update plan + equipment horímetro
-    await supabase.from('maintenance_plans').update({
-      last_done_at: hm,
-      next_due_at: hm + plan.interval_hours,
-      status: 'ok',
-      last_executed_at: new Date().toISOString(),
-    }).eq('id', plan.id);
+    if (isTempo) {
+      const now = new Date();
+      const days = plan.interval_days || 0;
+      const nextDate = new Date(now.getTime() + days * 86400000);
+      await supabase.from('maintenance_plans').update({
+        last_done_date: now.toISOString(),
+        next_due_date: nextDate.toISOString(),
+        status: computeTempoStatus(nextDate.toISOString()),
+        last_executed_at: now.toISOString(),
+      }).eq('id', plan.id);
+      toast({ title: 'Manutenção concluída!', description: `Próxima em ${nextDate.toLocaleDateString('pt-BR')}` });
+    } else {
+      await supabase.from('maintenance_plans').update({
+        last_done_at: hm,
+        next_due_at: hm + (plan.interval_hours || 0),
+        status: 'ok',
+        last_executed_at: new Date().toISOString(),
+      }).eq('id', plan.id);
 
-    await supabase.from('equipments').update({
-      current_hour_meter: Math.max(hm, equipments.find(e => e.id === plan.equipment_id)?.current_hour_meter || 0),
-    }).eq('id', plan.equipment_id);
+      await supabase.from('equipments').update({
+        current_hour_meter: Math.max(hm, equipments.find(e => e.id === plan.equipment_id)?.current_hour_meter || 0),
+      }).eq('id', plan.equipment_id);
+
+      toast({ title: 'Manutenção concluída e registrada no histórico!', description: `Próxima em ${hm + (plan.interval_hours || 0)}h` });
+    }
 
     setCompleteSaving(false);
     setCompletePlanState(null);
-    toast({ title: 'Manutenção concluída e registrada no histórico!', description: `Próxima em ${hm + plan.interval_hours}h` });
     fetchAll();
   };
 
@@ -245,11 +286,15 @@ export default function MaintenancePage() {
     setForm({
       equipmentId: plan.equipment_id,
       description: plan.description,
-      intervalHours: String(plan.interval_hours),
-      lastDoneAt: String(plan.last_done_at),
+      planType: (plan.plan_type as any) || 'horimetro',
+      intervalHours: plan.interval_hours != null ? String(plan.interval_hours) : '',
+      lastDoneAt: plan.last_done_at != null ? String(plan.last_done_at) : '',
+      intervalDays: plan.interval_days != null ? String(plan.interval_days) : '',
+      lastDoneDate: plan.last_done_date ? plan.last_done_date.slice(0, 10) : '',
     });
     setOpen(true);
   };
+
 
   const handleSaveHistory = async () => {
     setHistorySaving(true);
@@ -737,7 +782,7 @@ export default function MaintenancePage() {
                 <FileText className="w-4 h-4 text-primary" /> PDF
               </Button>
             {canEdit && (
-            <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditPlan(null); setForm({ equipmentId: '', description: '', intervalHours: '', lastDoneAt: '' }); } }}>
+            <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditPlan(null); setForm(emptyForm); } }}>
               <DialogTrigger asChild>
                 <Button className="gap-2"><Plus className="w-4 h-4" /> Novo Plano</Button>
               </DialogTrigger>
@@ -751,14 +796,35 @@ export default function MaintenancePage() {
                     </Select>
                   </div>
                   <div><Label>Descrição *</Label><Input value={form.description} onChange={e => setForm({...form, description: e.target.value})} placeholder="Ex: Troca de óleo" /></div>
-                  <div><Label>Intervalo (horas) *</Label><Input type="number" value={form.intervalHours} onChange={e => setForm({...form, intervalHours: e.target.value})} placeholder="Ex: 500" /></div>
-                  <div><Label>Última feita em (horímetro) *</Label><Input type="number" value={form.lastDoneAt} onChange={e => setForm({...form, lastDoneAt: e.target.value})} placeholder="Ex: 1000" /></div>
-                  <Button onClick={handleSave} disabled={!form.equipmentId || !form.description || !form.intervalHours || !form.lastDoneAt || saving} className="w-full">
+                  <div>
+                    <Label>Tipo de plano *</Label>
+                    <Select value={form.planType} onValueChange={(v: 'km' | 'horimetro' | 'tempo') => setForm({...form, planType: v})}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="horimetro">Horímetro (horas)</SelectItem>
+                        <SelectItem value="km">Quilometragem (km)</SelectItem>
+                        <SelectItem value="tempo">Tempo (dias)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {form.planType === 'tempo' ? (
+                    <>
+                      <div><Label>Intervalo (dias) *</Label><Input type="number" inputMode="numeric" value={form.intervalDays} onChange={e => setForm({...form, intervalDays: e.target.value})} placeholder="Ex: 30" /></div>
+                      <div><Label>Última feita em (data) *</Label><Input type="date" value={form.lastDoneDate} onChange={e => setForm({...form, lastDoneDate: e.target.value})} /></div>
+                    </>
+                  ) : (
+                    <>
+                      <div><Label>Intervalo ({form.planType === 'km' ? 'km' : 'horas'}) *</Label><Input type="number" inputMode="decimal" value={form.intervalHours} onChange={e => setForm({...form, intervalHours: e.target.value})} placeholder={form.planType === 'km' ? 'Ex: 10000' : 'Ex: 500'} /></div>
+                      <div><Label>Última feita em ({form.planType === 'km' ? 'km' : 'horímetro'}) *</Label><Input type="number" inputMode="decimal" value={form.lastDoneAt} onChange={e => setForm({...form, lastDoneAt: e.target.value})} placeholder={form.planType === 'km' ? 'Ex: 50000' : 'Ex: 1000'} /></div>
+                    </>
+                  )}
+                  <Button onClick={handleSave} disabled={!form.equipmentId || !form.description || (form.planType === 'tempo' ? (!form.intervalDays || !form.lastDoneDate) : (!form.intervalHours || !form.lastDoneAt)) || saving} className="w-full">
                     {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}{editPlan ? 'Salvar alterações' : 'Salvar'}
                   </Button>
                 </div>
               </DialogContent>
             </Dialog>
+
             )}
             </div>
           </div>
@@ -776,7 +842,13 @@ export default function MaintenancePage() {
               {filteredPlans.map(plan => {
                 const eq = equipments.find(e => e.id === plan.equipment_id);
                 const sc = statusConfig[plan.status];
-                const remaining = plan.next_due_at - (eq?.current_hour_meter || 0);
+                const planType = plan.plan_type || 'horimetro';
+                const unit = planType === 'km' ? 'km' : 'h';
+                const isTempo = planType === 'tempo';
+                const remaining = isTempo
+                  ? (plan.next_due_date ? Math.ceil((new Date(plan.next_due_date).getTime() - Date.now()) / 86400000) : 0)
+                  : ((plan.next_due_at || 0) - (eq?.current_hour_meter || 0));
+                const intervalApprox = isTempo ? Math.max(1, (plan.interval_days || 0) * 0.1) : ((plan.interval_hours || 0) * 0.1);
                 return (
                   <div key={plan.id} className={`glass-card rounded-xl p-5 border-l-4 ${sc.border}`}>
                     <div className="flex items-center justify-between">
@@ -784,19 +856,35 @@ export default function MaintenancePage() {
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <h3 className="font-bold">{plan.description}</h3>
                           <span className={`text-xs px-2 py-0.5 rounded-full ${sc.bg} ${sc.color} font-medium`}>{sc.label}</span>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium uppercase">
+                            {isTempo ? 'Tempo' : planType === 'km' ? 'KM' : 'Horímetro'}
+                          </span>
                         </div>
                         <p className="text-sm text-muted-foreground">{eq ? eqLabel(eq) : 'Equipamento'}</p>
                         <div className="flex gap-4 mt-2 text-xs text-muted-foreground font-mono flex-wrap">
-                          <span>Intervalo: {plan.interval_hours}h</span>
-                          <span>Próxima: {plan.next_due_at}h</span>
-                          <span className={remaining <= 0 ? 'text-destructive font-bold' : remaining <= plan.interval_hours * 0.1 ? 'text-warning font-bold' : 'text-success'}>
-                            {remaining <= 0 ? `Atrasada ${Math.abs(remaining)}h` : `Faltam ${remaining}h`}
-                          </span>
+                          {isTempo ? (
+                            <>
+                              <span>Intervalo: {plan.interval_days} dias</span>
+                              <span>Próxima: {plan.next_due_date ? new Date(plan.next_due_date).toLocaleDateString('pt-BR') : '—'}</span>
+                              <span className={remaining <= 0 ? 'text-destructive font-bold' : remaining <= intervalApprox ? 'text-warning font-bold' : 'text-success'}>
+                                {remaining <= 0 ? `Atrasada ${Math.abs(remaining)} dias` : `Faltam ${remaining} dias`}
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <span>Intervalo: {plan.interval_hours}{unit}</span>
+                              <span>Próxima: {plan.next_due_at}{unit}</span>
+                              <span className={remaining <= 0 ? 'text-destructive font-bold' : remaining <= intervalApprox ? 'text-warning font-bold' : 'text-success'}>
+                                {remaining <= 0 ? `Atrasada ${Math.abs(remaining)}${unit}` : `Faltam ${remaining}${unit}`}
+                              </span>
+                            </>
+                          )}
                           {plan.last_executed_at && (
                             <span>Executada: {new Date(plan.last_executed_at).toLocaleDateString('pt-BR')}</span>
                           )}
                         </div>
                       </div>
+
                       <div className="flex gap-2 shrink-0">
                         {canEdit && (
                           <button onClick={() => handleEditPlan(plan)} className="text-muted-foreground hover:text-primary p-2 transition-colors">
@@ -1495,8 +1583,13 @@ export default function MaintenancePage() {
           </DialogHeader>
           {completePlan && (() => {
             const eq = equipments.find(e => e.id === completePlan.equipment_id);
-            const isVehicle = eq?.type === 'truck';
+            const planType = completePlan.plan_type || 'horimetro';
+            const isTempo = planType === 'tempo';
+            const isVehicle = planType === 'km' || eq?.type === 'truck';
             const unitLabel = isVehicle ? 'Quilometragem (km)' : 'Horímetro (h)';
+            const nextDateIfTempo = isTempo
+              ? new Date(Date.now() + (completePlan.interval_days || 0) * 86400000).toLocaleDateString('pt-BR')
+              : '';
             return (
               <div className="space-y-3">
                 <div className="bg-secondary/50 rounded-lg p-3 text-sm">
@@ -1505,19 +1598,23 @@ export default function MaintenancePage() {
                     Equipamento: {eq ? eqLabel(eq) : '—'}
                   </p>
                   <p className="text-muted-foreground text-xs">
-                    Atual: {eq?.current_hour_meter || 0}{isVehicle ? ' km' : ' h'} • Intervalo: {completePlan.interval_hours}{isVehicle ? ' km' : ' h'}
+                    {isTempo
+                      ? `Intervalo: ${completePlan.interval_days} dias`
+                      : `Atual: ${eq?.current_hour_meter || 0}${isVehicle ? ' km' : ' h'} • Intervalo: ${completePlan.interval_hours}${isVehicle ? ' km' : ' h'}`}
                   </p>
                 </div>
-                <div>
-                  <Label>{unitLabel} em que foi executada *</Label>
-                  <Input
-                    type="number"
-                    inputMode="decimal"
-                    value={completeForm.hourMeter}
-                    onChange={e => setCompleteForm({ ...completeForm, hourMeter: e.target.value })}
-                    placeholder="Ex: 1250"
-                  />
-                </div>
+                {!isTempo && (
+                  <div>
+                    <Label>{unitLabel} em que foi executada *</Label>
+                    <Input
+                      type="number"
+                      inputMode="decimal"
+                      value={completeForm.hourMeter}
+                      onChange={e => setCompleteForm({ ...completeForm, hourMeter: e.target.value })}
+                      placeholder="Ex: 1250"
+                    />
+                  </div>
+                )}
                 <div>
                   <Label>Executado por</Label>
                   <Input
@@ -1565,14 +1662,17 @@ export default function MaintenancePage() {
                 />
                 <div className="bg-primary/5 rounded-lg p-2 text-xs text-muted-foreground">
                   Próxima manutenção será agendada para: <strong className="text-primary">
-                    {(parseFloat(completeForm.hourMeter) || 0) + completePlan.interval_hours}{isVehicle ? ' km' : ' h'}
+                    {isTempo
+                      ? nextDateIfTempo
+                      : `${(parseFloat(completeForm.hourMeter) || 0) + (completePlan.interval_hours || 0)}${isVehicle ? ' km' : ' h'}`}
                   </strong>
                 </div>
                 <div className="flex gap-2 pt-2">
                   <Button variant="outline" onClick={() => setCompletePlanState(null)} className="flex-1">
+
                     Cancelar
                   </Button>
-                  <Button onClick={submitCompletePlan} disabled={completeSaving || !completeForm.hourMeter} className="flex-1 bg-success hover:bg-success/90 text-success-foreground">
+                  <Button onClick={submitCompletePlan} disabled={completeSaving || (!isTempo && !completeForm.hourMeter)} className="flex-1 bg-success hover:bg-success/90 text-success-foreground">
                     {completeSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                     <CheckCircle className="w-4 h-4 mr-1" /> Confirmar Conclusão
                   </Button>

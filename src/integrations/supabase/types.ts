@@ -579,10 +579,14 @@ export type Database = {
           description: string
           equipment_id: string
           id: string
-          interval_hours: number
-          last_done_at: number
+          interval_days: number | null
+          interval_hours: number | null
+          last_done_at: number | null
+          last_done_date: string | null
           last_executed_at: string | null
-          next_due_at: number
+          next_due_at: number | null
+          next_due_date: string | null
+          plan_type: string
           status: string
           tenant_id: string
           updated_at: string
@@ -592,10 +596,14 @@ export type Database = {
           description: string
           equipment_id: string
           id?: string
-          interval_hours: number
-          last_done_at?: number
+          interval_days?: number | null
+          interval_hours?: number | null
+          last_done_at?: number | null
+          last_done_date?: string | null
           last_executed_at?: string | null
-          next_due_at: number
+          next_due_at?: number | null
+          next_due_date?: string | null
+          plan_type?: string
           status?: string
           tenant_id: string
           updated_at?: string
@@ -605,10 +613,14 @@ export type Database = {
           description?: string
           equipment_id?: string
           id?: string
-          interval_hours?: number
-          last_done_at?: number
+          interval_days?: number | null
+          interval_hours?: number | null
+          last_done_at?: number | null
+          last_done_date?: string | null
           last_executed_at?: string | null
-          next_due_at?: number
+          next_due_at?: number | null
+          next_due_date?: string | null
+          plan_type?: string
           status?: string
           tenant_id?: string
           updated_at?: string

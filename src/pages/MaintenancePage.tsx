@@ -842,7 +842,13 @@ export default function MaintenancePage() {
               {filteredPlans.map(plan => {
                 const eq = equipments.find(e => e.id === plan.equipment_id);
                 const sc = statusConfig[plan.status];
-                const remaining = plan.next_due_at - (eq?.current_hour_meter || 0);
+                const planType = plan.plan_type || 'horimetro';
+                const unit = planType === 'km' ? 'km' : 'h';
+                const isTempo = planType === 'tempo';
+                const remaining = isTempo
+                  ? (plan.next_due_date ? Math.ceil((new Date(plan.next_due_date).getTime() - Date.now()) / 86400000) : 0)
+                  : ((plan.next_due_at || 0) - (eq?.current_hour_meter || 0));
+                const intervalApprox = isTempo ? Math.max(1, (plan.interval_days || 0) * 0.1) : ((plan.interval_hours || 0) * 0.1);
                 return (
                   <div key={plan.id} className={`glass-card rounded-xl p-5 border-l-4 ${sc.border}`}>
                     <div className="flex items-center justify-between">
@@ -850,19 +856,35 @@ export default function MaintenancePage() {
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <h3 className="font-bold">{plan.description}</h3>
                           <span className={`text-xs px-2 py-0.5 rounded-full ${sc.bg} ${sc.color} font-medium`}>{sc.label}</span>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium uppercase">
+                            {isTempo ? 'Tempo' : planType === 'km' ? 'KM' : 'Horímetro'}
+                          </span>
                         </div>
                         <p className="text-sm text-muted-foreground">{eq ? eqLabel(eq) : 'Equipamento'}</p>
                         <div className="flex gap-4 mt-2 text-xs text-muted-foreground font-mono flex-wrap">
-                          <span>Intervalo: {plan.interval_hours}h</span>
-                          <span>Próxima: {plan.next_due_at}h</span>
-                          <span className={remaining <= 0 ? 'text-destructive font-bold' : remaining <= plan.interval_hours * 0.1 ? 'text-warning font-bold' : 'text-success'}>
-                            {remaining <= 0 ? `Atrasada ${Math.abs(remaining)}h` : `Faltam ${remaining}h`}
-                          </span>
+                          {isTempo ? (
+                            <>
+                              <span>Intervalo: {plan.interval_days} dias</span>
+                              <span>Próxima: {plan.next_due_date ? new Date(plan.next_due_date).toLocaleDateString('pt-BR') : '—'}</span>
+                              <span className={remaining <= 0 ? 'text-destructive font-bold' : remaining <= intervalApprox ? 'text-warning font-bold' : 'text-success'}>
+                                {remaining <= 0 ? `Atrasada ${Math.abs(remaining)} dias` : `Faltam ${remaining} dias`}
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <span>Intervalo: {plan.interval_hours}{unit}</span>
+                              <span>Próxima: {plan.next_due_at}{unit}</span>
+                              <span className={remaining <= 0 ? 'text-destructive font-bold' : remaining <= intervalApprox ? 'text-warning font-bold' : 'text-success'}>
+                                {remaining <= 0 ? `Atrasada ${Math.abs(remaining)}${unit}` : `Faltam ${remaining}${unit}`}
+                              </span>
+                            </>
+                          )}
                           {plan.last_executed_at && (
                             <span>Executada: {new Date(plan.last_executed_at).toLocaleDateString('pt-BR')}</span>
                           )}
                         </div>
                       </div>
+
                       <div className="flex gap-2 shrink-0">
                         {canEdit && (
                           <button onClick={() => handleEditPlan(plan)} className="text-muted-foreground hover:text-primary p-2 transition-colors">

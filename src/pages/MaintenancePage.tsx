@@ -1672,7 +1672,7 @@ export default function MaintenancePage() {
 
                     Cancelar
                   </Button>
-                  <Button onClick={submitCompletePlan} disabled={completeSaving || !completeForm.hourMeter} className="flex-1 bg-success hover:bg-success/90 text-success-foreground">
+                  <Button onClick={submitCompletePlan} disabled={completeSaving || (!isTempo && !completeForm.hourMeter)} className="flex-1 bg-success hover:bg-success/90 text-success-foreground">
                     {completeSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                     <CheckCircle className="w-4 h-4 mr-1" /> Confirmar Conclusão
                   </Button>

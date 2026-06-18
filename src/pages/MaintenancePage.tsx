@@ -1583,8 +1583,13 @@ export default function MaintenancePage() {
           </DialogHeader>
           {completePlan && (() => {
             const eq = equipments.find(e => e.id === completePlan.equipment_id);
-            const isVehicle = eq?.type === 'truck';
+            const planType = completePlan.plan_type || 'horimetro';
+            const isTempo = planType === 'tempo';
+            const isVehicle = planType === 'km' || eq?.type === 'truck';
             const unitLabel = isVehicle ? 'Quilometragem (km)' : 'Horímetro (h)';
+            const nextDateIfTempo = isTempo
+              ? new Date(Date.now() + (completePlan.interval_days || 0) * 86400000).toLocaleDateString('pt-BR')
+              : '';
             return (
               <div className="space-y-3">
                 <div className="bg-secondary/50 rounded-lg p-3 text-sm">
@@ -1593,19 +1598,23 @@ export default function MaintenancePage() {
                     Equipamento: {eq ? eqLabel(eq) : '—'}
                   </p>
                   <p className="text-muted-foreground text-xs">
-                    Atual: {eq?.current_hour_meter || 0}{isVehicle ? ' km' : ' h'} • Intervalo: {completePlan.interval_hours}{isVehicle ? ' km' : ' h'}
+                    {isTempo
+                      ? `Intervalo: ${completePlan.interval_days} dias`
+                      : `Atual: ${eq?.current_hour_meter || 0}${isVehicle ? ' km' : ' h'} • Intervalo: ${completePlan.interval_hours}${isVehicle ? ' km' : ' h'}`}
                   </p>
                 </div>
-                <div>
-                  <Label>{unitLabel} em que foi executada *</Label>
-                  <Input
-                    type="number"
-                    inputMode="decimal"
-                    value={completeForm.hourMeter}
-                    onChange={e => setCompleteForm({ ...completeForm, hourMeter: e.target.value })}
-                    placeholder="Ex: 1250"
-                  />
-                </div>
+                {!isTempo && (
+                  <div>
+                    <Label>{unitLabel} em que foi executada *</Label>
+                    <Input
+                      type="number"
+                      inputMode="decimal"
+                      value={completeForm.hourMeter}
+                      onChange={e => setCompleteForm({ ...completeForm, hourMeter: e.target.value })}
+                      placeholder="Ex: 1250"
+                    />
+                  </div>
+                )}
                 <div>
                   <Label>Executado por</Label>
                   <Input
@@ -1653,11 +1662,14 @@ export default function MaintenancePage() {
                 />
                 <div className="bg-primary/5 rounded-lg p-2 text-xs text-muted-foreground">
                   Próxima manutenção será agendada para: <strong className="text-primary">
-                    {(parseFloat(completeForm.hourMeter) || 0) + completePlan.interval_hours}{isVehicle ? ' km' : ' h'}
+                    {isTempo
+                      ? nextDateIfTempo
+                      : `${(parseFloat(completeForm.hourMeter) || 0) + (completePlan.interval_hours || 0)}${isVehicle ? ' km' : ' h'}`}
                   </strong>
                 </div>
                 <div className="flex gap-2 pt-2">
                   <Button variant="outline" onClick={() => setCompletePlanState(null)} className="flex-1">
+
                     Cancelar
                   </Button>
                   <Button onClick={submitCompletePlan} disabled={completeSaving || !completeForm.hourMeter} className="flex-1 bg-success hover:bg-success/90 text-success-foreground">

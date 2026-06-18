@@ -782,7 +782,7 @@ export default function MaintenancePage() {
                 <FileText className="w-4 h-4 text-primary" /> PDF
               </Button>
             {canEdit && (
-            <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditPlan(null); setForm({ equipmentId: '', description: '', intervalHours: '', lastDoneAt: '' }); } }}>
+            <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditPlan(null); setForm(emptyForm); } }}>
               <DialogTrigger asChild>
                 <Button className="gap-2"><Plus className="w-4 h-4" /> Novo Plano</Button>
               </DialogTrigger>
@@ -796,14 +796,35 @@ export default function MaintenancePage() {
                     </Select>
                   </div>
                   <div><Label>Descrição *</Label><Input value={form.description} onChange={e => setForm({...form, description: e.target.value})} placeholder="Ex: Troca de óleo" /></div>
-                  <div><Label>Intervalo (horas) *</Label><Input type="number" value={form.intervalHours} onChange={e => setForm({...form, intervalHours: e.target.value})} placeholder="Ex: 500" /></div>
-                  <div><Label>Última feita em (horímetro) *</Label><Input type="number" value={form.lastDoneAt} onChange={e => setForm({...form, lastDoneAt: e.target.value})} placeholder="Ex: 1000" /></div>
-                  <Button onClick={handleSave} disabled={!form.equipmentId || !form.description || !form.intervalHours || !form.lastDoneAt || saving} className="w-full">
+                  <div>
+                    <Label>Tipo de plano *</Label>
+                    <Select value={form.planType} onValueChange={(v: 'km' | 'horimetro' | 'tempo') => setForm({...form, planType: v})}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="horimetro">Horímetro (horas)</SelectItem>
+                        <SelectItem value="km">Quilometragem (km)</SelectItem>
+                        <SelectItem value="tempo">Tempo (dias)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {form.planType === 'tempo' ? (
+                    <>
+                      <div><Label>Intervalo (dias) *</Label><Input type="number" inputMode="numeric" value={form.intervalDays} onChange={e => setForm({...form, intervalDays: e.target.value})} placeholder="Ex: 30" /></div>
+                      <div><Label>Última feita em (data) *</Label><Input type="date" value={form.lastDoneDate} onChange={e => setForm({...form, lastDoneDate: e.target.value})} /></div>
+                    </>
+                  ) : (
+                    <>
+                      <div><Label>Intervalo ({form.planType === 'km' ? 'km' : 'horas'}) *</Label><Input type="number" inputMode="decimal" value={form.intervalHours} onChange={e => setForm({...form, intervalHours: e.target.value})} placeholder={form.planType === 'km' ? 'Ex: 10000' : 'Ex: 500'} /></div>
+                      <div><Label>Última feita em ({form.planType === 'km' ? 'km' : 'horímetro'}) *</Label><Input type="number" inputMode="decimal" value={form.lastDoneAt} onChange={e => setForm({...form, lastDoneAt: e.target.value})} placeholder={form.planType === 'km' ? 'Ex: 50000' : 'Ex: 1000'} /></div>
+                    </>
+                  )}
+                  <Button onClick={handleSave} disabled={!form.equipmentId || !form.description || (form.planType === 'tempo' ? (!form.intervalDays || !form.lastDoneDate) : (!form.intervalHours || !form.lastDoneAt)) || saving} className="w-full">
                     {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}{editPlan ? 'Salvar alterações' : 'Salvar'}
                   </Button>
                 </div>
               </DialogContent>
             </Dialog>
+
             )}
             </div>
           </div>

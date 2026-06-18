@@ -134,46 +134,74 @@ export default function MaintenancePage() {
 
   useEffect(() => { fetchAll(); }, []);
 
+  const emptyForm = { equipmentId: '', description: '', planType: 'horimetro' as 'km' | 'horimetro' | 'tempo', intervalHours: '', lastDoneAt: '', intervalDays: '', lastDoneDate: '' };
+
+  const computeTempoStatus = (nextDueIso: string): 'ok' | 'approaching' | 'overdue' => {
+    const now = new Date();
+    const next = new Date(nextDueIso);
+    const diffDays = (next.getTime() - now.getTime()) / 86400000;
+    if (diffDays <= 0) return 'overdue';
+    if (diffDays <= 7) return 'approaching';
+    return 'ok';
+  };
+
   const handleSave = async () => {
     setSaving(true);
-    const lastDone = Number(form.lastDoneAt);
-    const interval = Number(form.intervalHours);
     const eq = equipments.find(e => e.id === form.equipmentId);
-    const currentHM = eq?.current_hour_meter || 0;
     const eqType = eq?.type || 'machine';
-    const nextDue = lastDone + interval;
-    const remaining = nextDue - currentHM;
-    const status = calculateMaintenanceStatus(remaining, eqType);
 
-    if (editPlan) {
-      await supabase.from('maintenance_plans').update({
-        equipment_id: form.equipmentId,
-        description: form.description,
+    let payload: any = {
+      equipment_id: form.equipmentId,
+      description: form.description,
+      plan_type: form.planType,
+    };
+
+    if (form.planType === 'tempo') {
+      const days = Number(form.intervalDays);
+      const lastDate = form.lastDoneDate ? new Date(form.lastDoneDate) : new Date();
+      const nextDate = new Date(lastDate.getTime() + days * 86400000);
+      payload = {
+        ...payload,
+        interval_hours: 0,
+        last_done_at: 0,
+        next_due_at: 0,
+        interval_days: days,
+        last_done_date: lastDate.toISOString(),
+        next_due_date: nextDate.toISOString(),
+        status: computeTempoStatus(nextDate.toISOString()),
+      };
+    } else {
+      const lastDone = Number(form.lastDoneAt);
+      const interval = Number(form.intervalHours);
+      const currentHM = eq?.current_hour_meter || 0;
+      const nextDue = lastDone + interval;
+      const remaining = nextDue - currentHM;
+      payload = {
+        ...payload,
         interval_hours: interval,
         last_done_at: lastDone,
         next_due_at: nextDue,
-        status,
-      }).eq('id', editPlan.id);
+        interval_days: null,
+        last_done_date: null,
+        next_due_date: null,
+        status: calculateMaintenanceStatus(remaining, eqType),
+      };
+    }
+
+    if (editPlan) {
+      await supabase.from('maintenance_plans').update(payload).eq('id', editPlan.id);
       toast({ title: 'Plano atualizado com sucesso!' });
     } else {
       const { getMyTenantId } = await import('@/lib/tenant');
       const tenant_id = await getMyTenantId();
-      await supabase.from('maintenance_plans').insert([{
-        tenant_id,
-        equipment_id: form.equipmentId,
-        description: form.description,
-        interval_hours: interval,
-        last_done_at: lastDone,
-        next_due_at: nextDue,
-        status,
-      }]);
+      await supabase.from('maintenance_plans').insert([{ tenant_id, ...payload }]);
       toast({ title: 'Plano criado com sucesso!' });
     }
 
     setSaving(false);
     setOpen(false);
     setEditPlan(null);
-    setForm({ equipmentId: '', description: '', intervalHours: '', lastDoneAt: '' });
+    setForm(emptyForm);
     fetchAll();
   };
 
@@ -187,7 +215,7 @@ export default function MaintenancePage() {
     const currentHM = eq?.current_hour_meter || 0;
     setCompletePlanState(plan);
     setCompleteForm({
-      hourMeter: String(currentHM || ''),
+      hourMeter: plan.plan_type === 'tempo' ? '' : String(currentHM || ''),
       operatorName: '',
       notes: '',
       laborCost: '',
@@ -198,17 +226,17 @@ export default function MaintenancePage() {
 
   const submitCompletePlan = async () => {
     if (!completePlan) return;
-    const hm = parseFloat(completeForm.hourMeter);
-    if (isNaN(hm) || hm < 0) {
+    const plan = completePlan;
+    const isTempo = plan.plan_type === 'tempo';
+    const hm = isTempo ? 0 : parseFloat(completeForm.hourMeter);
+    if (!isTempo && (isNaN(hm) || hm < 0)) {
       toast({ title: 'Horímetro/Km inválido', description: 'Informe um valor numérico válido.', variant: 'destructive' });
       return;
     }
     setCompleteSaving(true);
-    const plan = completePlan;
     const { getMyTenantId } = await import('@/lib/tenant');
     const tenant_id = await getMyTenantId();
 
-    // Save to history
     await supabase.from('maintenance_history').insert([{
       tenant_id,
       equipment_id: plan.equipment_id,
@@ -222,21 +250,34 @@ export default function MaintenancePage() {
       photo_url: completeForm.photoUrl || null,
     }]);
 
-    // Update plan + equipment horímetro
-    await supabase.from('maintenance_plans').update({
-      last_done_at: hm,
-      next_due_at: hm + plan.interval_hours,
-      status: 'ok',
-      last_executed_at: new Date().toISOString(),
-    }).eq('id', plan.id);
+    if (isTempo) {
+      const now = new Date();
+      const days = plan.interval_days || 0;
+      const nextDate = new Date(now.getTime() + days * 86400000);
+      await supabase.from('maintenance_plans').update({
+        last_done_date: now.toISOString(),
+        next_due_date: nextDate.toISOString(),
+        status: computeTempoStatus(nextDate.toISOString()),
+        last_executed_at: now.toISOString(),
+      }).eq('id', plan.id);
+      toast({ title: 'Manutenção concluída!', description: `Próxima em ${nextDate.toLocaleDateString('pt-BR')}` });
+    } else {
+      await supabase.from('maintenance_plans').update({
+        last_done_at: hm,
+        next_due_at: hm + (plan.interval_hours || 0),
+        status: 'ok',
+        last_executed_at: new Date().toISOString(),
+      }).eq('id', plan.id);
 
-    await supabase.from('equipments').update({
-      current_hour_meter: Math.max(hm, equipments.find(e => e.id === plan.equipment_id)?.current_hour_meter || 0),
-    }).eq('id', plan.equipment_id);
+      await supabase.from('equipments').update({
+        current_hour_meter: Math.max(hm, equipments.find(e => e.id === plan.equipment_id)?.current_hour_meter || 0),
+      }).eq('id', plan.equipment_id);
+
+      toast({ title: 'Manutenção concluída e registrada no histórico!', description: `Próxima em ${hm + (plan.interval_hours || 0)}h` });
+    }
 
     setCompleteSaving(false);
     setCompletePlanState(null);
-    toast({ title: 'Manutenção concluída e registrada no histórico!', description: `Próxima em ${hm + plan.interval_hours}h` });
     fetchAll();
   };
 
@@ -245,11 +286,15 @@ export default function MaintenancePage() {
     setForm({
       equipmentId: plan.equipment_id,
       description: plan.description,
-      intervalHours: String(plan.interval_hours),
-      lastDoneAt: String(plan.last_done_at),
+      planType: (plan.plan_type as any) || 'horimetro',
+      intervalHours: plan.interval_hours != null ? String(plan.interval_hours) : '',
+      lastDoneAt: plan.last_done_at != null ? String(plan.last_done_at) : '',
+      intervalDays: plan.interval_days != null ? String(plan.interval_days) : '',
+      lastDoneDate: plan.last_done_date ? plan.last_done_date.slice(0, 10) : '',
     });
     setOpen(true);
   };
+
 
   const handleSaveHistory = async () => {
     setHistorySaving(true);

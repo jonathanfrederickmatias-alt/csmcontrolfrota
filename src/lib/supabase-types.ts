@@ -52,9 +52,13 @@ export interface DBMaintenancePlan {
   id: string;
   equipment_id: string;
   description: string;
-  interval_hours: number;
-  last_done_at: number;
-  next_due_at: number;
+  plan_type?: 'km' | 'horimetro' | 'tempo';
+  interval_hours: number | null;
+  last_done_at: number | null;
+  next_due_at: number | null;
+  interval_days?: number | null;
+  last_done_date?: string | null;
+  next_due_date?: string | null;
   status: 'ok' | 'approaching' | 'overdue';
   last_executed_at?: string;
   created_at: string;

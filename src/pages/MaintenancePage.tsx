@@ -495,6 +495,36 @@ export default function MaintenancePage() {
     fetchAll();
   };
 
+  // Valoração: master define custos e libera para "Realizados"
+  const openValuation = (h: DBMaintenanceHistory) => {
+    setValuationItem(h);
+    setValuationForm({
+      labor_cost: h.labor_cost ? String(h.labor_cost) : '',
+      parts_cost: h.parts_cost ? String(h.parts_cost) : '',
+      notes: h.notes || '',
+    });
+  };
+  const handleSaveValuation = async () => {
+    if (!valuationItem) return;
+    setValuationSaving(true);
+    const { data: userData } = await supabase.auth.getUser();
+    const { error } = await supabase.from('maintenance_history').update({
+      labor_cost: valuationForm.labor_cost ? Number(valuationForm.labor_cost) : 0,
+      parts_cost: valuationForm.parts_cost ? Number(valuationForm.parts_cost) : 0,
+      notes: valuationForm.notes || null,
+      costs_validated: true,
+      costs_validated_at: new Date().toISOString(),
+      costs_validated_by: userData.user?.id || null,
+    } as any).eq('id', valuationItem.id);
+    setValuationSaving(false);
+    if (error) {
+      toast({ title: 'Erro ao salvar valoração', description: error.message, variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Valoração concluída!', description: 'O serviço foi movido para "Realizados".' });
+    setValuationItem(null);
+    fetchAll();
+
   const handleCreateOS = async () => {
     if (!newOsForm.equipmentId || !newOsForm.description) return;
     setNewOsSaving(true);

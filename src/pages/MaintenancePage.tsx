@@ -967,6 +967,69 @@ export default function MaintenancePage() {
         </TabsContent>
 
 
+        {/* ===== VALORAÇÃO (somente admin) ===== */}
+        {isAdmin && (
+          <TabsContent value="valuation" className="space-y-4 mt-4">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div>
+                <h2 className="text-lg font-bold">Aguardando valoração</h2>
+                <p className="text-xs text-muted-foreground">Serviços de OS e planos concluídos. Lance os custos para liberar em "Realizados".</p>
+              </div>
+              <Select value={valuationFilter} onValueChange={setValuationFilter}>
+                <SelectTrigger className="w-72"><SelectValue placeholder="Filtrar por equipamento" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os equipamentos</SelectItem>
+                  {equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eqLabel(eq)}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {pendingValuation.length === 0 ? (
+              <div className="glass-card rounded-xl p-8 text-center">
+                <CheckCircle className="w-12 h-12 text-success mx-auto mb-4" />
+                <p className="text-muted-foreground">Nenhum serviço aguardando valoração.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {pendingValuation.map(h => {
+                  const eq = equipments.find(e => e.id === h.equipment_id);
+                  const plan = plans.find(p => p.id === h.plan_id);
+                  const osMatch = h.description.match(/^OS #(\d+)/);
+                  const linkedOS = osMatch ? workOrders.find(o => o.os_number === Number(osMatch[1])) : undefined;
+                  const origin = osMatch ? `OS #${osMatch[1]}` : (plan ? 'Plano Preventivo' : 'Registro Manual');
+                  const originBg = osMatch ? 'bg-primary/15 text-primary' : (plan ? 'bg-warning/15 text-warning' : 'bg-secondary text-muted-foreground');
+                  const sugLabor = Number(linkedOS?.labor_cost ?? h.labor_cost ?? 0);
+                  const sugParts = Number(linkedOS?.parts_cost ?? h.parts_cost ?? 0);
+                  return (
+                    <div key={h.id} className="glass-card rounded-xl p-4 border-l-4 border-l-warning">
+                      <div className="flex items-start justify-between gap-3 flex-wrap">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${originBg}`}>{origin}</span>
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-warning/20 text-warning font-semibold">Aguardando valoração</span>
+                            <span className="text-xs text-muted-foreground">{new Date(h.executed_at).toLocaleString('pt-BR')}</span>
+                          </div>
+                          <p className="font-semibold text-sm">{h.description}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5"><strong>{eq ? eqLabel(eq) : '—'}</strong></p>
+                          {h.operator_name && <p className="text-xs text-muted-foreground">👤 Mecânico: {h.operator_name}</p>}
+                          {(sugLabor > 0 || sugParts > 0) && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Sugerido: MO {sugLabor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} · Peças {sugParts.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            </p>
+                          )}
+                        </div>
+                        <Button size="sm" onClick={() => openValuation(h)} className="gap-1.5">
+                          <Edit2 className="w-3.5 h-3.5" /> Lançar custos
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </TabsContent>
+        )}
+
         {/* ===== SERVIÇOS REALIZADOS ===== */}
         <TabsContent value="completed" className="space-y-4 mt-4">
           <div className="flex items-center justify-between gap-3 flex-wrap">

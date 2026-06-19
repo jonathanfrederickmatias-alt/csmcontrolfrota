@@ -1477,6 +1477,45 @@ export default function MaintenancePage() {
         </DialogContent>
       </Dialog>
 
+      {/* Valuation Dialog (admin lança custos) */}
+      <Dialog open={!!valuationItem} onOpenChange={v => { if (!v) setValuationItem(null); }}>
+        <DialogContent className="bg-card border-border">
+          <DialogHeader><DialogTitle>Lançar custos da manutenção</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="text-sm space-y-1 p-3 rounded-lg bg-muted/40">
+              <p className="font-semibold">{valuationItem?.description}</p>
+              <p className="text-xs text-muted-foreground">
+                {valuationItem && equipments.find(e => e.id === valuationItem.equipment_id)?.name} · Horímetro/Km: {valuationItem?.hour_meter}
+              </p>
+              {valuationItem?.operator_name && <p className="text-xs text-muted-foreground">👤 {valuationItem.operator_name}</p>}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Custo Mão de Obra (R$)</Label>
+                <Input type="number" step="0.01" inputMode="decimal" value={valuationForm.labor_cost} onChange={e => setValuationForm({...valuationForm, labor_cost: e.target.value})} placeholder="0,00" />
+              </div>
+              <div>
+                <Label>Custo Peças (R$)</Label>
+                <Input type="number" step="0.01" inputMode="decimal" value={valuationForm.parts_cost} onChange={e => setValuationForm({...valuationForm, parts_cost: e.target.value})} placeholder="0,00" />
+              </div>
+            </div>
+            <div className="text-sm font-semibold text-right">
+              Total: {(Number(valuationForm.labor_cost || 0) + Number(valuationForm.parts_cost || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+            </div>
+            <div>
+              <Label>Observações</Label>
+              <Textarea value={valuationForm.notes} onChange={e => setValuationForm({...valuationForm, notes: e.target.value})} rows={2} placeholder="Notas sobre a valoração (opcional)" />
+            </div>
+            <Button onClick={handleSaveValuation} disabled={valuationSaving} className="w-full">
+              {valuationSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Validar e mover para Realizados
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+
+
       {/* Closure Dialog (Dar Baixa na OS) */}
       <Dialog open={!!closureOS} onOpenChange={v => { if (!v) setClosureOS(null); }}>
         <DialogContent className="bg-card border-border">

@@ -369,7 +369,15 @@ export default function MaintenancePage() {
     .filter(o => osStatusFilter === 'all' || o.status === osStatusFilter);
 
   // Serviços Realizados: histórico (vem de OS concluídas + planos concluídos + manuais)
+  // Só aparecem aqui depois que o master fizer a valoração (lançar os custos)
   const filteredCompleted = (completedFilter === 'all' ? history : history.filter(h => h.equipment_id === completedFilter))
+    .filter(h => h.costs_validated !== false)
+    .slice()
+    .sort((a, b) => new Date(b.executed_at).getTime() - new Date(a.executed_at).getTime());
+
+  // Pendentes de valoração (apenas admin enxerga essa aba)
+  const pendingValuation = (valuationFilter === 'all' ? history : history.filter(h => h.equipment_id === valuationFilter))
+    .filter(h => h.costs_validated === false)
     .slice()
     .sort((a, b) => new Date(b.executed_at).getTime() - new Date(a.executed_at).getTime());
 

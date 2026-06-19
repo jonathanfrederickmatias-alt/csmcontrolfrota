@@ -93,6 +93,12 @@ export default function MaintenancePage() {
   const [editHistory, setEditHistory] = useState<DBMaintenanceHistory | null>(null);
   const [histEditForm, setHistEditForm] = useState({ description: '', hour_meter: '', operator_name: '', notes: '' });
 
+  // Valoração (admin only) — define custos antes de virar "Realizado"
+  const [valuationFilter, setValuationFilter] = useState('all');
+  const [valuationItem, setValuationItem] = useState<DBMaintenanceHistory | null>(null);
+  const [valuationForm, setValuationForm] = useState({ labor_cost: '', parts_cost: '', notes: '' });
+  const [valuationSaving, setValuationSaving] = useState(false);
+
   // Closure dialog (dar baixa na OS)
   const [closureOS, setClosureOS] = useState<DBWorkOrder | null>(null);
   const [closureForm, setClosureForm] = useState({ invoice_number: '', service_executed: '', mechanic_name: '', notes: '', labor_cost: '', parts_cost: '', photo_start_url: '', photo_end_url: '' });
@@ -363,7 +369,15 @@ export default function MaintenancePage() {
     .filter(o => osStatusFilter === 'all' || o.status === osStatusFilter);
 
   // Serviços Realizados: histórico (vem de OS concluídas + planos concluídos + manuais)
+  // Só aparecem aqui depois que o master fizer a valoração (lançar os custos)
   const filteredCompleted = (completedFilter === 'all' ? history : history.filter(h => h.equipment_id === completedFilter))
+    .filter(h => h.costs_validated !== false)
+    .slice()
+    .sort((a, b) => new Date(b.executed_at).getTime() - new Date(a.executed_at).getTime());
+
+  // Pendentes de valoração (apenas admin enxerga essa aba)
+  const pendingValuation = (valuationFilter === 'all' ? history : history.filter(h => h.equipment_id === valuationFilter))
+    .filter(h => h.costs_validated === false)
     .slice()
     .sort((a, b) => new Date(b.executed_at).getTime() - new Date(a.executed_at).getTime());
 
@@ -481,6 +495,39 @@ export default function MaintenancePage() {
     fetchAll();
   };
 
+  // Valoração: master define custos e libera para "Realizados"
+  const openValuation = (h: DBMaintenanceHistory) => {
+    setValuationItem(h);
+    setValuationForm({
+      labor_cost: h.labor_cost ? String(h.labor_cost) : '',
+      parts_cost: h.parts_cost ? String(h.parts_cost) : '',
+      notes: h.notes || '',
+    });
+  };
+  const handleSaveValuation = async () => {
+    if (!valuationItem) return;
+    setValuationSaving(true);
+    const { data: userData } = await supabase.auth.getUser();
+    const { error } = await supabase.from('maintenance_history').update({
+      labor_cost: valuationForm.labor_cost ? Number(valuationForm.labor_cost) : 0,
+      parts_cost: valuationForm.parts_cost ? Number(valuationForm.parts_cost) : 0,
+      notes: valuationForm.notes || null,
+      costs_validated: true,
+      costs_validated_at: new Date().toISOString(),
+      costs_validated_by: userData.user?.id || null,
+    } as any).eq('id', valuationItem.id);
+    setValuationSaving(false);
+    if (error) {
+      toast({ title: 'Erro ao salvar valoração', description: error.message, variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Valoração concluída!', description: 'O serviço foi movido para "Realizados".' });
+    setValuationItem(null);
+    fetchAll();
+  };
+
+
+
   const handleCreateOS = async () => {
     if (!newOsForm.equipmentId || !newOsForm.description) return;
     setNewOsSaving(true);
@@ -531,9 +578,17 @@ export default function MaintenancePage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="w-full grid grid-cols-2 md:grid-cols-4">
+        <TabsList className={`w-full grid grid-cols-2 ${isAdmin ? 'md:grid-cols-5' : 'md:grid-cols-4'}`}>
           <TabsTrigger value="os" className="gap-1.5"><Clipboard className="w-4 h-4" /> OS</TabsTrigger>
           <TabsTrigger value="plans" className="gap-1.5"><Wrench className="w-4 h-4" /> Planos</TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger value="valuation" className="gap-1.5">
+              <FileText className="w-4 h-4" /> Valoração
+              {pendingValuation.length > 0 && (
+                <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded-full bg-warning/20 text-warning font-bold">{pendingValuation.length}</span>
+              )}
+            </TabsTrigger>
+          )}
           <TabsTrigger value="completed" className="gap-1.5"><CheckCircle className="w-4 h-4" /> Realizados</TabsTrigger>
           <TabsTrigger value="history" className="gap-1.5"><History className="w-4 h-4" /> Histórico</TabsTrigger>
         </TabsList>
@@ -911,6 +966,69 @@ export default function MaintenancePage() {
           </div>
         </TabsContent>
 
+
+        {/* ===== VALORAÇÃO (somente admin) ===== */}
+        {isAdmin && (
+          <TabsContent value="valuation" className="space-y-4 mt-4">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div>
+                <h2 className="text-lg font-bold">Aguardando valoração</h2>
+                <p className="text-xs text-muted-foreground">Serviços de OS e planos concluídos. Lance os custos para liberar em "Realizados".</p>
+              </div>
+              <Select value={valuationFilter} onValueChange={setValuationFilter}>
+                <SelectTrigger className="w-72"><SelectValue placeholder="Filtrar por equipamento" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os equipamentos</SelectItem>
+                  {equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eqLabel(eq)}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {pendingValuation.length === 0 ? (
+              <div className="glass-card rounded-xl p-8 text-center">
+                <CheckCircle className="w-12 h-12 text-success mx-auto mb-4" />
+                <p className="text-muted-foreground">Nenhum serviço aguardando valoração.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {pendingValuation.map(h => {
+                  const eq = equipments.find(e => e.id === h.equipment_id);
+                  const plan = plans.find(p => p.id === h.plan_id);
+                  const osMatch = h.description.match(/^OS #(\d+)/);
+                  const linkedOS = osMatch ? workOrders.find(o => o.os_number === Number(osMatch[1])) : undefined;
+                  const origin = osMatch ? `OS #${osMatch[1]}` : (plan ? 'Plano Preventivo' : 'Registro Manual');
+                  const originBg = osMatch ? 'bg-primary/15 text-primary' : (plan ? 'bg-warning/15 text-warning' : 'bg-secondary text-muted-foreground');
+                  const sugLabor = Number(linkedOS?.labor_cost ?? h.labor_cost ?? 0);
+                  const sugParts = Number(linkedOS?.parts_cost ?? h.parts_cost ?? 0);
+                  return (
+                    <div key={h.id} className="glass-card rounded-xl p-4 border-l-4 border-l-warning">
+                      <div className="flex items-start justify-between gap-3 flex-wrap">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${originBg}`}>{origin}</span>
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-warning/20 text-warning font-semibold">Aguardando valoração</span>
+                            <span className="text-xs text-muted-foreground">{new Date(h.executed_at).toLocaleString('pt-BR')}</span>
+                          </div>
+                          <p className="font-semibold text-sm">{h.description}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5"><strong>{eq ? eqLabel(eq) : '—'}</strong></p>
+                          {h.operator_name && <p className="text-xs text-muted-foreground">👤 Mecânico: {h.operator_name}</p>}
+                          {(sugLabor > 0 || sugParts > 0) && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Sugerido: MO {sugLabor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} · Peças {sugParts.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            </p>
+                          )}
+                        </div>
+                        <Button size="sm" onClick={() => openValuation(h)} className="gap-1.5">
+                          <Edit2 className="w-3.5 h-3.5" /> Lançar custos
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </TabsContent>
+        )}
 
         {/* ===== SERVIÇOS REALIZADOS ===== */}
         <TabsContent value="completed" className="space-y-4 mt-4">
@@ -1358,6 +1476,45 @@ export default function MaintenancePage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Valuation Dialog (admin lança custos) */}
+      <Dialog open={!!valuationItem} onOpenChange={v => { if (!v) setValuationItem(null); }}>
+        <DialogContent className="bg-card border-border">
+          <DialogHeader><DialogTitle>Lançar custos da manutenção</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="text-sm space-y-1 p-3 rounded-lg bg-muted/40">
+              <p className="font-semibold">{valuationItem?.description}</p>
+              <p className="text-xs text-muted-foreground">
+                {valuationItem && equipments.find(e => e.id === valuationItem.equipment_id)?.name} · Horímetro/Km: {valuationItem?.hour_meter}
+              </p>
+              {valuationItem?.operator_name && <p className="text-xs text-muted-foreground">👤 {valuationItem.operator_name}</p>}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Custo Mão de Obra (R$)</Label>
+                <Input type="number" step="0.01" inputMode="decimal" value={valuationForm.labor_cost} onChange={e => setValuationForm({...valuationForm, labor_cost: e.target.value})} placeholder="0,00" />
+              </div>
+              <div>
+                <Label>Custo Peças (R$)</Label>
+                <Input type="number" step="0.01" inputMode="decimal" value={valuationForm.parts_cost} onChange={e => setValuationForm({...valuationForm, parts_cost: e.target.value})} placeholder="0,00" />
+              </div>
+            </div>
+            <div className="text-sm font-semibold text-right">
+              Total: {(Number(valuationForm.labor_cost || 0) + Number(valuationForm.parts_cost || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+            </div>
+            <div>
+              <Label>Observações</Label>
+              <Textarea value={valuationForm.notes} onChange={e => setValuationForm({...valuationForm, notes: e.target.value})} rows={2} placeholder="Notas sobre a valoração (opcional)" />
+            </div>
+            <Button onClick={handleSaveValuation} disabled={valuationSaving} className="w-full">
+              {valuationSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Validar e mover para Realizados
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+
 
       {/* Closure Dialog (Dar Baixa na OS) */}
       <Dialog open={!!closureOS} onOpenChange={v => { if (!v) setClosureOS(null); }}>

@@ -1,0 +1,1 @@
+ALTER TABLE public.maintenance_history ADD COLUMN IF NOT EXISTS costs_validated boolean NOT NULL DEFAULT false; ALTER TABLE public.maintenance_history ADD COLUMN IF NOT EXISTS costs_validated_at timestamptz; ALTER TABLE public.maintenance_history ADD COLUMN IF NOT EXISTS costs_validated_by uuid;

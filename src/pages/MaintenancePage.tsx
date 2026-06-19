@@ -524,6 +524,9 @@ export default function MaintenancePage() {
     toast({ title: 'Valoração concluída!', description: 'O serviço foi movido para "Realizados".' });
     setValuationItem(null);
     fetchAll();
+  };
+
+
 
   const handleCreateOS = async () => {
     if (!newOsForm.equipmentId || !newOsForm.description) return;

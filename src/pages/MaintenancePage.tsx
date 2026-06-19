@@ -578,9 +578,17 @@ export default function MaintenancePage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="w-full grid grid-cols-2 md:grid-cols-4">
+        <TabsList className={`w-full grid grid-cols-2 ${isAdmin ? 'md:grid-cols-5' : 'md:grid-cols-4'}`}>
           <TabsTrigger value="os" className="gap-1.5"><Clipboard className="w-4 h-4" /> OS</TabsTrigger>
           <TabsTrigger value="plans" className="gap-1.5"><Wrench className="w-4 h-4" /> Planos</TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger value="valuation" className="gap-1.5">
+              <FileText className="w-4 h-4" /> Valoração
+              {pendingValuation.length > 0 && (
+                <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded-full bg-warning/20 text-warning font-bold">{pendingValuation.length}</span>
+              )}
+            </TabsTrigger>
+          )}
           <TabsTrigger value="completed" className="gap-1.5"><CheckCircle className="w-4 h-4" /> Realizados</TabsTrigger>
           <TabsTrigger value="history" className="gap-1.5"><History className="w-4 h-4" /> Histórico</TabsTrigger>
         </TabsList>

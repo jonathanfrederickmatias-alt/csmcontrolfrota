@@ -498,6 +498,9 @@ export type Database = {
       }
       maintenance_history: {
         Row: {
+          costs_validated: boolean
+          costs_validated_at: string | null
+          costs_validated_by: string | null
           created_at: string
           description: string
           equipment_id: string | null
@@ -513,6 +516,9 @@ export type Database = {
           tenant_id: string
         }
         Insert: {
+          costs_validated?: boolean
+          costs_validated_at?: string | null
+          costs_validated_by?: string | null
           created_at?: string
           description: string
           equipment_id?: string | null
@@ -528,6 +534,9 @@ export type Database = {
           tenant_id: string
         }
         Update: {
+          costs_validated?: boolean
+          costs_validated_at?: string | null
+          costs_validated_by?: string | null
           created_at?: string
           description?: string
           equipment_id?: string | null

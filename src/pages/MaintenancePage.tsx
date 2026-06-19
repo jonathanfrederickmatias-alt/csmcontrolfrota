@@ -93,6 +93,12 @@ export default function MaintenancePage() {
   const [editHistory, setEditHistory] = useState<DBMaintenanceHistory | null>(null);
   const [histEditForm, setHistEditForm] = useState({ description: '', hour_meter: '', operator_name: '', notes: '' });
 
+  // Valoração (admin only) — define custos antes de virar "Realizado"
+  const [valuationFilter, setValuationFilter] = useState('all');
+  const [valuationItem, setValuationItem] = useState<DBMaintenanceHistory | null>(null);
+  const [valuationForm, setValuationForm] = useState({ labor_cost: '', parts_cost: '', notes: '' });
+  const [valuationSaving, setValuationSaving] = useState(false);
+
   // Closure dialog (dar baixa na OS)
   const [closureOS, setClosureOS] = useState<DBWorkOrder | null>(null);
   const [closureForm, setClosureForm] = useState({ invoice_number: '', service_executed: '', mechanic_name: '', notes: '', labor_cost: '', parts_cost: '', photo_start_url: '', photo_end_url: '' });

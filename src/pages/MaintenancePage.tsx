@@ -949,7 +949,7 @@ export default function MaintenancePage() {
                             <Edit2 className="w-4 h-4" />
                           </button>
                         )}
-                        {canComplete && plan.status !== 'ok' && (
+                        {canComplete && liveStatus !== 'ok' && (
                           <Button size="sm" variant="outline" onClick={() => handleComplete(plan)} className="text-success border-success/30 hover:bg-success/10">
                             <CheckCircle className="w-3 h-3 mr-1" />Concluir
                           </Button>

@@ -77,9 +77,6 @@ serve(async (req) => {
         alertPlans.push({ ...p, status, _remaining: remaining, _threshold: threshold, _eqType: eqType, _planType: planType });
       }
 
-      if (status === 'overdue' || status === 'approaching') {
-        alertPlans.push({ ...p, status, _remaining: remaining, _threshold: threshold, _eqType: eqType });
-      }
     }
 
     if (alertPlans.length === 0) {

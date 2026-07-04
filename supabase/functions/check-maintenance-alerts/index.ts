@@ -45,15 +45,28 @@ serve(async (req) => {
     const alertPlans: any[] = [];
     for (const p of plans) {
       const eq = (p as any).equipments;
-      const currentHM = eq?.current_hour_meter || 0;
-      const eqType = eq?.type || 'machine';
-      const remaining = p.next_due_at - currentHM;
-      const threshold = getThreshold(eqType);
-
+      const planType = (p as any).plan_type || 'horimetro';
       let status: string;
-      if (remaining <= 0) status = 'overdue';
-      else if (remaining <= threshold) status = 'approaching';
-      else status = 'ok';
+      let remaining = 0;
+      let threshold = 0;
+      let eqType = eq?.type || 'machine';
+
+      if (planType === 'tempo') {
+        const nextDate = (p as any).next_due_date ? new Date((p as any).next_due_date).getTime() : 0;
+        if (!nextDate) continue;
+        remaining = Math.ceil((nextDate - Date.now()) / 86400000);
+        threshold = 7;
+        if (remaining <= 0) status = 'overdue';
+        else if (remaining <= threshold) status = 'approaching';
+        else status = 'ok';
+      } else {
+        const currentHM = eq?.current_hour_meter || 0;
+        remaining = p.next_due_at - currentHM;
+        threshold = getThreshold(eqType);
+        if (remaining <= 0) status = 'overdue';
+        else if (remaining <= threshold) status = 'approaching';
+        else status = 'ok';
+      }
 
       // Update status in DB if changed
       if (status !== p.status) {
@@ -61,8 +74,9 @@ serve(async (req) => {
       }
 
       if (status === 'overdue' || status === 'approaching') {
-        alertPlans.push({ ...p, status, _remaining: remaining, _threshold: threshold, _eqType: eqType });
+        alertPlans.push({ ...p, status, _remaining: remaining, _threshold: threshold, _eqType: eqType, _planType: planType });
       }
+
     }
 
     if (alertPlans.length === 0) {

@@ -896,14 +896,17 @@ export default function MaintenancePage() {
             <div className="space-y-3">
               {filteredPlans.map(plan => {
                 const eq = equipments.find(e => e.id === plan.equipment_id);
-                const sc = statusConfig[plan.status];
                 const planType = plan.plan_type || 'horimetro';
                 const unit = planType === 'km' ? 'km' : 'h';
                 const isTempo = planType === 'tempo';
                 const remaining = isTempo
                   ? (plan.next_due_date ? Math.ceil((new Date(plan.next_due_date).getTime() - Date.now()) / 86400000) : 0)
                   : ((plan.next_due_at || 0) - (eq?.current_hour_meter || 0));
-                const intervalApprox = isTempo ? Math.max(1, (plan.interval_days || 0) * 0.1) : ((plan.interval_hours || 0) * 0.1);
+                const liveStatus: 'ok' | 'approaching' | 'overdue' = isTempo
+                  ? (remaining <= 0 ? 'overdue' : remaining <= 7 ? 'approaching' : 'ok')
+                  : calculateMaintenanceStatus(remaining, eq?.type || 'machine');
+                const sc = statusConfig[liveStatus];
+                const intervalApprox = isTempo ? 7 : (eq?.type === 'truck' ? 1000 : 50);
                 return (
                   <div key={plan.id} className={`glass-card rounded-xl p-5 border-l-4 ${sc.border}`}>
                     <div className="flex items-center justify-between">
@@ -946,7 +949,7 @@ export default function MaintenancePage() {
                             <Edit2 className="w-4 h-4" />
                           </button>
                         )}
-                        {canComplete && plan.status !== 'ok' && (
+                        {canComplete && liveStatus !== 'ok' && (
                           <Button size="sm" variant="outline" onClick={() => handleComplete(plan)} className="text-success border-success/30 hover:bg-success/10">
                             <CheckCircle className="w-3 h-3 mr-1" />Concluir
                           </Button>

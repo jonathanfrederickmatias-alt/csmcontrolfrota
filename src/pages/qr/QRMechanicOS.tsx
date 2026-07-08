@@ -454,7 +454,7 @@ export default function QRMechanicOS() {
             </div>
             <Button
               onClick={handleStartService}
-              disabled={!mechanicName || !photoStartUrl || saving}
+              disabled={!mechanicName || !photoStartUrl || (!resolvingReported && !causeIdentified.trim()) || saving}
               className="w-full h-12 text-base font-bold"
             >
               {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}

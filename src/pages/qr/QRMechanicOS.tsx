@@ -503,7 +503,7 @@ export default function QRMechanicOS() {
             </div>
             <Button
               onClick={handleCompleteService}
-              disabled={!photoEndUrl || saving}
+              disabled={!photoEndUrl || !serviceExecuted.trim() || (!resolvingReported && !causeIdentified.trim()) || saving}
               className="w-full h-12 text-base font-bold bg-success hover:bg-success/90 text-success-foreground"
             >
               {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}

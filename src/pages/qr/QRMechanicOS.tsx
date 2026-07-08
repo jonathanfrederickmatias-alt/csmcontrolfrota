@@ -39,6 +39,8 @@ interface WorkOrder {
   started_at: string | null;
   completed_at: string | null;
   created_at: string;
+  cause_identified: string | null;
+  service_executed: string | null;
 }
 
 const priorityLabels: Record<string, string> = {
@@ -62,6 +64,9 @@ export default function QRMechanicOS() {
   const [notes, setNotes] = useState('');
   const [photoStartUrl, setPhotoStartUrl] = useState('');
   const [photoEndUrl, setPhotoEndUrl] = useState('');
+  const [resolvingReported, setResolvingReported] = useState(true);
+  const [causeIdentified, setCauseIdentified] = useState('');
+  const [serviceExecuted, setServiceExecuted] = useState('');
 
   // Request items for per-item completion
   const [requestItems, setRequestItems] = useState<RequestItem[]>([]);
@@ -76,6 +81,10 @@ export default function QRMechanicOS() {
       setNotes(wo.notes || '');
       setPhotoStartUrl(wo.photo_start_url || '');
       setPhotoEndUrl(wo.photo_end_url || '');
+      setCauseIdentified(wo.cause_identified || '');
+      setServiceExecuted(wo.service_executed || '');
+      // If a distinct cause was already recorded and differs from OS description, mark as not resolving reported
+      setResolvingReported(!wo.cause_identified || wo.cause_identified === wo.description);
 
       const dbParts = Array.isArray(wo.parts) && wo.parts.length > 0
         ? wo.parts
@@ -131,6 +140,8 @@ export default function QRMechanicOS() {
     }).eq('id', os.maintenance_request_id);
   };
 
+  const resolvedCause = () => resolvingReported ? (os?.description || '') : (causeIdentified.trim() || '');
+
   const handleStartService = async () => {
     if (!os || !mechanicName || !photoStartUrl) return;
     setSaving(true);
@@ -142,6 +153,8 @@ export default function QRMechanicOS() {
       parts: cleanParts() as unknown as any,
       part_code: cleanParts().map(p => p.code).filter(Boolean).join(', ') || null,
       notes: notes || null,
+      cause_identified: resolvedCause() || null,
+      service_executed: serviceExecuted || null,
     }).eq('id', os.id);
     await saveItemsStatus();
     setSaving(false);
@@ -149,7 +162,7 @@ export default function QRMechanicOS() {
   };
 
   const handleCompleteService = async () => {
-    if (!os || !photoEndUrl) return;
+    if (!os || !photoEndUrl || !serviceExecuted.trim()) return;
     setSaving(true);
     await supabase.from('work_orders').update({
       status: 'done',
@@ -158,6 +171,8 @@ export default function QRMechanicOS() {
       parts: cleanParts() as unknown as any,
       part_code: cleanParts().map(p => p.code).filter(Boolean).join(', ') || null,
       notes: notes || null,
+      cause_identified: resolvedCause() || null,
+      service_executed: serviceExecuted.trim(),
     }).eq('id', os.id);
     // Mark all items as done on completion
     const allDoneItems = requestItems.map(i => ({ ...i, done: true }));
@@ -324,6 +339,51 @@ export default function QRMechanicOS() {
           />
         </div>
 
+        {/* Problema x Solução */}
+        <div className="border border-border rounded-lg p-3 bg-secondary/30 space-y-3">
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground mb-1">Problema relatado na OS</p>
+            <p className="text-sm bg-background/60 rounded px-2 py-1.5 border border-border">{os.description}</p>
+          </div>
+
+          <label className="flex items-start gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={resolvingReported}
+              onChange={e => {
+                setResolvingReported(e.target.checked);
+                if (e.target.checked) setCauseIdentified('');
+              }}
+              className="mt-1 w-4 h-4 accent-primary"
+            />
+            <span className="text-sm">
+              Estou resolvendo <strong>exatamente</strong> o problema relatado nesta OS
+            </span>
+          </label>
+
+          {!resolvingReported && (
+            <div>
+              <Label className="text-sm">Problema real identificado *</Label>
+              <Textarea
+                value={causeIdentified}
+                onChange={e => setCauseIdentified(e.target.value)}
+                placeholder="Descreva o que realmente foi identificado..."
+                rows={2}
+              />
+            </div>
+          )}
+
+          <div>
+            <Label className="text-sm">Solução aplicada / Serviço executado *</Label>
+            <Textarea
+              value={serviceExecuted}
+              onChange={e => setServiceExecuted(e.target.value)}
+              placeholder="Descreva o que foi feito para solucionar..."
+              rows={3}
+            />
+          </div>
+        </div>
+
         {/* Parts list */}
         <div>
           <div className="flex items-center justify-between mb-2">
@@ -394,7 +454,7 @@ export default function QRMechanicOS() {
             </div>
             <Button
               onClick={handleStartService}
-              disabled={!mechanicName || !photoStartUrl || saving}
+              disabled={!mechanicName || !photoStartUrl || (!resolvingReported && !causeIdentified.trim()) || saving}
               className="w-full h-12 text-base font-bold"
             >
               {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
@@ -443,7 +503,7 @@ export default function QRMechanicOS() {
             </div>
             <Button
               onClick={handleCompleteService}
-              disabled={!photoEndUrl || saving}
+              disabled={!photoEndUrl || !serviceExecuted.trim() || (!resolvingReported && !causeIdentified.trim()) || saving}
               className="w-full h-12 text-base font-bold bg-success hover:bg-success/90 text-success-foreground"
             >
               {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}

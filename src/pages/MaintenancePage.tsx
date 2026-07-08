@@ -1167,6 +1167,18 @@ export default function MaintenancePage() {
                         {linkedOS?.part_code && <p className="text-xs text-muted-foreground">🔧 Peças: <span className="font-mono">{linkedOS.part_code}</span></p>}
                         {linkedOS?.invoice_number && <p className="text-xs text-muted-foreground">🧾 NF: {linkedOS.invoice_number}</p>}
                         {plan && <p className="text-xs text-muted-foreground">📋 Plano: {plan.description}</p>}
+                        {linkedOS?.cause_identified && (
+                          <div className="mt-2 rounded-md border border-destructive/20 bg-destructive/5 px-2 py-1.5">
+                            <p className="text-[10px] font-bold text-destructive uppercase tracking-wide">Problema identificado</p>
+                            <p className="text-xs text-foreground whitespace-pre-line">{linkedOS.cause_identified}</p>
+                          </div>
+                        )}
+                        {linkedOS?.service_executed && (
+                          <div className="mt-1.5 rounded-md border border-success/20 bg-success/5 px-2 py-1.5">
+                            <p className="text-[10px] font-bold text-success uppercase tracking-wide">Solução aplicada</p>
+                            <p className="text-xs text-foreground whitespace-pre-line">{linkedOS.service_executed}</p>
+                          </div>
+                        )}
                         {h.notes && <p className="text-xs text-muted-foreground italic mt-1 whitespace-pre-line">{h.notes}</p>}
                       </div>
                       <div className="text-right shrink-0 flex flex-col items-end gap-1">

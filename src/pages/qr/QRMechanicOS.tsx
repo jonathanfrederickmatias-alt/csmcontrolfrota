@@ -339,6 +339,51 @@ export default function QRMechanicOS() {
           />
         </div>
 
+        {/* Problema x Solução */}
+        <div className="border border-border rounded-lg p-3 bg-secondary/30 space-y-3">
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground mb-1">Problema relatado na OS</p>
+            <p className="text-sm bg-background/60 rounded px-2 py-1.5 border border-border">{os.description}</p>
+          </div>
+
+          <label className="flex items-start gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={resolvingReported}
+              onChange={e => {
+                setResolvingReported(e.target.checked);
+                if (e.target.checked) setCauseIdentified('');
+              }}
+              className="mt-1 w-4 h-4 accent-primary"
+            />
+            <span className="text-sm">
+              Estou resolvendo <strong>exatamente</strong> o problema relatado nesta OS
+            </span>
+          </label>
+
+          {!resolvingReported && (
+            <div>
+              <Label className="text-sm">Problema real identificado *</Label>
+              <Textarea
+                value={causeIdentified}
+                onChange={e => setCauseIdentified(e.target.value)}
+                placeholder="Descreva o que realmente foi identificado..."
+                rows={2}
+              />
+            </div>
+          )}
+
+          <div>
+            <Label className="text-sm">Solução aplicada / Serviço executado *</Label>
+            <Textarea
+              value={serviceExecuted}
+              onChange={e => setServiceExecuted(e.target.value)}
+              placeholder="Descreva o que foi feito para solucionar..."
+              rows={3}
+            />
+          </div>
+        </div>
+
         {/* Parts list */}
         <div>
           <div className="flex items-center justify-between mb-2">

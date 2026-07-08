@@ -64,6 +64,9 @@ export default function QRMechanicOS() {
   const [notes, setNotes] = useState('');
   const [photoStartUrl, setPhotoStartUrl] = useState('');
   const [photoEndUrl, setPhotoEndUrl] = useState('');
+  const [resolvingReported, setResolvingReported] = useState(true);
+  const [causeIdentified, setCauseIdentified] = useState('');
+  const [serviceExecuted, setServiceExecuted] = useState('');
 
   // Request items for per-item completion
   const [requestItems, setRequestItems] = useState<RequestItem[]>([]);

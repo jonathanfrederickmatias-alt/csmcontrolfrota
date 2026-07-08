@@ -140,6 +140,8 @@ export default function QRMechanicOS() {
     }).eq('id', os.maintenance_request_id);
   };
 
+  const resolvedCause = () => resolvingReported ? (os?.description || '') : (causeIdentified.trim() || '');
+
   const handleStartService = async () => {
     if (!os || !mechanicName || !photoStartUrl) return;
     setSaving(true);
@@ -151,6 +153,8 @@ export default function QRMechanicOS() {
       parts: cleanParts() as unknown as any,
       part_code: cleanParts().map(p => p.code).filter(Boolean).join(', ') || null,
       notes: notes || null,
+      cause_identified: resolvedCause() || null,
+      service_executed: serviceExecuted || null,
     }).eq('id', os.id);
     await saveItemsStatus();
     setSaving(false);
@@ -158,7 +162,7 @@ export default function QRMechanicOS() {
   };
 
   const handleCompleteService = async () => {
-    if (!os || !photoEndUrl) return;
+    if (!os || !photoEndUrl || !serviceExecuted.trim()) return;
     setSaving(true);
     await supabase.from('work_orders').update({
       status: 'done',
@@ -167,6 +171,8 @@ export default function QRMechanicOS() {
       parts: cleanParts() as unknown as any,
       part_code: cleanParts().map(p => p.code).filter(Boolean).join(', ') || null,
       notes: notes || null,
+      cause_identified: resolvedCause() || null,
+      service_executed: serviceExecuted.trim(),
     }).eq('id', os.id);
     // Mark all items as done on completion
     const allDoneItems = requestItems.map(i => ({ ...i, done: true }));

@@ -39,6 +39,8 @@ interface WorkOrder {
   started_at: string | null;
   completed_at: string | null;
   created_at: string;
+  cause_identified: string | null;
+  service_executed: string | null;
 }
 
 const priorityLabels: Record<string, string> = {

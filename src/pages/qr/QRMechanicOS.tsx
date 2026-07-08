@@ -85,6 +85,8 @@ export default function QRMechanicOS() {
       setServiceExecuted(wo.service_executed || '');
       // If a distinct cause was already recorded and differs from OS description, mark as not resolving reported
       setResolvingReported(!wo.cause_identified || wo.cause_identified === wo.description);
+
+      const dbParts = Array.isArray(wo.parts) && wo.parts.length > 0
         ? wo.parts
         : wo.part_code
           ? [{ code: wo.part_code, description: '' }]

@@ -141,6 +141,23 @@ export default function QRChecklist() {
       observations: generalObservations || null,
     }]);
 
+    // Handle "problema persiste" markings — update existing open requests instead of creating duplicates
+    const persistEntries = Object.entries(persistActions).filter(([, v]) => v.persist);
+    if (persistEntries.length > 0) {
+      const nowStr = new Date().toLocaleString('pt-BR');
+      for (const [reqId, { note }] of persistEntries) {
+        const req = openRequests.find(r => r.id === reqId);
+        const logLine = `\n[Verificação ${nowStr} por ${operatorName}${Number(hourMeter) ? ` — ${hourMeter}h` : ''}] Problema persiste${note.trim() ? `: ${note.trim()}` : '.'}`;
+        // Fetch current notes then append (avoid RPC — simple read/update)
+        const { data: current } = await supabase.from('maintenance_requests')
+          .select('notes').eq('id', reqId).maybeSingle();
+        const newNotes = ((current?.notes as string) || (req?.description ? '' : '')) + logLine;
+        await supabase.from('maintenance_requests')
+          .update({ notes: newNotes, updated_at: new Date().toISOString() })
+          .eq('id', reqId);
+      }
+    }
+
     setSaving(false);
 
     const hasObservations = generalObservations.trim().length > 0;
@@ -149,8 +166,16 @@ export default function QRChecklist() {
       const parts: string[] = [];
       const typeLabel = checklistType === 'corrective' ? 'Corretivo' : checklistType === 'preventive' ? 'Preventivo' : 'Diário';
 
-      if (!isConforme) {
-        const failedItems = items.filter(i => i.checked === false).map(i => {
+      // Exclude NC items whose label already matches an open request marked as "persiste"
+      const persistTexts = persistEntries
+        .map(([reqId]) => openRequests.find(r => r.id === reqId)?.description?.toLowerCase() || '')
+        .filter(Boolean);
+      const failedItemsFiltered = items.filter(i => i.checked === false && !i.na).filter(i =>
+        !persistTexts.some(t => t.includes(i.label.toLowerCase()))
+      );
+
+      if (failedItemsFiltered.length > 0) {
+        const failedItems = failedItemsFiltered.map(i => {
           const obs = i.observation ? ` (${i.observation})` : '';
           return `- ${i.label}${obs}`;
         }).join('\n');
@@ -161,9 +186,20 @@ export default function QRChecklist() {
         parts.push(`Observações Gerais:\n${generalObservations.trim()}`);
       }
 
-      setMaintenanceDesc(parts.join('\n\n'));
-      setShowMaintenanceForm(true);
+      if (parts.length > 0) {
+        setMaintenanceDesc(parts.join('\n\n'));
+        setShowMaintenanceForm(true);
+      } else {
+        // All non-conformities were tied to existing OSes → no new request needed
+        if (persistEntries.length > 0) {
+          toast.success(`${persistEntries.length} problema(s) atualizados na(s) OS existente(s).`);
+        }
+        setSaved(true);
+      }
     } else {
+      if (persistEntries.length > 0) {
+        toast.success(`${persistEntries.length} problema(s) atualizados na(s) OS existente(s).`);
+      }
       setSaved(true);
     }
   };

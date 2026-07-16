@@ -254,20 +254,39 @@ export default function QRMechanicOS() {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3 mt-4">
-            {os.photo_start_url && (
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">Foto Início</p>
-                <img src={os.photo_start_url} alt="Início" className="w-full h-32 object-cover rounded-lg border border-border" />
+          {(() => {
+            const startPhotos = (os.photos_start && os.photos_start.length ? os.photos_start : (os.photo_start_url ? [os.photo_start_url] : []));
+            const endPhotos = (os.photos_end && os.photos_end.length ? os.photos_end : (os.photo_end_url ? [os.photo_end_url] : []));
+            if (startPhotos.length === 0 && endPhotos.length === 0) return null;
+            return (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+                {startPhotos.length > 0 && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Fotos de Início ({startPhotos.length})</p>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {startPhotos.map((u, i) => (
+                        <a key={u + i} href={u} target="_blank" rel="noreferrer">
+                          <img src={u} alt={`Início ${i + 1}`} className="w-full h-20 object-cover rounded-lg border border-border" />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {endPhotos.length > 0 && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Fotos de Término ({endPhotos.length})</p>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {endPhotos.map((u, i) => (
+                        <a key={u + i} href={u} target="_blank" rel="noreferrer">
+                          <img src={u} alt={`Término ${i + 1}`} className="w-full h-20 object-cover rounded-lg border border-border" />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
-            {os.photo_end_url && (
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">Foto Término</p>
-                <img src={os.photo_end_url} alt="Término" className="w-full h-32 object-cover rounded-lg border border-border" />
-              </div>
-            )}
-          </div>
+            );
+          })()}
         </div>
       </PublicLayout>
     );

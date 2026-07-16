@@ -1293,6 +1293,39 @@ export default function MaintenancePage() {
                             <p className="text-xs text-foreground whitespace-pre-line">{linkedOS.service_executed}</p>
                           </div>
                         )}
+                        {(() => {
+                          const startPhotos = (linkedOS?.photos_start && linkedOS.photos_start.length ? linkedOS.photos_start : (linkedOS?.photo_start_url ? [linkedOS.photo_start_url] : [])) as string[];
+                          const endPhotos = (linkedOS?.photos_end && linkedOS.photos_end.length ? linkedOS.photos_end : (linkedOS?.photo_end_url ? [linkedOS.photo_end_url] : [])) as string[];
+                          if (startPhotos.length === 0 && endPhotos.length === 0) return null;
+                          return (
+                            <div className="mt-2 flex flex-wrap gap-3">
+                              {startPhotos.length > 0 && (
+                                <div>
+                                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide mb-1">Antes ({startPhotos.length})</p>
+                                  <div className="flex flex-wrap gap-1">
+                                    {startPhotos.map((u, i) => (
+                                      <a key={u + i} href={u} target="_blank" rel="noreferrer">
+                                        <img src={u} alt={`Antes ${i + 1}`} className="w-14 h-14 object-cover rounded border border-border" />
+                                      </a>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              {endPhotos.length > 0 && (
+                                <div>
+                                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide mb-1">Depois ({endPhotos.length})</p>
+                                  <div className="flex flex-wrap gap-1">
+                                    {endPhotos.map((u, i) => (
+                                      <a key={u + i} href={u} target="_blank" rel="noreferrer">
+                                        <img src={u} alt={`Depois ${i + 1}`} className="w-14 h-14 object-cover rounded border border-border" />
+                                      </a>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
                         {h.notes && <p className="text-xs text-muted-foreground italic mt-1 whitespace-pre-line">{h.notes}</p>}
                       </div>
                       <div className="text-right shrink-0 flex flex-col items-end gap-1">

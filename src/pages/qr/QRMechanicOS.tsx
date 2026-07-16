@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { CheckCircle, Wrench, Loader2, Play, Square, Plus, Trash2, Package, CheckSquare, SquareIcon } from "lucide-react";
 import PublicLayout from "@/components/PublicLayout";
 import PhotoUpload from "@/components/PhotoUpload";
+import MultiPhotoUpload from "@/components/MultiPhotoUpload";
 
 interface Part {
   code: string;
@@ -36,6 +37,8 @@ interface WorkOrder {
   parts: Part[];
   photo_start_url: string | null;
   photo_end_url: string | null;
+  photos_start: string[] | null;
+  photos_end: string[] | null;
   started_at: string | null;
   completed_at: string | null;
   created_at: string;
@@ -62,8 +65,8 @@ export default function QRMechanicOS() {
   const [mechanicName, setMechanicName] = useState('');
   const [parts, setParts] = useState<Part[]>([{ code: '', description: '' }]);
   const [notes, setNotes] = useState('');
-  const [photoStartUrl, setPhotoStartUrl] = useState('');
-  const [photoEndUrl, setPhotoEndUrl] = useState('');
+  const [photosStart, setPhotosStart] = useState<string[]>([]);
+  const [photosEnd, setPhotosEnd] = useState<string[]>([]);
   const [resolvingReported, setResolvingReported] = useState(true);
   const [causeIdentified, setCauseIdentified] = useState('');
   const [serviceExecuted, setServiceExecuted] = useState('');
@@ -79,8 +82,8 @@ export default function QRMechanicOS() {
       setOs(wo);
       setMechanicName(wo.mechanic_name || '');
       setNotes(wo.notes || '');
-      setPhotoStartUrl(wo.photo_start_url || '');
-      setPhotoEndUrl(wo.photo_end_url || '');
+      setPhotosStart(wo.photos_start && wo.photos_start.length ? wo.photos_start : (wo.photo_start_url ? [wo.photo_start_url] : []));
+      setPhotosEnd(wo.photos_end && wo.photos_end.length ? wo.photos_end : (wo.photo_end_url ? [wo.photo_end_url] : []));
       setCauseIdentified(wo.cause_identified || '');
       setServiceExecuted(wo.service_executed || '');
       // If a distinct cause was already recorded and differs from OS description, mark as not resolving reported
@@ -143,12 +146,13 @@ export default function QRMechanicOS() {
   const resolvedCause = () => resolvingReported ? (os?.description || '') : (causeIdentified.trim() || '');
 
   const handleStartService = async () => {
-    if (!os || !mechanicName || !photoStartUrl) return;
+    if (!os || !mechanicName || photosStart.length === 0) return;
     setSaving(true);
     await supabase.from('work_orders').update({
       status: 'in_progress',
       mechanic_name: mechanicName,
-      photo_start_url: photoStartUrl,
+      photos_start: photosStart as unknown as any,
+      photo_start_url: photosStart[0] || null,
       started_at: new Date().toISOString(),
       parts: cleanParts() as unknown as any,
       part_code: cleanParts().map(p => p.code).filter(Boolean).join(', ') || null,
@@ -162,11 +166,12 @@ export default function QRMechanicOS() {
   };
 
   const handleCompleteService = async () => {
-    if (!os || !photoEndUrl || !serviceExecuted.trim()) return;
+    if (!os || photosEnd.length === 0 || !serviceExecuted.trim()) return;
     setSaving(true);
     await supabase.from('work_orders').update({
       status: 'done',
-      photo_end_url: photoEndUrl,
+      photos_end: photosEnd as unknown as any,
+      photo_end_url: photosEnd[0] || null,
       completed_at: new Date().toISOString(),
       parts: cleanParts() as unknown as any,
       part_code: cleanParts().map(p => p.code).filter(Boolean).join(', ') || null,

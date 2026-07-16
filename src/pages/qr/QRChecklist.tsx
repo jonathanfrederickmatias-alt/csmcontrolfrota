@@ -44,6 +44,8 @@ export default function QRChecklist() {
   const [maintenanceSaved, setMaintenanceSaved] = useState(false);
   const [maintenancePhotoUrl, setMaintenancePhotoUrl] = useState('');
   const [lastHourMeter, setLastHourMeter] = useState<number | null>(null);
+  const [openRequests, setOpenRequests] = useState<Array<{ id: string; description: string; created_at: string; os_number?: number | null }>>([]);
+  const [persistActions, setPersistActions] = useState<Record<string, { persist: boolean; note: string }>>({});
 
   useEffect(() => {
     supabase.from('equipments').select('*').order('name').then(({ data }) => {

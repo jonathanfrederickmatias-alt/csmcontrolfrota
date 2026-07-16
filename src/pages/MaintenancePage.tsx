@@ -1239,6 +1239,8 @@ export default function MaintenancePage() {
                     operator: h.operator_name || undefined,
                     notes: h.notes || undefined,
                     planDescription: plan?.description || undefined,
+                    problem: linkedOS?.cause_identified || undefined,
+                    solution: linkedOS?.service_executed || undefined,
                     photosStart,
                     photosEnd,
                   };

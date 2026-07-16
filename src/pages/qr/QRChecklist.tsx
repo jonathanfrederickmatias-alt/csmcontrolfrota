@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ClipboardCheck, CheckCircle, Loader2, AlertTriangle, ShieldCheck, ShieldX, Plus, Trash2 } from "lucide-react";
+import { ClipboardCheck, CheckCircle, Loader2, AlertTriangle, ShieldCheck, ShieldX, Plus, Trash2, RefreshCw } from "lucide-react";
 import PublicLayout from "@/components/PublicLayout";
 import { useSearchParams } from "react-router-dom";
 import PhotoUpload from "@/components/PhotoUpload";
@@ -44,6 +44,8 @@ export default function QRChecklist() {
   const [maintenanceSaved, setMaintenanceSaved] = useState(false);
   const [maintenancePhotoUrl, setMaintenancePhotoUrl] = useState('');
   const [lastHourMeter, setLastHourMeter] = useState<number | null>(null);
+  const [openRequests, setOpenRequests] = useState<Array<{ id: string; description: string; created_at: string; os_number?: number | null }>>([]);
+  const [persistActions, setPersistActions] = useState<Record<string, { persist: boolean; note: string }>>({});
 
   useEffect(() => {
     supabase.from('equipments').select('*').order('name').then(({ data }) => {
@@ -68,6 +70,31 @@ export default function QRChecklist() {
         setLastHourMeter(Math.max(Number(eqHour), Number(lastChecklist)));
       });
   }, [selectedEquipment, equipments]);
+
+  // Fetch open maintenance requests (unresolved problems from previous checklists)
+  useEffect(() => {
+    if (!selectedEquipment) { setOpenRequests([]); setPersistActions({}); return; }
+    (async () => {
+      const { data: reqs } = await supabase.from('maintenance_requests')
+        .select('id, description, created_at, status')
+        .eq('equipment_id', selectedEquipment)
+        .neq('status', 'done')
+        .order('created_at', { ascending: false });
+      const requests = (reqs || []) as Array<{ id: string; description: string; created_at: string }>;
+      if (requests.length === 0) { setOpenRequests([]); setPersistActions({}); return; }
+      // Fetch OS numbers linked to these requests (best effort — anon has SELECT on work_orders)
+      const ids = requests.map(r => r.id);
+      const { data: wos } = await supabase.from('work_orders')
+        .select('maintenance_request_id, os_number, status')
+        .in('maintenance_request_id', ids);
+      const osMap: Record<string, number | null> = {};
+      (wos || []).forEach((w: any) => {
+        if (w.status !== 'done') osMap[w.maintenance_request_id] = w.os_number;
+      });
+      setOpenRequests(requests.map(r => ({ ...r, os_number: osMap[r.id] ?? null })));
+      setPersistActions({});
+    })();
+  }, [selectedEquipment]);
 
   useEffect(() => {
     if (checklistType === 'daily') {
@@ -114,6 +141,23 @@ export default function QRChecklist() {
       observations: generalObservations || null,
     }]);
 
+    // Handle "problema persiste" markings — update existing open requests instead of creating duplicates
+    const persistEntries = Object.entries(persistActions).filter(([, v]) => v.persist);
+    if (persistEntries.length > 0) {
+      const nowStr = new Date().toLocaleString('pt-BR');
+      for (const [reqId, { note }] of persistEntries) {
+        const req = openRequests.find(r => r.id === reqId);
+        const logLine = `\n[Verificação ${nowStr} por ${operatorName}${Number(hourMeter) ? ` — ${hourMeter}h` : ''}] Problema persiste${note.trim() ? `: ${note.trim()}` : '.'}`;
+        // Fetch current notes then append (avoid RPC — simple read/update)
+        const { data: current } = await supabase.from('maintenance_requests')
+          .select('notes').eq('id', reqId).maybeSingle();
+        const newNotes = ((current?.notes as string) || (req?.description ? '' : '')) + logLine;
+        await supabase.from('maintenance_requests')
+          .update({ notes: newNotes, updated_at: new Date().toISOString() })
+          .eq('id', reqId);
+      }
+    }
+
     setSaving(false);
 
     const hasObservations = generalObservations.trim().length > 0;
@@ -122,8 +166,16 @@ export default function QRChecklist() {
       const parts: string[] = [];
       const typeLabel = checklistType === 'corrective' ? 'Corretivo' : checklistType === 'preventive' ? 'Preventivo' : 'Diário';
 
-      if (!isConforme) {
-        const failedItems = items.filter(i => i.checked === false).map(i => {
+      // Exclude NC items whose label already matches an open request marked as "persiste"
+      const persistTexts = persistEntries
+        .map(([reqId]) => openRequests.find(r => r.id === reqId)?.description?.toLowerCase() || '')
+        .filter(Boolean);
+      const failedItemsFiltered = items.filter(i => i.checked === false && !i.na).filter(i =>
+        !persistTexts.some(t => t.includes(i.label.toLowerCase()))
+      );
+
+      if (failedItemsFiltered.length > 0) {
+        const failedItems = failedItemsFiltered.map(i => {
           const obs = i.observation ? ` (${i.observation})` : '';
           return `- ${i.label}${obs}`;
         }).join('\n');
@@ -134,9 +186,20 @@ export default function QRChecklist() {
         parts.push(`Observações Gerais:\n${generalObservations.trim()}`);
       }
 
-      setMaintenanceDesc(parts.join('\n\n'));
-      setShowMaintenanceForm(true);
+      if (parts.length > 0) {
+        setMaintenanceDesc(parts.join('\n\n'));
+        setShowMaintenanceForm(true);
+      } else {
+        // All non-conformities were tied to existing OSes → no new request needed
+        if (persistEntries.length > 0) {
+          toast.success(`${persistEntries.length} problema(s) atualizados na(s) OS existente(s).`);
+        }
+        setSaved(true);
+      }
     } else {
+      if (persistEntries.length > 0) {
+        toast.success(`${persistEntries.length} problema(s) atualizados na(s) OS existente(s).`);
+      }
       setSaved(true);
     }
   };
@@ -273,6 +336,53 @@ export default function QRChecklist() {
             )}
           </div>
         </div>
+
+        {selectedEquipment && openRequests.length > 0 && (
+          <div className="glass-card rounded-xl p-5 border-l-4 border-l-warning">
+            <h2 className="font-bold mb-1 text-sm uppercase tracking-wider flex items-center gap-2 text-warning">
+              <RefreshCw className="w-4 h-4" /> Problemas em Aberto
+            </h2>
+            <p className="text-xs text-muted-foreground mb-3">
+              Marque "Problema persiste" para os problemas que continuam sem resolução. Isso atualiza a OS existente e evita duplicação.
+            </p>
+            <div className="space-y-3">
+              {openRequests.map(req => {
+                const action = persistActions[req.id] || { persist: false, note: '' };
+                return (
+                  <div key={req.id} className={`p-3 rounded-lg border ${action.persist ? 'border-warning bg-warning/5' : 'border-border bg-secondary/40'}`}>
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex-1 min-w-0">
+                        {req.os_number != null && (
+                          <span className="inline-block text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-primary/10 text-primary mr-2">OS #{req.os_number}</span>
+                        )}
+                        <span className="text-xs text-muted-foreground">{new Date(req.created_at).toLocaleDateString('pt-BR')}</span>
+                        <p className="text-sm font-medium mt-1 whitespace-pre-wrap break-words">{req.description}</p>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={action.persist ? 'default' : 'outline'}
+                        className={`h-7 px-2 text-xs flex-shrink-0 ${action.persist ? 'bg-warning text-warning-foreground hover:bg-warning/90' : ''}`}
+                        onClick={() => setPersistActions(prev => ({ ...prev, [req.id]: { ...action, persist: !action.persist } }))}
+                      >
+                        <RefreshCw className="w-3.5 h-3.5 mr-1" /> Problema persiste
+                      </Button>
+                    </div>
+                    {action.persist && (
+                      <Input
+                        className="h-8 text-xs"
+                        placeholder="Observação (opcional): ex: piorou, mesma condição..."
+                        value={action.note}
+                        onChange={e => setPersistActions(prev => ({ ...prev, [req.id]: { ...action, note: e.target.value } }))}
+                      />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
 
         {checklistType !== 'daily' && (
           <div className="glass-card rounded-xl p-5">

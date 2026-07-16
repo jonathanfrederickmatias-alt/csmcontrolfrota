@@ -1227,6 +1227,10 @@ export default function MaintenancePage() {
                 const rows = filteredCompleted.map(h => {
                   const eq = equipments.find(e => e.id === h.equipment_id);
                   const plan = plans.find(p => p.id === h.plan_id);
+                  const osMatch = h.description?.match(/OS #(\d+)/);
+                  const linkedOS = osMatch ? workOrders.find(o => o.os_number === Number(osMatch[1])) : undefined;
+                  const photosStart = (linkedOS?.photos_start && linkedOS.photos_start.length ? linkedOS.photos_start : (linkedOS?.photo_start_url ? [linkedOS.photo_start_url] : [])) as string[];
+                  const photosEnd = (linkedOS?.photos_end && linkedOS.photos_end.length ? linkedOS.photos_end : (linkedOS?.photo_end_url ? [linkedOS.photo_end_url] : [])) as string[];
                   return {
                     equipment: eq ? eqLabel(eq) : '—',
                     description: h.description,
@@ -1235,6 +1239,8 @@ export default function MaintenancePage() {
                     operator: h.operator_name || undefined,
                     notes: h.notes || undefined,
                     planDescription: plan?.description || undefined,
+                    photosStart,
+                    photosEnd,
                   };
                 });
                 exportMaintenanceHistoryPDF(rows, filterName, eqDetails);
@@ -1425,6 +1431,10 @@ export default function MaintenancePage() {
                 const rows = filteredHistory.map(h => {
                   const eq = equipments.find(e => e.id === h.equipment_id);
                   const plan = plans.find(p => p.id === h.plan_id);
+                  const osMatch = h.description?.match(/OS #(\d+)/);
+                  const linkedOS = osMatch ? workOrders.find(o => o.os_number === Number(osMatch[1])) : undefined;
+                  const photosStart = (linkedOS?.photos_start && linkedOS.photos_start.length ? linkedOS.photos_start : (linkedOS?.photo_start_url ? [linkedOS.photo_start_url] : [])) as string[];
+                  const photosEnd = (linkedOS?.photos_end && linkedOS.photos_end.length ? linkedOS.photos_end : (linkedOS?.photo_end_url ? [linkedOS.photo_end_url] : [])) as string[];
                   return {
                     equipment: eq ? eqLabel(eq) : '—',
                     description: h.description,
@@ -1433,6 +1443,8 @@ export default function MaintenancePage() {
                     operator: h.operator_name || undefined,
                     notes: h.notes || undefined,
                     planDescription: plan?.description || undefined,
+                    photosStart,
+                    photosEnd,
                   };
                 });
                 exportMaintenanceHistoryPDF(rows, filterName, eqDetails);

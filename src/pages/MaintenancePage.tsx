@@ -114,6 +114,27 @@ export default function MaintenancePage() {
   const [newOsForm, setNewOsForm] = useState({ equipmentId: '', description: '', priority: 'medium', operator_name: '' });
   const [newOsSaving, setNewOsSaving] = useState(false);
 
+  // Novo Serviço Executado (avulso, sem OS prévia)
+  const [execOpen, setExecOpen] = useState(false);
+  const [execSaving, setExecSaving] = useState(false);
+  const emptyExecForm = {
+    equipmentId: '',
+    description: '',
+    mechanic_name: '',
+    execution_meter: '',
+    maintenance_type: 'corretiva' as 'preventiva' | 'corretiva',
+    cause_identified: '',
+    service_executed: '',
+    labor_cost: '',
+    parts_cost: '',
+    invoice_number: '',
+    technical_observations: '',
+    photo_start_url: '',
+    photo_end_url: '',
+    executed_at: new Date().toISOString().slice(0, 16),
+  };
+  const [execForm, setExecForm] = useState(emptyExecForm);
+
   // Complete plan dialog
   const [completePlan, setCompletePlanState] = useState<DBMaintenancePlan | null>(null);
   const [completeForm, setCompleteForm] = useState({ hourMeter: '', operatorName: '', notes: '', laborCost: '', partsCost: '', photoUrl: '' });

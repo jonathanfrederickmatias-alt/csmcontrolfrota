@@ -92,7 +92,8 @@ export default function MaintenancePage() {
 
   // Edit history dialog
   const [editHistory, setEditHistory] = useState<DBMaintenanceHistory | null>(null);
-  const [histEditForm, setHistEditForm] = useState({ description: '', hour_meter: '', operator_name: '', notes: '' });
+  const [histEditForm, setHistEditForm] = useState({ description: '', hour_meter: '', operator_name: '', notes: '', photos_start: [] as string[], photos_end: [] as string[] });
+  const [histEditLinkedOS, setHistEditLinkedOS] = useState<DBWorkOrder | null>(null);
 
   // Valoração (admin only) — define custos antes de virar "Realizado"
   const [valuationFilter, setValuationFilter] = useState('all');
@@ -504,7 +505,19 @@ export default function MaintenancePage() {
   // Edit history handlers
   const openEditHistory = (h: DBMaintenanceHistory) => {
     setEditHistory(h);
-    setHistEditForm({ description: h.description, hour_meter: String(h.hour_meter), operator_name: h.operator_name || '', notes: h.notes || '' });
+    const osMatch = h.description?.match(/OS #(\d+)/);
+    const linkedOS = osMatch ? workOrders.find(o => o.os_number === Number(osMatch[1])) : undefined;
+    setHistEditLinkedOS(linkedOS || null);
+    const ps = (linkedOS?.photos_start && linkedOS.photos_start.length ? linkedOS.photos_start : (linkedOS?.photo_start_url ? [linkedOS.photo_start_url] : [])) as string[];
+    const pe = (linkedOS?.photos_end && linkedOS.photos_end.length ? linkedOS.photos_end : (linkedOS?.photo_end_url ? [linkedOS.photo_end_url] : [])) as string[];
+    setHistEditForm({
+      description: h.description,
+      hour_meter: String(h.hour_meter),
+      operator_name: h.operator_name || '',
+      notes: h.notes || '',
+      photos_start: ps,
+      photos_end: pe,
+    });
   };
   const handleSaveEditHistory = async () => {
     if (!editHistory) return;
@@ -514,8 +527,19 @@ export default function MaintenancePage() {
       operator_name: histEditForm.operator_name || null,
       notes: histEditForm.notes || null,
     }).eq('id', editHistory.id);
+
+    if (histEditLinkedOS) {
+      await supabase.from('work_orders').update({
+        photos_start: histEditForm.photos_start as unknown as any,
+        photos_end: histEditForm.photos_end as unknown as any,
+        photo_start_url: histEditForm.photos_start[0] || null,
+        photo_end_url: histEditForm.photos_end[0] || null,
+      }).eq('id', histEditLinkedOS.id);
+    }
+
     toast({ title: 'Registro atualizado!' });
     setEditHistory(null);
+    setHistEditLinkedOS(null);
     fetchAll();
   };
 
@@ -1626,14 +1650,32 @@ export default function MaintenancePage() {
       </Dialog>
 
       {/* Edit History Dialog */}
-      <Dialog open={!!editHistory} onOpenChange={v => { if (!v) setEditHistory(null); }}>
-        <DialogContent className="bg-card border-border">
+      <Dialog open={!!editHistory} onOpenChange={v => { if (!v) { setEditHistory(null); setHistEditLinkedOS(null); } }}>
+        <DialogContent className="bg-card border-border max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Editar Registro de Manutenção</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div><Label>Descrição *</Label><Input value={histEditForm.description} onChange={e => setHistEditForm({...histEditForm, description: e.target.value})} /></div>
             <div><Label>Horímetro *</Label><Input type="number" value={histEditForm.hour_meter} onChange={e => setHistEditForm({...histEditForm, hour_meter: e.target.value})} /></div>
             <div><Label>Responsável</Label><Input value={histEditForm.operator_name} onChange={e => setHistEditForm({...histEditForm, operator_name: e.target.value})} /></div>
             <div><Label>Observações</Label><Textarea value={histEditForm.notes} onChange={e => setHistEditForm({...histEditForm, notes: e.target.value})} rows={2} /></div>
+            {histEditLinkedOS ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-border">
+                <MultiPhotoUpload
+                  label="Fotos/Arquivos Antes"
+                  acceptFiles
+                  values={histEditForm.photos_start}
+                  onChange={(urls) => setHistEditForm({ ...histEditForm, photos_start: urls })}
+                />
+                <MultiPhotoUpload
+                  label="Fotos/Arquivos Depois"
+                  acceptFiles
+                  values={histEditForm.photos_end}
+                  onChange={(urls) => setHistEditForm({ ...histEditForm, photos_end: urls })}
+                />
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground italic">Este registro não possui OS vinculada — fotos não podem ser editadas aqui.</p>
+            )}
             <Button onClick={handleSaveEditHistory} disabled={!histEditForm.description || !histEditForm.hour_meter} className="w-full">Salvar Alterações</Button>
           </div>
         </DialogContent>

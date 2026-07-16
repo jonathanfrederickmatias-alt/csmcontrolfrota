@@ -94,6 +94,8 @@ interface HistoryRow {
   operator?: string;
   notes?: string;
   planDescription?: string;
+  problem?: string;
+  solution?: string;
   photosStart?: string[];
   photosEnd?: string[];
 }
@@ -767,6 +769,35 @@ export async function exportMaintenanceHistoryPDF(
     pdf.text(clipText(pdf, r.planDescription || '—', colWidths[5] - 4), colX[5] + 2, midY);
 
     y += rowHeight;
+
+    // Details block: Problema / Solução / Observações
+    const detailPairs: { label: string; value?: string }[] = [
+      { label: 'Problema identificado', value: r.problem },
+      { label: 'Solução aplicada', value: r.solution },
+      { label: 'Observações', value: r.notes },
+    ].filter(d => d.value && d.value.trim().length > 0);
+
+    if (detailPairs.length > 0) {
+      const detailWidth = contentWidth - 4;
+      pdf.setFontSize(6.5);
+      detailPairs.forEach(d => {
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(...COLORS.text);
+        const labelText = `${d.label}: `;
+        const labelW = pdf.getTextWidth(labelText);
+        const valueLines = wrapText(pdf, d.value!, detailWidth - labelW);
+        const blockH = Math.max(3.5, valueLines.length * 3.2) + 1;
+        y = checkPageBreak(pdf, y, blockH);
+        pdf.text(labelText, margin + 2, y + 3);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(...COLORS.textMuted);
+        valueLines.forEach((line, li) => {
+          pdf.text(line, margin + 2 + labelW, y + 3 + li * 3.2);
+        });
+        y += blockH;
+      });
+      y += 1;
+    }
 
     if (hasPhotos) {
       const drawStrip = (images: { data: string; format: 'JPEG' | 'PNG' }[], label: string) => {

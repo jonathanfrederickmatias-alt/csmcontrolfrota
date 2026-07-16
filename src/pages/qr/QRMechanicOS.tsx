@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { CheckCircle, Wrench, Loader2, Play, Square, Plus, Trash2, Package, CheckSquare, SquareIcon } from "lucide-react";
 import PublicLayout from "@/components/PublicLayout";
 import PhotoUpload from "@/components/PhotoUpload";
+import MultiPhotoUpload from "@/components/MultiPhotoUpload";
 
 interface Part {
   code: string;
@@ -36,6 +37,8 @@ interface WorkOrder {
   parts: Part[];
   photo_start_url: string | null;
   photo_end_url: string | null;
+  photos_start: string[] | null;
+  photos_end: string[] | null;
   started_at: string | null;
   completed_at: string | null;
   created_at: string;
@@ -62,8 +65,8 @@ export default function QRMechanicOS() {
   const [mechanicName, setMechanicName] = useState('');
   const [parts, setParts] = useState<Part[]>([{ code: '', description: '' }]);
   const [notes, setNotes] = useState('');
-  const [photoStartUrl, setPhotoStartUrl] = useState('');
-  const [photoEndUrl, setPhotoEndUrl] = useState('');
+  const [photosStart, setPhotosStart] = useState<string[]>([]);
+  const [photosEnd, setPhotosEnd] = useState<string[]>([]);
   const [resolvingReported, setResolvingReported] = useState(true);
   const [causeIdentified, setCauseIdentified] = useState('');
   const [serviceExecuted, setServiceExecuted] = useState('');
@@ -79,8 +82,8 @@ export default function QRMechanicOS() {
       setOs(wo);
       setMechanicName(wo.mechanic_name || '');
       setNotes(wo.notes || '');
-      setPhotoStartUrl(wo.photo_start_url || '');
-      setPhotoEndUrl(wo.photo_end_url || '');
+      setPhotosStart(wo.photos_start && wo.photos_start.length ? wo.photos_start : (wo.photo_start_url ? [wo.photo_start_url] : []));
+      setPhotosEnd(wo.photos_end && wo.photos_end.length ? wo.photos_end : (wo.photo_end_url ? [wo.photo_end_url] : []));
       setCauseIdentified(wo.cause_identified || '');
       setServiceExecuted(wo.service_executed || '');
       // If a distinct cause was already recorded and differs from OS description, mark as not resolving reported
@@ -143,12 +146,13 @@ export default function QRMechanicOS() {
   const resolvedCause = () => resolvingReported ? (os?.description || '') : (causeIdentified.trim() || '');
 
   const handleStartService = async () => {
-    if (!os || !mechanicName || !photoStartUrl) return;
+    if (!os || !mechanicName || photosStart.length === 0) return;
     setSaving(true);
     await supabase.from('work_orders').update({
       status: 'in_progress',
       mechanic_name: mechanicName,
-      photo_start_url: photoStartUrl,
+      photos_start: photosStart as unknown as any,
+      photo_start_url: photosStart[0] || null,
       started_at: new Date().toISOString(),
       parts: cleanParts() as unknown as any,
       part_code: cleanParts().map(p => p.code).filter(Boolean).join(', ') || null,
@@ -162,11 +166,12 @@ export default function QRMechanicOS() {
   };
 
   const handleCompleteService = async () => {
-    if (!os || !photoEndUrl || !serviceExecuted.trim()) return;
+    if (!os || photosEnd.length === 0 || !serviceExecuted.trim()) return;
     setSaving(true);
     await supabase.from('work_orders').update({
       status: 'done',
-      photo_end_url: photoEndUrl,
+      photos_end: photosEnd as unknown as any,
+      photo_end_url: photosEnd[0] || null,
       completed_at: new Date().toISOString(),
       parts: cleanParts() as unknown as any,
       part_code: cleanParts().map(p => p.code).filter(Boolean).join(', ') || null,
@@ -249,20 +254,39 @@ export default function QRMechanicOS() {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3 mt-4">
-            {os.photo_start_url && (
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">Foto Início</p>
-                <img src={os.photo_start_url} alt="Início" className="w-full h-32 object-cover rounded-lg border border-border" />
+          {(() => {
+            const startPhotos = (os.photos_start && os.photos_start.length ? os.photos_start : (os.photo_start_url ? [os.photo_start_url] : []));
+            const endPhotos = (os.photos_end && os.photos_end.length ? os.photos_end : (os.photo_end_url ? [os.photo_end_url] : []));
+            if (startPhotos.length === 0 && endPhotos.length === 0) return null;
+            return (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+                {startPhotos.length > 0 && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Fotos de Início ({startPhotos.length})</p>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {startPhotos.map((u, i) => (
+                        <a key={u + i} href={u} target="_blank" rel="noreferrer">
+                          <img src={u} alt={`Início ${i + 1}`} className="w-full h-20 object-cover rounded-lg border border-border" />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {endPhotos.length > 0 && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Fotos de Término ({endPhotos.length})</p>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {endPhotos.map((u, i) => (
+                        <a key={u + i} href={u} target="_blank" rel="noreferrer">
+                          <img src={u} alt={`Término ${i + 1}`} className="w-full h-20 object-cover rounded-lg border border-border" />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
-            {os.photo_end_url && (
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">Foto Término</p>
-                <img src={os.photo_end_url} alt="Término" className="w-full h-32 object-cover rounded-lg border border-border" />
-              </div>
-            )}
-          </div>
+            );
+          })()}
         </div>
       </PublicLayout>
     );
@@ -445,16 +469,16 @@ export default function QRMechanicOS() {
               <p className="text-sm font-semibold flex items-center gap-2 mb-3">
                 <Play className="w-4 h-4 text-primary" /> Início do Serviço
               </p>
-              <PhotoUpload
-                label="Foto de Início do Serviço *"
+              <MultiPhotoUpload
+                label="Fotos de Início do Serviço *"
                 required
-                onUploaded={setPhotoStartUrl}
-                value={photoStartUrl}
+                values={photosStart}
+                onChange={setPhotosStart}
               />
             </div>
             <Button
               onClick={handleStartService}
-              disabled={!mechanicName || !photoStartUrl || (!resolvingReported && !causeIdentified.trim()) || saving}
+              disabled={!mechanicName || photosStart.length === 0 || (!resolvingReported && !causeIdentified.trim()) || saving}
               className="w-full h-12 text-base font-bold"
             >
               {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
@@ -466,15 +490,25 @@ export default function QRMechanicOS() {
         {/* COMPLETION phase */}
         {isInProgress && (
           <>
-            {os.photo_start_url && (
-              <div className="border-t border-border pt-4">
-                <p className="text-xs text-muted-foreground mb-1">Foto de Início</p>
-                <img src={os.photo_start_url} alt="Início" className="w-full h-32 object-cover rounded-lg border border-border" />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Iniciado em: {os.started_at ? new Date(os.started_at).toLocaleString('pt-BR') : '—'}
-                </p>
-              </div>
-            )}
+            {(() => {
+              const startPhotos = (os.photos_start && os.photos_start.length ? os.photos_start : (os.photo_start_url ? [os.photo_start_url] : []));
+              if (startPhotos.length === 0) return null;
+              return (
+                <div className="border-t border-border pt-4">
+                  <p className="text-xs text-muted-foreground mb-1">Fotos de Início ({startPhotos.length})</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {startPhotos.map((u, i) => (
+                      <a key={u + i} href={u} target="_blank" rel="noreferrer">
+                        <img src={u} alt={`Início ${i + 1}`} className="w-full h-24 object-cover rounded-lg border border-border" />
+                      </a>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Iniciado em: {os.started_at ? new Date(os.started_at).toLocaleString('pt-BR') : '—'}
+                  </p>
+                </div>
+              );
+            })()}
 
             {/* Save items progress button */}
             {requestItems.length > 0 && doneCount > 0 && !allItemsDone && (
@@ -494,16 +528,16 @@ export default function QRMechanicOS() {
               <p className="text-sm font-semibold flex items-center gap-2 mb-3">
                 <Square className="w-4 h-4 text-success" /> Término do Serviço
               </p>
-              <PhotoUpload
-                label="Foto de Término do Serviço *"
+              <MultiPhotoUpload
+                label="Fotos de Término do Serviço *"
                 required
-                onUploaded={setPhotoEndUrl}
-                value={photoEndUrl}
+                values={photosEnd}
+                onChange={setPhotosEnd}
               />
             </div>
             <Button
               onClick={handleCompleteService}
-              disabled={!photoEndUrl || !serviceExecuted.trim() || (!resolvingReported && !causeIdentified.trim()) || saving}
+              disabled={photosEnd.length === 0 || !serviceExecuted.trim() || (!resolvingReported && !causeIdentified.trim()) || saving}
               className="w-full h-12 text-base font-bold bg-success hover:bg-success/90 text-success-foreground"
             >
               {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}

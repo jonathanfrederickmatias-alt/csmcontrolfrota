@@ -1011,6 +1011,8 @@ export type Database = {
           parts_cost: number | null
           photo_end_url: string | null
           photo_start_url: string | null
+          photos_end: Json
+          photos_start: Json
           priority: string
           service_executed: string | null
           started_at: string | null
@@ -1046,6 +1048,8 @@ export type Database = {
           parts_cost?: number | null
           photo_end_url?: string | null
           photo_start_url?: string | null
+          photos_end?: Json
+          photos_start?: Json
           priority?: string
           service_executed?: string | null
           started_at?: string | null
@@ -1081,6 +1085,8 @@ export type Database = {
           parts_cost?: number | null
           photo_end_url?: string | null
           photo_start_url?: string | null
+          photos_end?: Json
+          photos_start?: Json
           priority?: string
           service_executed?: string | null
           started_at?: string | null

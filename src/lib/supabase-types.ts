@@ -168,4 +168,6 @@ export interface DBWorkOrder {
   parts?: any;
   photo_start_url?: string | null;
   photo_end_url?: string | null;
+  photos_start?: string[] | null;
+  photos_end?: string[] | null;
 }

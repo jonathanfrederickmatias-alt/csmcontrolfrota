@@ -13,6 +13,7 @@ import { Plus, Wrench, AlertTriangle, CheckCircle, Trash2, Edit2, Loader2, Camer
 import { toast } from "@/hooks/use-toast";
 import { toast as sonnerToast } from "sonner";
 import PhotoUpload from "@/components/PhotoUpload";
+import MultiPhotoUpload from "@/components/MultiPhotoUpload";
 import * as XLSX from 'xlsx';
 import { exportMaintenancePlansPDF, exportMaintenanceRequestsPDF, exportMaintenanceHistoryPDF, exportWorkOrdersPDF, PlanHistoryRow } from '@/lib/pdf-export';
 import { calculateMaintenanceStatus } from '@/lib/maintenance-utils';
@@ -101,7 +102,7 @@ export default function MaintenancePage() {
 
   // Closure dialog (dar baixa na OS)
   const [closureOS, setClosureOS] = useState<DBWorkOrder | null>(null);
-  const [closureForm, setClosureForm] = useState({ invoice_number: '', service_executed: '', mechanic_name: '', notes: '', labor_cost: '', parts_cost: '', photo_start_url: '', photo_end_url: '' });
+  const [closureForm, setClosureForm] = useState({ invoice_number: '', service_executed: '', mechanic_name: '', notes: '', labor_cost: '', parts_cost: '', photos_start: [] as string[], photos_end: [] as string[] });
 
   // PDF history filter dialog
   const [pdfHistoryDialog, setPdfHistoryDialog] = useState(false);
@@ -129,8 +130,8 @@ export default function MaintenancePage() {
     parts_cost: '',
     invoice_number: '',
     technical_observations: '',
-    photo_start_url: '',
-    photo_end_url: '',
+    photos_start: [] as string[],
+    photos_end: [] as string[],
     executed_at: new Date().toISOString().slice(0, 16),
   };
   const [execForm, setExecForm] = useState(emptyExecForm);
@@ -412,8 +413,8 @@ export default function MaintenancePage() {
         parts_cost: (os as any).parts_cost ? String((os as any).parts_cost) : '',
         mechanic_name: os.mechanic_name || '',
         notes: os.notes || '',
-        photo_start_url: (os as any).photo_start_url || '',
-        photo_end_url: (os as any).photo_end_url || '',
+        photos_start: ((os as any).photos_start && (os as any).photos_start.length ? (os as any).photos_start : ((os as any).photo_start_url ? [(os as any).photo_start_url] : [])) as string[],
+        photos_end: ((os as any).photos_end && (os as any).photos_end.length ? (os as any).photos_end : ((os as any).photo_end_url ? [(os as any).photo_end_url] : [])) as string[],
       });
       return;
     }
@@ -448,8 +449,10 @@ export default function MaintenancePage() {
       notes: closureForm.notes || null,
       labor_cost: closureForm.labor_cost ? Number(closureForm.labor_cost) : 0,
       parts_cost: closureForm.parts_cost ? Number(closureForm.parts_cost) : 0,
-      photo_start_url: closureForm.photo_start_url || null,
-      photo_end_url: closureForm.photo_end_url || null,
+      photos_start: closureForm.photos_start,
+      photos_end: closureForm.photos_end,
+      photo_start_url: closureForm.photos_start[0] || null,
+      photo_end_url: closureForm.photos_end[0] || null,
     };
     await supabase.from('work_orders').update(update).eq('id', closureOS.id);
     toast({ title: 'OS concluída com sucesso!' });
@@ -648,8 +651,10 @@ export default function MaintenancePage() {
         execution_meter: execMeter,
         machine_released: true,
         final_status: 'concluida',
-        photo_start_url: execForm.photo_start_url || null,
-        photo_end_url: execForm.photo_end_url || null,
+        photos_start: execForm.photos_start,
+        photos_end: execForm.photos_end,
+        photo_start_url: execForm.photos_start[0] || null,
+        photo_end_url: execForm.photos_end[0] || null,
         started_at: startedAt,
         completed_at: completedAt,
       }).eq('id', osRow.id);
@@ -1288,6 +1293,39 @@ export default function MaintenancePage() {
                             <p className="text-xs text-foreground whitespace-pre-line">{linkedOS.service_executed}</p>
                           </div>
                         )}
+                        {(() => {
+                          const startPhotos = (linkedOS?.photos_start && linkedOS.photos_start.length ? linkedOS.photos_start : (linkedOS?.photo_start_url ? [linkedOS.photo_start_url] : [])) as string[];
+                          const endPhotos = (linkedOS?.photos_end && linkedOS.photos_end.length ? linkedOS.photos_end : (linkedOS?.photo_end_url ? [linkedOS.photo_end_url] : [])) as string[];
+                          if (startPhotos.length === 0 && endPhotos.length === 0) return null;
+                          return (
+                            <div className="mt-2 flex flex-wrap gap-3">
+                              {startPhotos.length > 0 && (
+                                <div>
+                                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide mb-1">Antes ({startPhotos.length})</p>
+                                  <div className="flex flex-wrap gap-1">
+                                    {startPhotos.map((u, i) => (
+                                      <a key={u + i} href={u} target="_blank" rel="noreferrer">
+                                        <img src={u} alt={`Antes ${i + 1}`} className="w-14 h-14 object-cover rounded border border-border" />
+                                      </a>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              {endPhotos.length > 0 && (
+                                <div>
+                                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide mb-1">Depois ({endPhotos.length})</p>
+                                  <div className="flex flex-wrap gap-1">
+                                    {endPhotos.map((u, i) => (
+                                      <a key={u + i} href={u} target="_blank" rel="noreferrer">
+                                        <img src={u} alt={`Depois ${i + 1}`} className="w-14 h-14 object-cover rounded border border-border" />
+                                      </a>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
                         {h.notes && <p className="text-xs text-muted-foreground italic mt-1 whitespace-pre-line">{h.notes}</p>}
                       </div>
                       <div className="text-right shrink-0 flex flex-col items-end gap-1">
@@ -1706,15 +1744,17 @@ export default function MaintenancePage() {
               />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <PhotoUpload
-                label="Foto/Arquivo Início"
-                onUploaded={url => setClosureForm({...closureForm, photo_start_url: url})}
-                value={closureForm.photo_start_url}
+              <MultiPhotoUpload
+                label="Fotos/Arquivos Início"
+                acceptFiles
+                values={closureForm.photos_start}
+                onChange={(urls) => setClosureForm({ ...closureForm, photos_start: urls })}
               />
-              <PhotoUpload
-                label="Foto/Arquivo Término"
-                onUploaded={url => setClosureForm({...closureForm, photo_end_url: url})}
-                value={closureForm.photo_end_url}
+              <MultiPhotoUpload
+                label="Fotos/Arquivos Término"
+                acceptFiles
+                values={closureForm.photos_end}
+                onChange={(urls) => setClosureForm({ ...closureForm, photos_end: urls })}
               />
             </div>
             <Button
@@ -1898,9 +1938,9 @@ export default function MaintenancePage() {
               <Label>Observações técnicas</Label>
               <Textarea value={execForm.technical_observations} onChange={e => setExecForm({ ...execForm, technical_observations: e.target.value })} placeholder="Peças, detalhes técnicos..." rows={2} />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <PhotoUpload label="Foto Antes" value={execForm.photo_start_url} onUploaded={(url) => setExecForm({ ...execForm, photo_start_url: url })} acceptFiles />
-              <PhotoUpload label="Foto Depois" value={execForm.photo_end_url} onUploaded={(url) => setExecForm({ ...execForm, photo_end_url: url })} acceptFiles />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <MultiPhotoUpload label="Fotos Antes" acceptFiles values={execForm.photos_start} onChange={(urls) => setExecForm({ ...execForm, photos_start: urls })} />
+              <MultiPhotoUpload label="Fotos Depois" acceptFiles values={execForm.photos_end} onChange={(urls) => setExecForm({ ...execForm, photos_end: urls })} />
             </div>
             <div className="flex gap-2 pt-2">
               <Button variant="outline" onClick={() => setExecOpen(false)} className="flex-1">Cancelar</Button>

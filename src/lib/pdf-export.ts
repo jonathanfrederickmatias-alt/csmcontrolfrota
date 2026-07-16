@@ -94,6 +94,8 @@ interface HistoryRow {
   operator?: string;
   notes?: string;
   planDescription?: string;
+  photosStart?: string[];
+  photosEnd?: string[];
 }
 
 const COLORS = {
@@ -160,6 +162,37 @@ async function loadLogoAsBase64(): Promise<string | null> {
       reader.readAsDataURL(blob);
     });
   } catch {
+    return null;
+  }
+}
+
+// Cache remote images so repeated URLs across rows only download once
+const imageCache = new Map<string, { data: string; format: 'JPEG' | 'PNG' } | null>();
+
+async function loadImageAsBase64(url: string): Promise<{ data: string; format: 'JPEG' | 'PNG' } | null> {
+  if (!url) return null;
+  if (imageCache.has(url)) return imageCache.get(url)!;
+  try {
+    const response = await fetch(url, { mode: 'cors' });
+    if (!response.ok) throw new Error('fetch failed');
+    const blob = await response.blob();
+    const isPng = blob.type.includes('png');
+    // Only include actual images (skip pdfs/docs)
+    if (!blob.type.startsWith('image/')) {
+      imageCache.set(url, null);
+      return null;
+    }
+    const dataUrl: string = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+    const result = { data: dataUrl, format: (isPng ? 'PNG' : 'JPEG') as 'JPEG' | 'PNG' };
+    imageCache.set(url, result);
+    return result;
+  } catch {
+    imageCache.set(url, null);
     return null;
   }
 }

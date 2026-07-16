@@ -94,6 +94,8 @@ interface HistoryRow {
   operator?: string;
   notes?: string;
   planDescription?: string;
+  problem?: string;
+  solution?: string;
   photosStart?: string[];
   photosEnd?: string[];
 }

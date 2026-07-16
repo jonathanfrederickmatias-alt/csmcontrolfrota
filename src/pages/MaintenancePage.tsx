@@ -591,6 +591,89 @@ export default function MaintenancePage() {
     fetchAll();
   };
 
+  const handleCreateExecutedService = async () => {
+    if (!execForm.equipmentId || !execForm.description || !execForm.service_executed) return;
+    setExecSaving(true);
+    try {
+      const { getMyTenantId } = await import('@/lib/tenant');
+      const tenant_id = await getMyTenantId();
+
+      // 1) Cria pedido de manutenção já concluído
+      const { data: reqData, error: reqErr } = await supabase.from('maintenance_requests').insert([{
+        tenant_id,
+        equipment_id: execForm.equipmentId,
+        description: execForm.description,
+        priority: 'medium',
+        operator_name: execForm.mechanic_name || 'Sistema',
+        status: 'open',
+      }]).select().single();
+      if (reqErr || !reqData) throw reqErr || new Error('Falha ao criar pedido');
+
+      // 2) Busca OS criada automaticamente pelo trigger
+      let osRow: any = null;
+      for (let i = 0; i < 6 && !osRow; i++) {
+        const { data } = await supabase.from('work_orders').select('*').eq('maintenance_request_id', reqData.id).maybeSingle();
+        if (data) { osRow = data; break; }
+        await new Promise(r => setTimeout(r, 200));
+      }
+      if (!osRow) {
+        // Fallback: cria manualmente
+        const { data: created, error: osErr } = await supabase.from('work_orders').insert([{
+          tenant_id,
+          equipment_id: execForm.equipmentId,
+          maintenance_request_id: reqData.id,
+          description: execForm.description,
+          priority: 'medium',
+          status: 'open',
+        }]).select().single();
+        if (osErr || !created) throw osErr || new Error('Falha ao criar OS');
+        osRow = created;
+      }
+
+      const execMeter = execForm.execution_meter ? parseFloat(execForm.execution_meter) : 0;
+      const startedAt = new Date(execForm.executed_at).toISOString();
+      const completedAt = new Date(execForm.executed_at).toISOString();
+
+      // 3) Atualiza OS para concluída — trigger auto_create_maintenance_history cria o histórico
+      const { error: updErr } = await supabase.from('work_orders').update({
+        status: 'done',
+        mechanic_name: execForm.mechanic_name || 'Mecânico',
+        maintenance_type: execForm.maintenance_type,
+        cause_identified: execForm.cause_identified || execForm.description,
+        service_executed: execForm.service_executed,
+        technical_observations: execForm.technical_observations || null,
+        invoice_number: execForm.invoice_number || null,
+        labor_cost: execForm.labor_cost ? parseFloat(execForm.labor_cost) : 0,
+        parts_cost: execForm.parts_cost ? parseFloat(execForm.parts_cost) : 0,
+        execution_meter: execMeter,
+        machine_released: true,
+        final_status: 'concluida',
+        photo_start_url: execForm.photo_start_url || null,
+        photo_end_url: execForm.photo_end_url || null,
+        started_at: startedAt,
+        completed_at: completedAt,
+      }).eq('id', osRow.id);
+      if (updErr) throw updErr;
+
+      // 4) Fecha o pedido
+      await supabase.from('maintenance_requests').update({
+        status: 'done',
+        resolved_at: completedAt,
+      }).eq('id', reqData.id);
+
+      toast({ title: 'Serviço executado registrado!', description: `OS #${osRow.os_number} criada e concluída.` });
+      setExecOpen(false);
+      setExecForm(emptyExecForm);
+      fetchAll();
+    } catch (e: any) {
+      toast({ title: 'Erro ao registrar serviço', description: e?.message || 'Tente novamente', variant: 'destructive' });
+    } finally {
+      setExecSaving(false);
+    }
+  };
+
+
+
   return (
     <div className="space-y-6">
       <div>

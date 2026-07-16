@@ -92,7 +92,8 @@ export default function MaintenancePage() {
 
   // Edit history dialog
   const [editHistory, setEditHistory] = useState<DBMaintenanceHistory | null>(null);
-  const [histEditForm, setHistEditForm] = useState({ description: '', hour_meter: '', operator_name: '', notes: '' });
+  const [histEditForm, setHistEditForm] = useState({ description: '', hour_meter: '', operator_name: '', notes: '', photos_start: [] as string[], photos_end: [] as string[] });
+  const [histEditLinkedOS, setHistEditLinkedOS] = useState<DBWorkOrder | null>(null);
 
   // Valoração (admin only) — define custos antes de virar "Realizado"
   const [valuationFilter, setValuationFilter] = useState('all');
@@ -504,7 +505,19 @@ export default function MaintenancePage() {
   // Edit history handlers
   const openEditHistory = (h: DBMaintenanceHistory) => {
     setEditHistory(h);
-    setHistEditForm({ description: h.description, hour_meter: String(h.hour_meter), operator_name: h.operator_name || '', notes: h.notes || '' });
+    const osMatch = h.description?.match(/OS #(\d+)/);
+    const linkedOS = osMatch ? workOrders.find(o => o.os_number === Number(osMatch[1])) : undefined;
+    setHistEditLinkedOS(linkedOS || null);
+    const ps = (linkedOS?.photos_start && linkedOS.photos_start.length ? linkedOS.photos_start : (linkedOS?.photo_start_url ? [linkedOS.photo_start_url] : [])) as string[];
+    const pe = (linkedOS?.photos_end && linkedOS.photos_end.length ? linkedOS.photos_end : (linkedOS?.photo_end_url ? [linkedOS.photo_end_url] : [])) as string[];
+    setHistEditForm({
+      description: h.description,
+      hour_meter: String(h.hour_meter),
+      operator_name: h.operator_name || '',
+      notes: h.notes || '',
+      photos_start: ps,
+      photos_end: pe,
+    });
   };
   const handleSaveEditHistory = async () => {
     if (!editHistory) return;
@@ -514,8 +527,19 @@ export default function MaintenancePage() {
       operator_name: histEditForm.operator_name || null,
       notes: histEditForm.notes || null,
     }).eq('id', editHistory.id);
+
+    if (histEditLinkedOS) {
+      await supabase.from('work_orders').update({
+        photos_start: histEditForm.photos_start as unknown as any,
+        photos_end: histEditForm.photos_end as unknown as any,
+        photo_start_url: histEditForm.photos_start[0] || null,
+        photo_end_url: histEditForm.photos_end[0] || null,
+      }).eq('id', histEditLinkedOS.id);
+    }
+
     toast({ title: 'Registro atualizado!' });
     setEditHistory(null);
+    setHistEditLinkedOS(null);
     fetchAll();
   };
 

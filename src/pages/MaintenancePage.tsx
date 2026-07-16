@@ -1650,14 +1650,32 @@ export default function MaintenancePage() {
       </Dialog>
 
       {/* Edit History Dialog */}
-      <Dialog open={!!editHistory} onOpenChange={v => { if (!v) setEditHistory(null); }}>
-        <DialogContent className="bg-card border-border">
+      <Dialog open={!!editHistory} onOpenChange={v => { if (!v) { setEditHistory(null); setHistEditLinkedOS(null); } }}>
+        <DialogContent className="bg-card border-border max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Editar Registro de Manutenção</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div><Label>Descrição *</Label><Input value={histEditForm.description} onChange={e => setHistEditForm({...histEditForm, description: e.target.value})} /></div>
             <div><Label>Horímetro *</Label><Input type="number" value={histEditForm.hour_meter} onChange={e => setHistEditForm({...histEditForm, hour_meter: e.target.value})} /></div>
             <div><Label>Responsável</Label><Input value={histEditForm.operator_name} onChange={e => setHistEditForm({...histEditForm, operator_name: e.target.value})} /></div>
             <div><Label>Observações</Label><Textarea value={histEditForm.notes} onChange={e => setHistEditForm({...histEditForm, notes: e.target.value})} rows={2} /></div>
+            {histEditLinkedOS ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-border">
+                <MultiPhotoUpload
+                  label="Fotos/Arquivos Antes"
+                  acceptFiles
+                  values={histEditForm.photos_start}
+                  onChange={(urls) => setHistEditForm({ ...histEditForm, photos_start: urls })}
+                />
+                <MultiPhotoUpload
+                  label="Fotos/Arquivos Depois"
+                  acceptFiles
+                  values={histEditForm.photos_end}
+                  onChange={(urls) => setHistEditForm({ ...histEditForm, photos_end: urls })}
+                />
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground italic">Este registro não possui OS vinculada — fotos não podem ser editadas aqui.</p>
+            )}
             <Button onClick={handleSaveEditHistory} disabled={!histEditForm.description || !histEditForm.hour_meter} className="w-full">Salvar Alterações</Button>
           </div>
         </DialogContent>

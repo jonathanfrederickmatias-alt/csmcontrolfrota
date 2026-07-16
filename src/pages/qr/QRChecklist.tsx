@@ -71,6 +71,31 @@ export default function QRChecklist() {
       });
   }, [selectedEquipment, equipments]);
 
+  // Fetch open maintenance requests (unresolved problems from previous checklists)
+  useEffect(() => {
+    if (!selectedEquipment) { setOpenRequests([]); setPersistActions({}); return; }
+    (async () => {
+      const { data: reqs } = await supabase.from('maintenance_requests')
+        .select('id, description, created_at, status')
+        .eq('equipment_id', selectedEquipment)
+        .neq('status', 'done')
+        .order('created_at', { ascending: false });
+      const requests = (reqs || []) as Array<{ id: string; description: string; created_at: string }>;
+      if (requests.length === 0) { setOpenRequests([]); setPersistActions({}); return; }
+      // Fetch OS numbers linked to these requests (best effort — anon has SELECT on work_orders)
+      const ids = requests.map(r => r.id);
+      const { data: wos } = await supabase.from('work_orders')
+        .select('maintenance_request_id, os_number, status')
+        .in('maintenance_request_id', ids);
+      const osMap: Record<string, number | null> = {};
+      (wos || []).forEach((w: any) => {
+        if (w.status !== 'done') osMap[w.maintenance_request_id] = w.os_number;
+      });
+      setOpenRequests(requests.map(r => ({ ...r, os_number: osMap[r.id] ?? null })));
+      setPersistActions({});
+    })();
+  }, [selectedEquipment]);
+
   useEffect(() => {
     if (checklistType === 'daily') {
       setItems(defaultItems.map((label, i) => ({ id: String(i), label, checked: null as unknown as boolean, observation: '' })));

@@ -1823,6 +1823,100 @@ export default function MaintenancePage() {
         </DialogContent>
       </Dialog>
 
+      {/* Novo Serviço Executado Dialog */}
+      <Dialog open={execOpen} onOpenChange={(v) => { setExecOpen(v); if (!v) setExecForm(emptyExecForm); }}>
+        <DialogContent className="bg-card border-border max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 text-success" /> Registrar Serviço Executado
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Registre um serviço já realizado sem precisar abrir uma OS antes. Uma OS será criada e concluída automaticamente.
+            </p>
+            <div>
+              <Label>Equipamento *</Label>
+              <Select value={execForm.equipmentId} onValueChange={v => setExecForm({ ...execForm, equipmentId: v })}>
+                <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
+                <SelectContent>{equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eqLabel(eq)}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label>Tipo *</Label>
+                <Select value={execForm.maintenance_type} onValueChange={(v: any) => setExecForm({ ...execForm, maintenance_type: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="corretiva">Corretiva</SelectItem>
+                    <SelectItem value="preventiva">Preventiva</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Data/hora de execução</Label>
+                <Input type="datetime-local" value={execForm.executed_at} onChange={e => setExecForm({ ...execForm, executed_at: e.target.value })} />
+              </div>
+            </div>
+            <div>
+              <Label>Descrição do serviço *</Label>
+              <Textarea value={execForm.description} onChange={e => setExecForm({ ...execForm, description: e.target.value })} placeholder="Ex: Troca de óleo do motor" rows={2} />
+            </div>
+            <div>
+              <Label>Problema identificado</Label>
+              <Textarea value={execForm.cause_identified} onChange={e => setExecForm({ ...execForm, cause_identified: e.target.value })} placeholder="Se vazio, usa a descrição acima" rows={2} />
+            </div>
+            <div>
+              <Label>Solução aplicada / Serviço executado *</Label>
+              <Textarea value={execForm.service_executed} onChange={e => setExecForm({ ...execForm, service_executed: e.target.value })} placeholder="Descreva o que foi feito..." rows={3} />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label>Mecânico</Label>
+                <Input value={execForm.mechanic_name} onChange={e => setExecForm({ ...execForm, mechanic_name: e.target.value })} placeholder="Nome do responsável" />
+              </div>
+              <div>
+                <Label>Horímetro / Km</Label>
+                <Input type="number" inputMode="decimal" value={execForm.execution_meter} onChange={e => setExecForm({ ...execForm, execution_meter: e.target.value })} placeholder="Ex: 1250" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label>Custo Mão de Obra (R$)</Label>
+                <Input type="number" inputMode="decimal" value={execForm.labor_cost} onChange={e => setExecForm({ ...execForm, labor_cost: e.target.value })} placeholder="0,00" />
+              </div>
+              <div>
+                <Label>Custo Peças (R$)</Label>
+                <Input type="number" inputMode="decimal" value={execForm.parts_cost} onChange={e => setExecForm({ ...execForm, parts_cost: e.target.value })} placeholder="0,00" />
+              </div>
+            </div>
+            <div>
+              <Label>Nota Fiscal</Label>
+              <Input value={execForm.invoice_number} onChange={e => setExecForm({ ...execForm, invoice_number: e.target.value })} placeholder="Nº da NF (opcional)" />
+            </div>
+            <div>
+              <Label>Observações técnicas</Label>
+              <Textarea value={execForm.technical_observations} onChange={e => setExecForm({ ...execForm, technical_observations: e.target.value })} placeholder="Peças, detalhes técnicos..." rows={2} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <PhotoUpload label="Foto Antes" value={execForm.photo_start_url} onUploaded={(url) => setExecForm({ ...execForm, photo_start_url: url })} acceptFiles />
+              <PhotoUpload label="Foto Depois" value={execForm.photo_end_url} onUploaded={(url) => setExecForm({ ...execForm, photo_end_url: url })} acceptFiles />
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Button variant="outline" onClick={() => setExecOpen(false)} className="flex-1">Cancelar</Button>
+              <Button
+                onClick={handleCreateExecutedService}
+                disabled={!execForm.equipmentId || !execForm.description || !execForm.service_executed || execSaving}
+                className="flex-1 bg-success hover:bg-success/90 text-success-foreground"
+              >
+                {execSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                <CheckCircle className="w-4 h-4 mr-1" /> Registrar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Nova OS Dialog */}
       <Dialog open={newOsOpen} onOpenChange={(v) => { setNewOsOpen(v); if (!v) setNewOsForm({ equipmentId: '', description: '', priority: 'medium', operator_name: '' }); }}>
         <DialogContent className="bg-card border-border">

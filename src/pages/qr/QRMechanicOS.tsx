@@ -450,16 +450,16 @@ export default function QRMechanicOS() {
               <p className="text-sm font-semibold flex items-center gap-2 mb-3">
                 <Play className="w-4 h-4 text-primary" /> Início do Serviço
               </p>
-              <PhotoUpload
-                label="Foto de Início do Serviço *"
+              <MultiPhotoUpload
+                label="Fotos de Início do Serviço *"
                 required
-                onUploaded={setPhotoStartUrl}
-                value={photoStartUrl}
+                values={photosStart}
+                onChange={setPhotosStart}
               />
             </div>
             <Button
               onClick={handleStartService}
-              disabled={!mechanicName || !photoStartUrl || (!resolvingReported && !causeIdentified.trim()) || saving}
+              disabled={!mechanicName || photosStart.length === 0 || (!resolvingReported && !causeIdentified.trim()) || saving}
               className="w-full h-12 text-base font-bold"
             >
               {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
@@ -471,15 +471,25 @@ export default function QRMechanicOS() {
         {/* COMPLETION phase */}
         {isInProgress && (
           <>
-            {os.photo_start_url && (
-              <div className="border-t border-border pt-4">
-                <p className="text-xs text-muted-foreground mb-1">Foto de Início</p>
-                <img src={os.photo_start_url} alt="Início" className="w-full h-32 object-cover rounded-lg border border-border" />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Iniciado em: {os.started_at ? new Date(os.started_at).toLocaleString('pt-BR') : '—'}
-                </p>
-              </div>
-            )}
+            {(() => {
+              const startPhotos = (os.photos_start && os.photos_start.length ? os.photos_start : (os.photo_start_url ? [os.photo_start_url] : []));
+              if (startPhotos.length === 0) return null;
+              return (
+                <div className="border-t border-border pt-4">
+                  <p className="text-xs text-muted-foreground mb-1">Fotos de Início ({startPhotos.length})</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {startPhotos.map((u, i) => (
+                      <a key={u + i} href={u} target="_blank" rel="noreferrer">
+                        <img src={u} alt={`Início ${i + 1}`} className="w-full h-24 object-cover rounded-lg border border-border" />
+                      </a>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Iniciado em: {os.started_at ? new Date(os.started_at).toLocaleString('pt-BR') : '—'}
+                  </p>
+                </div>
+              );
+            })()}
 
             {/* Save items progress button */}
             {requestItems.length > 0 && doneCount > 0 && !allItemsDone && (
@@ -499,16 +509,16 @@ export default function QRMechanicOS() {
               <p className="text-sm font-semibold flex items-center gap-2 mb-3">
                 <Square className="w-4 h-4 text-success" /> Término do Serviço
               </p>
-              <PhotoUpload
-                label="Foto de Término do Serviço *"
+              <MultiPhotoUpload
+                label="Fotos de Término do Serviço *"
                 required
-                onUploaded={setPhotoEndUrl}
-                value={photoEndUrl}
+                values={photosEnd}
+                onChange={setPhotosEnd}
               />
             </div>
             <Button
               onClick={handleCompleteService}
-              disabled={!photoEndUrl || !serviceExecuted.trim() || (!resolvingReported && !causeIdentified.trim()) || saving}
+              disabled={photosEnd.length === 0 || !serviceExecuted.trim() || (!resolvingReported && !causeIdentified.trim()) || saving}
               className="w-full h-12 text-base font-bold bg-success hover:bg-success/90 text-success-foreground"
             >
               {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}

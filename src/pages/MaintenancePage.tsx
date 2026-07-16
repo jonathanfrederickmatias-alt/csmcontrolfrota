@@ -778,6 +778,11 @@ export default function MaintenancePage() {
                 <FileText className="w-4 h-4 text-primary" /> PDF
               </Button>
               {canEdit && (
+                <Button size="sm" variant="outline" className="gap-2" onClick={() => setExecOpen(true)}>
+                  <CheckCircle className="w-4 h-4 text-success" /> Serviço Executado
+                </Button>
+              )}
+              {canEdit && (
                 <Button size="sm" className="gap-2" onClick={() => setNewOsOpen(true)}>
                   <Plus className="w-4 h-4" /> Nova OS
                 </Button>

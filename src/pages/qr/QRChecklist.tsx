@@ -337,6 +337,53 @@ export default function QRChecklist() {
           </div>
         </div>
 
+        {selectedEquipment && openRequests.length > 0 && (
+          <div className="glass-card rounded-xl p-5 border-l-4 border-l-warning">
+            <h2 className="font-bold mb-1 text-sm uppercase tracking-wider flex items-center gap-2 text-warning">
+              <RefreshCw className="w-4 h-4" /> Problemas em Aberto
+            </h2>
+            <p className="text-xs text-muted-foreground mb-3">
+              Marque "Problema persiste" para os problemas que continuam sem resolução. Isso atualiza a OS existente e evita duplicação.
+            </p>
+            <div className="space-y-3">
+              {openRequests.map(req => {
+                const action = persistActions[req.id] || { persist: false, note: '' };
+                return (
+                  <div key={req.id} className={`p-3 rounded-lg border ${action.persist ? 'border-warning bg-warning/5' : 'border-border bg-secondary/40'}`}>
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex-1 min-w-0">
+                        {req.os_number != null && (
+                          <span className="inline-block text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-primary/10 text-primary mr-2">OS #{req.os_number}</span>
+                        )}
+                        <span className="text-xs text-muted-foreground">{new Date(req.created_at).toLocaleDateString('pt-BR')}</span>
+                        <p className="text-sm font-medium mt-1 whitespace-pre-wrap break-words">{req.description}</p>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={action.persist ? 'default' : 'outline'}
+                        className={`h-7 px-2 text-xs flex-shrink-0 ${action.persist ? 'bg-warning text-warning-foreground hover:bg-warning/90' : ''}`}
+                        onClick={() => setPersistActions(prev => ({ ...prev, [req.id]: { ...action, persist: !action.persist } }))}
+                      >
+                        <RefreshCw className="w-3.5 h-3.5 mr-1" /> Problema persiste
+                      </Button>
+                    </div>
+                    {action.persist && (
+                      <Input
+                        className="h-8 text-xs"
+                        placeholder="Observação (opcional): ex: piorou, mesma condição..."
+                        value={action.note}
+                        onChange={e => setPersistActions(prev => ({ ...prev, [req.id]: { ...action, note: e.target.value } }))}
+                      />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+
         {checklistType !== 'daily' && (
           <div className="glass-card rounded-xl p-5">
             <h2 className="font-bold mb-3 text-sm text-muted-foreground uppercase tracking-wider flex items-center gap-2">

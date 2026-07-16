@@ -708,6 +708,26 @@ export async function exportMaintenanceHistoryPDF(
   colHeaders.forEach((h, i) => pdf.text(h, colX[i] + 2, y + 4));
   y += 6;
 
+  // Preload photos in parallel so PDF stays deterministic
+  const photoData = await Promise.all(records.map(async (r) => {
+    const startUrls = (r.photosStart || []).slice(0, 6);
+    const endUrls = (r.photosEnd || []).slice(0, 6);
+    const [starts, ends] = await Promise.all([
+      Promise.all(startUrls.map(loadImageAsBase64)),
+      Promise.all(endUrls.map(loadImageAsBase64)),
+    ]);
+    return {
+      start: starts.filter(Boolean) as { data: string; format: 'JPEG' | 'PNG' }[],
+      end: ends.filter(Boolean) as { data: string; format: 'JPEG' | 'PNG' }[],
+    };
+  }));
+
+  const photoBoxW = 26;
+  const photoBoxH = 20;
+  const photoGap = 2;
+  const photoLabelH = 3.5;
+  const photosPerRow = Math.max(1, Math.floor((contentWidth - 4) / (photoBoxW + photoGap)));
+
   records.forEach((r, idx) => {
     pdf.setFontSize(6.5);
     pdf.setFont('helvetica', 'normal');
@@ -715,7 +735,17 @@ export async function exportMaintenanceHistoryPDF(
     const lineHeight = 3.5;
     const rowHeight = Math.max(6.5, descLines.length * lineHeight + 3);
 
-    y = checkPageBreak(pdf, y, rowHeight);
+    const photos = photoData[idx];
+    const hasPhotos = photos.start.length + photos.end.length > 0;
+    const startRows = Math.ceil(photos.start.length / photosPerRow);
+    const endRows = Math.ceil(photos.end.length / photosPerRow);
+    const photoBlockH = hasPhotos
+      ? (photos.start.length ? photoLabelH + startRows * (photoBoxH + photoGap) : 0)
+      + (photos.end.length ? photoLabelH + endRows * (photoBoxH + photoGap) : 0)
+      + 2
+      : 0;
+
+    y = checkPageBreak(pdf, y, rowHeight + photoBlockH);
 
     if (idx % 2 === 1) {
       pdf.setFillColor(...COLORS.rowAlt);
@@ -737,6 +767,35 @@ export async function exportMaintenanceHistoryPDF(
     pdf.text(clipText(pdf, r.planDescription || '—', colWidths[5] - 4), colX[5] + 2, midY);
 
     y += rowHeight;
+
+    if (hasPhotos) {
+      const drawStrip = (images: { data: string; format: 'JPEG' | 'PNG' }[], label: string) => {
+        if (images.length === 0) return;
+        pdf.setFontSize(6.5);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(...COLORS.textMuted);
+        pdf.text(label, margin + 2, y + 2.5);
+        y += photoLabelH;
+        images.forEach((img, i) => {
+          const col = i % photosPerRow;
+          const row = Math.floor(i / photosPerRow);
+          const x = margin + 2 + col * (photoBoxW + photoGap);
+          const yy = y + row * (photoBoxH + photoGap);
+          try {
+            pdf.setDrawColor(...COLORS.border);
+            pdf.rect(x, yy, photoBoxW, photoBoxH, 'S');
+            pdf.addImage(img.data, img.format, x + 0.3, yy + 0.3, photoBoxW - 0.6, photoBoxH - 0.6);
+          } catch {
+            // Skip broken images silently
+          }
+        });
+        const rows = Math.ceil(images.length / photosPerRow);
+        y += rows * (photoBoxH + photoGap);
+      };
+      drawStrip(photos.start, 'Fotos — Antes');
+      drawStrip(photos.end, 'Fotos — Depois');
+      y += 2;
+    }
   });
 
   const totalPages = pdf.getNumberOfPages();

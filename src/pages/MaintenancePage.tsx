@@ -1159,9 +1159,39 @@ export default function MaintenancePage() {
                             </p>
                           )}
                         </div>
-                        <Button size="sm" onClick={() => openValuation(h)} className="gap-1.5">
-                          <Edit2 className="w-3.5 h-3.5" /> Lançar custos
-                        </Button>
+                        <div className="flex flex-col gap-2 shrink-0">
+                          <Button size="sm" onClick={() => openValuation(h)} className="gap-1.5">
+                            <Edit2 className="w-3.5 h-3.5" /> Lançar custos
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button size="sm" variant="outline" className="gap-1.5 text-xs text-destructive border-destructive/30 hover:bg-destructive/10">
+                                <Trash2 className="w-3.5 h-3.5" /> Excluir
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Excluir serviço definitivamente?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Este serviço será removido permanentemente. Ele não voltará para a aba de OS e não aparecerá em Realizados. Esta ação não pode ser desfeita.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction onClick={async () => {
+                                  await supabase.from('maintenance_history').delete().eq('id', h.id);
+                                  if (linkedOS) {
+                                    const reqId = linkedOS.maintenance_request_id;
+                                    await supabase.from('work_orders').delete().eq('id', linkedOS.id);
+                                    if (reqId) await supabase.from('maintenance_requests').delete().eq('id', reqId);
+                                  }
+                                  fetchAll();
+                                  sonnerToast.success('Serviço excluído definitivamente.');
+                                }}>Excluir</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
                       </div>
                     </div>
                   );

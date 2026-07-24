@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import PhotoUpload from "@/components/PhotoUpload";
+import MultiPhotoUpload from "@/components/MultiPhotoUpload";
 import { toast } from "sonner";
 
 const REGISTRO_PIN = "0123";
@@ -551,41 +552,12 @@ export default function QRRegistroManutencao() {
             </div>
 
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <Label className="flex items-center gap-1">
-                  <ImageIcon className="w-3.5 h-3.5" /> Fotos {photos.length > 0 && <span className="text-xs text-muted-foreground">({photos.length})</span>}
-                </Label>
-              </div>
-              <div className="space-y-2">
-                {photos.map((url, idx) => (
-                  <div key={idx} className="flex items-center gap-2">
-                    <div className="flex-1">
-                      <PhotoUpload
-                        label={`Foto ${idx + 1}`}
-                        value={url}
-                        onUploaded={(u) => {
-                          const next = [...photos];
-                          if (u) next[idx] = u; else next.splice(idx, 1);
-                          setPhotos(next);
-                        }}
-                      />
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setPhotos(photos.filter((_, i) => i !== idx))}
-                    >
-                      <Trash2 className="w-4 h-4 text-destructive" />
-                    </Button>
-                  </div>
-                ))}
-                <PhotoUpload
-                  label={photos.length === 0 ? "Adicionar foto" : "Adicionar outra foto"}
-                  value=""
-                  onUploaded={(u) => { if (u) setPhotos([...photos, u]); }}
-                />
-              </div>
+              <MultiPhotoUpload
+                label="Fotos"
+                values={photos}
+                onChange={setPhotos}
+                acceptFiles
+              />
             </div>
           </div>
 

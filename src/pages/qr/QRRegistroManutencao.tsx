@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import PhotoUpload from "@/components/PhotoUpload";
+import MultiPhotoUpload from "@/components/MultiPhotoUpload";
 import { toast } from "sonner";
 
 const REGISTRO_PIN = "0123";

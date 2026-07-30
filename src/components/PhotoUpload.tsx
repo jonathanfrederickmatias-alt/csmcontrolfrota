@@ -70,8 +70,14 @@ export default function PhotoUpload({ onUploaded, label = "Foto", required = fal
       )}
       {preview ? (
         <div className="relative rounded-lg overflow-hidden border border-border">
+          {pendingOffline && (
+            <span className="absolute top-2 left-2 z-10 rounded bg-warning px-2 py-0.5 text-[10px] font-bold text-warning-foreground">
+              Salva no aparelho
+            </span>
+          )}
           {isImage(preview) ? (
             <img src={preview} alt="Foto" className="w-full h-48 object-cover" />
+
           ) : (
             <div className="w-full h-48 flex flex-col items-center justify-center bg-secondary/30 gap-2">
               <FileText className="w-10 h-10 text-primary" />

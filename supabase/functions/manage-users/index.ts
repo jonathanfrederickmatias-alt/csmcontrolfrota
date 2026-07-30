@@ -155,7 +155,14 @@ Deno.serve(async (req) => {
         const { error: pwError } = await supabaseAdmin.auth.admin.updateUserById(userId, { password });
         if (pwError) {
           console.error('updateUser password error:', pwError);
-          return new Response(JSON.stringify({ error: 'Não foi possível atualizar a senha.' }), {
+          const m = (pwError.message || '').toLowerCase();
+          let userMessage = 'Não foi possível atualizar a senha.';
+          if (m.includes('weak') || m.includes('pwned') || m.includes('known to be')) {
+            userMessage = 'Senha muito comum/vazada. Use algo mais forte, ex.: Csm@Frota2026.';
+          } else if (m.includes('at least') || m.includes('6 characters') || m.includes('short')) {
+            userMessage = 'Senha muito curta (mínimo 6 caracteres).';
+          }
+          return new Response(JSON.stringify({ error: userMessage }), {
             status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }

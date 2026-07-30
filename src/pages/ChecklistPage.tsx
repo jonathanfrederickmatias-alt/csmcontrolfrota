@@ -9,6 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { ClipboardCheck, CheckCircle, Loader2, AlertTriangle, ShieldCheck, ShieldX, Plus, Trash2 } from "lucide-react";
 import PhotoUpload from "@/components/PhotoUpload";
 import { toast } from "sonner";
+import { loadEquipments, submitRecord } from "@/lib/offline";
+import OfflineBanner from "@/components/OfflineBanner";
 
 const defaultItems = [
   "Nível de óleo do motor",
@@ -98,18 +100,19 @@ export default function ChecklistPage() {
     const { getMyTenantId } = await import('@/lib/tenant');
     const tenant_id = await getMyTenantId();
 
-    await supabase.from('checklists').insert([{
+    const { queued } = await submitRecord('checklists', {
       tenant_id,
       equipment_id: selectedEquipment,
       operator_name: operatorName,
       hour_meter: Number(hourMeter),
       date: new Date().toISOString().split('T')[0],
-      items: items as unknown as never,
+      items,
       status,
       type: checklistType,
       photo_url: photoUrl || null,
       observations: generalObservations || null,
-    }]);
+    }, `Checklist — ${operatorName}`);
+    if (queued) toast.success('Sem internet: checklist salvo no aparelho e será enviado automaticamente.');
 
     setSaving(false);
 
@@ -147,7 +150,7 @@ export default function ChecklistPage() {
     setSavingMaintenance(true);
     const { getMyTenantId } = await import('@/lib/tenant');
     const tenant_id = await getMyTenantId();
-    await supabase.from('maintenance_requests').insert([{
+    const res = await submitRecord('maintenance_requests', {
       tenant_id,
       equipment_id: selectedEquipment,
       operator_name: operatorName,
@@ -155,7 +158,8 @@ export default function ChecklistPage() {
       priority: maintenancePriority,
       status: 'open',
       photo_start_url: maintenancePhotoUrl,
-    }]);
+    }, `Pedido de manutenção — ${operatorName}`);
+    if (res.queued) toast.success('Sem internet: pedido salvo no aparelho e será enviado automaticamente.');
     setSavingMaintenance(false);
     setSaved(true);
     setTimeout(() => { setSaved(false); resetForm(); }, 2000);
@@ -167,6 +171,7 @@ export default function ChecklistPage() {
 
   return (
     <div>
+      <OfflineBanner />
       <div className="mb-8">
         <h1 className="text-3xl font-black text-gradient">Checklist</h1>
         <p className="text-muted-foreground mt-1">Inspeção do equipamento</p>

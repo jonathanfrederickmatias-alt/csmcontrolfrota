@@ -73,28 +73,30 @@ export default function QRMaintenanceRequest() {
       priority: i.priority,
     }));
 
-    const { error: insertError } = await supabase.from('maintenance_requests').insert([{
-      equipment_id: equipmentId,
-      description: generalDescription,
-      priority: generalPriority,
-      status: 'open',
-      operator_name: operatorName,
-      photo_start_url: photoUrl || null,
-      items: itemsPayload,
-    } as any]);
-
-    if (insertError) {
-      console.error('Insert error:', insertError);
-      setError(`Erro ao salvar: ${insertError.message}`);
+    let queued = false;
+    try {
+      const res = await submitRecord('maintenance_requests', {
+        equipment_id: equipmentId,
+        description: generalDescription,
+        priority: generalPriority,
+        status: 'open',
+        operator_name: operatorName,
+        photo_start_url: photoUrl || null,
+        items: itemsPayload,
+      }, `Pedido de manutenção — ${operatorName}`);
+      queued = res.queued;
+    } catch (e) {
+      setError(`Erro ao salvar: ${e instanceof Error ? e.message : String(e)}`);
       setSaving(false);
       return;
     }
 
-    if (['urgent', 'high'].includes(generalPriority)) {
+    if (!queued && ['urgent', 'high'].includes(generalPriority)) {
       supabase.functions.invoke('notify-maintenance', {
         body: { priority: generalPriority },
       }).catch(console.error);
     }
+
 
     setSaving(false);
     setSaved(true);

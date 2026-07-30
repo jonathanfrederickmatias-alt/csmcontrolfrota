@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Camera, X, Loader2, Paperclip, FileText } from "lucide-react";
+import { uploadOrQueuePhoto, OFFLINE_PHOTO_PREFIX } from "@/lib/offline";
 
 interface PhotoUploadProps {
   onUploaded: (url: string) => void;
@@ -14,32 +14,24 @@ interface PhotoUploadProps {
 export default function PhotoUpload({ onUploaded, label = "Foto", required = false, value, acceptFiles = false }: PhotoUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<string | null>(value || null);
+  const [pendingOffline, setPendingOffline] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const isImage = (url: string) => /\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?|$)/i.test(url);
+  const isImage = (url: string) => url.startsWith('blob:') || /\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?|$)/i.test(url);
 
   const handleFile = async (file: File) => {
     setUploading(true);
-    const ext = file.name.split('.').pop();
-    const fName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-    const path = `uploads/${fName}`;
-
-    const { error } = await supabase.storage.from('photos').upload(path, file, {
-      cacheControl: '3600',
-      upsert: false,
-    });
-
-    if (!error) {
-      const { data: urlData } = supabase.storage.from('photos').getPublicUrl(path);
-      const publicUrl = urlData.publicUrl;
-      setPreview(publicUrl);
-      setFileName(file.name);
-      onUploaded(publicUrl);
-    }
+    const ref = await uploadOrQueuePhoto(file);
+    const offline = ref.startsWith(OFFLINE_PHOTO_PREFIX);
+    setPendingOffline(offline);
+    setPreview(offline ? URL.createObjectURL(file) : ref);
+    setFileName(file.name);
+    onUploaded(ref);
     setUploading(false);
   };
+
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -78,8 +70,14 @@ export default function PhotoUpload({ onUploaded, label = "Foto", required = fal
       )}
       {preview ? (
         <div className="relative rounded-lg overflow-hidden border border-border">
+          {pendingOffline && (
+            <span className="absolute top-2 left-2 z-10 rounded bg-warning px-2 py-0.5 text-[10px] font-bold text-warning-foreground">
+              Salva no aparelho
+            </span>
+          )}
           {isImage(preview) ? (
             <img src={preview} alt="Foto" className="w-full h-48 object-cover" />
+
           ) : (
             <div className="w-full h-48 flex flex-col items-center justify-center bg-secondary/30 gap-2">
               <FileText className="w-10 h-10 text-primary" />

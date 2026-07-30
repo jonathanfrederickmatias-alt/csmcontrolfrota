@@ -23,6 +23,8 @@ const allNavItems = [
   { to: "/usuarios", label: "Usuários", icon: Users, roles: ['admin', 'gestor'] },
 ];
 
+import OfflineBanner from "@/components/OfflineBanner";
+
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -123,6 +125,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       {/* Main content */}
       <main className="flex-1 lg:ml-64 pt-16 lg:pt-0">
+        <OfflineBanner />
         <div className="p-4 lg:p-8 max-w-7xl mx-auto">
           {children}
         </div>

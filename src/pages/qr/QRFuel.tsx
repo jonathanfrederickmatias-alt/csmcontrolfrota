@@ -7,7 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Fuel, CheckCircle, Lock, Loader2, Plus, X } from "lucide-react";
 import PublicLayout from "@/components/PublicLayout";
+import { toast } from "sonner";
 import PhotoUpload from "@/components/PhotoUpload";
+import { loadEquipments, submitRecord, submitHourMeter } from "@/lib/offline";
 
 // PIN is now validated against fuel_pins table
 
@@ -31,9 +33,7 @@ export default function QRFuel() {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
-    supabase.from('equipments').select('*').order('name').then(({ data }) => {
-      setEquipments((data || []) as DBEquipment[]);
-    });
+    loadEquipments<DBEquipment>().then(setEquipments);
   }, []);
 
   const combos = equipments.filter(e => e.type === 'combo');
@@ -62,13 +62,11 @@ export default function QRFuel() {
     if (liters && Number(liters) > 0) record.liters = Number(liters);
     else record.liters = 0;
     if (hourMeter && Number(hourMeter) > 0) record.hour_meter = Number(hourMeter);
-    await supabase.from('fuel_records').insert([record]);
+    const { queued } = await submitRecord('fuel_records', record, `Abastecimento — ${operatorName}`);
     if (hourMeter && Number(hourMeter) > 0 && targetId) {
-      await supabase.from('equipments').update({
-        current_hour_meter: Number(hourMeter),
-        updated_at: new Date().toISOString(),
-      }).eq('id', targetId).lt('current_hour_meter', Number(hourMeter));
+      await submitHourMeter(targetId, Number(hourMeter));
     }
+    if (queued) toast.success('Sem internet: abastecimento salvo no aparelho e será enviado quando houver conexão.');
     setSaving(false);
     setSaved(true);
   };

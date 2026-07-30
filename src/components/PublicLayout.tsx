@@ -1,3 +1,5 @@
+import OfflineBanner from "@/components/OfflineBanner";
+
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background">
@@ -8,6 +10,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
         </h1>
         <span className="text-xs text-muted-foreground">Acesso via QR Code</span>
       </div>
+      <OfflineBanner />
       <div className="p-4 max-w-lg mx-auto mt-4">
         {children}
       </div>

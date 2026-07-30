@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { CheckCircle, Wrench, Loader2, Plus, Trash2 } from "lucide-react";
 import PublicLayout from "@/components/PublicLayout";
+import { loadEquipments, submitRecord } from "@/lib/offline";
 import PhotoUpload from "@/components/PhotoUpload";
 
 interface RequestItem {
@@ -33,9 +34,7 @@ export default function QRMaintenanceRequest() {
   const [items, setItems] = useState<RequestItem[]>([newItem()]);
 
   useEffect(() => {
-    supabase.from('equipments').select('*').order('name').then(({ data }) => {
-      setEquipments((data || []) as DBEquipment[]);
-    });
+    loadEquipments<DBEquipment>().then(setEquipments);
   }, []);
 
   const updateItem = (id: string, field: keyof RequestItem, value: string) => {

@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ClipboardCheck, CheckCircle, Loader2, AlertTriangle, ShieldCheck, ShieldX, Plus, Trash2, RefreshCw } from "lucide-react";
 import PublicLayout from "@/components/PublicLayout";
+import OfflineBanner from "@/components/OfflineBanner";
+import { loadEquipments, submitRecord } from "@/lib/offline";
 import { useSearchParams } from "react-router-dom";
 import PhotoUpload from "@/components/PhotoUpload";
 import { toast } from "sonner";
@@ -48,9 +50,7 @@ export default function QRChecklist() {
   const [persistActions, setPersistActions] = useState<Record<string, { persist: boolean; note: string }>>({});
 
   useEffect(() => {
-    supabase.from('equipments').select('*').order('name').then(({ data }) => {
-      setEquipments((data || []) as DBEquipment[]);
-    });
+    loadEquipments<DBEquipment>().then(setEquipments);
   }, []);
 
   // Fetch the last recorded hour meter for the selected equipment
@@ -128,22 +128,23 @@ export default function QRChecklist() {
     const tenant_id = eq?.tenant_id;
     if (!tenant_id) { setSaving(false); toast.error('Equipamento sem empresa associada.'); return; }
 
-    await supabase.from('checklists').insert([{
+    const { queued } = await submitRecord('checklists', {
       tenant_id,
       equipment_id: selectedEquipment,
       operator_name: operatorName,
       hour_meter: Number(hourMeter),
       date: new Date().toISOString().split('T')[0],
-      items: items as unknown as never,
+      items,
       status,
       type: checklistType,
       photo_url: photoUrl || null,
       observations: generalObservations || null,
-    }]);
+    }, `Checklist — ${operatorName}`);
+    if (queued) toast.success('Sem internet: checklist salvo no aparelho e será enviado quando houver conexão.');
 
     // Handle "problema persiste" markings — update existing open requests instead of creating duplicates
     const persistEntries = Object.entries(persistActions).filter(([, v]) => v.persist);
-    if (persistEntries.length > 0) {
+    if (persistEntries.length > 0 && navigator.onLine) {
       const nowStr = new Date().toLocaleString('pt-BR');
       for (const [reqId, { note }] of persistEntries) {
         const req = openRequests.find(r => r.id === reqId);
@@ -210,7 +211,7 @@ export default function QRChecklist() {
     const eq = equipments.find(e => e.id === selectedEquipment);
     const tenant_id = eq?.tenant_id;
     if (!tenant_id) { setSavingMaintenance(false); toast.error('Equipamento sem empresa associada.'); return; }
-    await supabase.from('maintenance_requests').insert([{
+    const res = await submitRecord('maintenance_requests', {
       tenant_id,
       equipment_id: selectedEquipment,
       operator_name: operatorName,
@@ -218,11 +219,12 @@ export default function QRChecklist() {
       priority: maintenancePriority,
       status: 'open',
       photo_start_url: maintenancePhotoUrl || null,
-    }]);
+    }, `Pedido de manutenção — ${operatorName}`);
+    if (res.queued) toast.success('Sem internet: pedido salvo no aparelho e será enviado quando houver conexão.');
     setSavingMaintenance(false);
     setMaintenanceSaved(true);
 
-    if (maintenancePriority === 'high' || maintenancePriority === 'urgent') {
+    if (navigator.onLine && (maintenancePriority === 'high' || maintenancePriority === 'urgent')) {
       const eq = equipments.find(e => e.id === selectedEquipment);
       try {
         await supabase.functions.invoke('notify-maintenance', {

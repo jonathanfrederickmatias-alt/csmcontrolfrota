@@ -50,10 +50,9 @@ export default function ChecklistPage() {
   const [maintenancePhotoUrl, setMaintenancePhotoUrl] = useState('');
 
   useEffect(() => {
-    supabase.from('equipments').select('*').order('name').then(({ data }) => {
-      setEquipments((data || []) as DBEquipment[]);
-    });
+    loadEquipments<DBEquipment>().then(setEquipments);
   }, []);
+
 
   useEffect(() => {
     if (checklistType === 'daily') {

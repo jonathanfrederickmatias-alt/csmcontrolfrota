@@ -408,8 +408,12 @@ export default function QRChecklist() {
         {items.length > 0 && (
           <div className="glass-card rounded-xl p-5">
             <h2 className="font-bold mb-3 text-sm text-muted-foreground uppercase tracking-wider">Itens de Verificação</h2>
-            <div className="space-y-2">
-              {items.map(item => (
+            <div className="space-y-4">
+              {Array.from(new Set(items.map(i => i.group || 'Geral'))).map(groupName => (
+                <div key={groupName}>
+                  <p className="text-xs font-bold uppercase tracking-wider text-primary mb-2">{groupName}</p>
+                  <div className="space-y-2">
+                    {items.filter(i => (i.group || 'Geral') === groupName).map(item => (
                 <div key={item.id} className={`p-3 rounded-lg transition-colors ${item.na ? 'bg-muted/50' : item.checked === true ? 'bg-success/5' : item.checked === false ? 'bg-destructive/5' : 'bg-secondary/50'}`}>
                   <div className="flex items-center justify-between gap-2 mb-1">
                     <span className={`text-sm font-medium ${item.na ? 'text-muted-foreground line-through' : item.checked === true ? 'text-success' : item.checked === false ? 'text-destructive' : 'text-foreground'}`}>{item.label}</span>
@@ -433,6 +437,9 @@ export default function QRChecklist() {
                   {item.checked === false && !item.na && (
                     <Input className="mt-2 h-8 text-xs" placeholder="Observação (obrigatório p/ não conforme)" value={item.observation} onChange={e => setObservation(item.id, e.target.value)} />
                   )}
+                </div>
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>

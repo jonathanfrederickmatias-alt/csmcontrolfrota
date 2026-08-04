@@ -282,9 +282,12 @@ export default function MaintenancePage() {
     if (isTempo) {
       const now = new Date();
       const days = plan.interval_days || 0;
-      const nextDate = new Date(now.getTime() + days * 86400000);
+      // Ancora a recorrência na data programada (não na data de execução),
+      // mantendo o dia da semana original (ex.: sábados) e avançando até uma data futura.
+      const anchor = plan.next_due_date ? new Date(plan.next_due_date) : now;
+      const nextDate = nextRecurrence(anchor, days, now);
       await supabase.from('maintenance_plans').update({
-        last_done_date: now.toISOString(),
+        last_done_date: anchor.toISOString(),
         next_due_date: nextDate.toISOString(),
         status: computeTempoStatus(nextDate.toISOString()),
         last_executed_at: now.toISOString(),
@@ -298,9 +301,11 @@ export default function MaintenancePage() {
         last_executed_at: new Date().toISOString(),
       }).eq('id', plan.id);
 
-      await supabase.from('equipments').update({
-        current_hour_meter: Math.max(hm, equipments.find(e => e.id === plan.equipment_id)?.current_hour_meter || 0),
-      }).eq('id', plan.equipment_id);
+      if (plan.equipment_id) {
+        await supabase.from('equipments').update({
+          current_hour_meter: Math.max(hm, equipments.find(e => e.id === plan.equipment_id)?.current_hour_meter || 0),
+        }).eq('id', plan.equipment_id);
+      }
 
       toast({ title: 'Manutenção concluída e registrada no histórico!', description: `Próxima em ${hm + (plan.interval_hours || 0)}h` });
     }

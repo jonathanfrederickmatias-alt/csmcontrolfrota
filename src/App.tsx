@@ -10,6 +10,7 @@ import AppLayout from "@/components/AppLayout";
 import Dashboard from "@/pages/Dashboard";
 import EquipmentPage from "@/pages/EquipmentPage";
 import ChecklistPage from "@/pages/ChecklistPage";
+import ChecklistTemplatesPage from "./pages/ChecklistTemplatesPage";
 import ChecklistListPage from "@/pages/ChecklistListPage";
 import MaintenancePage from "@/pages/MaintenancePage";
 import FuelPage from "@/pages/FuelPage";
@@ -69,6 +70,7 @@ const App = () => (
                     <Route path="/equipamentos" element={<EquipmentPage />} />
                     <Route path="/checklist" element={<ChecklistPage />} />
                     <Route path="/checklists" element={<ChecklistListPage />} />
+                    <Route path="/modelos-checklist" element={<ChecklistTemplatesPage />} />
                     <Route path="/manutencao" element={<MaintenancePage />} />
                     <Route path="/mecanico" element={<MechanicDashboardPage />} />
                     <Route path="/abastecimento" element={<FuelPage />} />

@@ -107,6 +107,7 @@ export interface ChecklistItemDB {
   checked: boolean;
   na?: boolean;
   observation?: string;
+  group?: string;
 }
 
 export interface DBFuelRecord {

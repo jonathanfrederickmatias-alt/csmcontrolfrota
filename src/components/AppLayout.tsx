@@ -11,6 +11,7 @@ const allNavItems = [
   { to: "/equipamentos", label: "Equipamentos", icon: Truck, roles: ['admin', 'gestor'] },
   { to: "/checklist", label: "Checklist", icon: ClipboardCheck, roles: ['admin', 'gestor', 'mecanico', 'abastecedor'] },
   { to: "/checklists", label: "Checklists Realizados", icon: ClipboardList, roles: ['admin', 'gestor', 'abastecedor'] },
+  { to: "/modelos-checklist", label: "Modelos de Checklist", icon: ClipboardList, roles: ['admin', 'gestor'] },
   { to: "/manutencao", label: "Manutenção", icon: Wrench, roles: ['admin', 'gestor', 'abastecedor'] },
   { to: "/mecanico", label: "Painel Mecânico", icon: Wrench, roles: ['mecanico'] },
   { to: "/abastecimento", label: "Abastecimento", icon: Fuel, roles: ['admin', 'gestor', 'abastecedor'] },

@@ -11,14 +11,7 @@ import { loadEquipments, submitRecord } from "@/lib/offline";
 import { useSearchParams } from "react-router-dom";
 import PhotoUpload from "@/components/PhotoUpload";
 import { toast } from "sonner";
-
-const defaultItems = [
-  "Nível de óleo do motor","Nível de água/refrigerante","Nível de óleo hidráulico",
-  "Condições dos pneus/esteiras","Luzes e sinalização","Freios","Limpador de para-brisa",
-  "Vazamentos visíveis","Cintos e dispositivos de segurança","Extintor de incêndio",
-  "Estado geral de limpeza","Funcionamento dos instrumentos do painel",
-  "Calibração dos pneus","Condições do Tacógrafo",
-];
+import { useChecklistTemplate } from "@/hooks/useChecklistTemplate";
 
 type ChecklistType = 'daily' | 'corrective' | 'preventive';
 
@@ -30,9 +23,7 @@ export default function QRChecklist() {
   const [operatorName, setOperatorName] = useState('');
   const [hourMeter, setHourMeter] = useState('');
   const [checklistType, setChecklistType] = useState<ChecklistType>('daily');
-  const [items, setItems] = useState<ChecklistItemDB[]>(
-    defaultItems.map((label, i) => ({ id: String(i), label, checked: null as unknown as boolean, observation: '' }))
-  );
+  const [items, setItems] = useState<ChecklistItemDB[]>([]);
   const [newItemLabel, setNewItemLabel] = useState('');
   const [photoUrl, setPhotoUrl] = useState('');
   const [generalObservations, setGeneralObservations] = useState('');
@@ -95,13 +86,19 @@ export default function QRChecklist() {
     })();
   }, [selectedEquipment]);
 
+  const selectedEq = equipments.find(e => e.id === selectedEquipment) || null;
+  const { category, items: templateItems, templateName } = useChecklistTemplate(selectedEq);
+  const templateKey = JSON.stringify(templateItems.map(t => `${t.group}|${t.label}`));
+
   useEffect(() => {
     if (checklistType === 'daily') {
-      setItems(defaultItems.map((label, i) => ({ id: String(i), label, checked: null as unknown as boolean, observation: '' })));
+      setItems(templateItems.map((t, i) => ({ id: t.id || String(i), label: t.label, group: t.group, checked: null as unknown as boolean, observation: '' })));
     } else {
       setItems([]);
     }
-  }, [checklistType]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checklistType, templateKey]);
+
 
   const toggleItem = (id: string, value: boolean) => setItems(prev => prev.map(i => i.id === id ? { ...i, checked: value, na: false } : i));
   const setNa = (id: string, value: boolean) => setItems(prev => prev.map(i => i.id === id ? { ...i, na: value, checked: value ? (null as unknown as boolean) : i.checked } : i));
@@ -307,7 +304,12 @@ export default function QRChecklist() {
           <ClipboardCheck className="w-6 h-6 text-primary" />
           <h1 className="text-2xl font-black text-gradient">Checklist</h1>
         </div>
-        {equipments.find(e => e.id === selectedEquipment) && <p className="text-muted-foreground text-sm">{equipments.find(e => e.id === selectedEquipment)?.name}</p>}
+        {selectedEq && (
+          <p className="text-muted-foreground text-sm">
+            {selectedEq.name}
+            {category && <span className="ml-2 inline-block text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-primary/10 text-primary">{templateName || category.label}</span>}
+          </p>
+        )}
       </div>
       <div className="space-y-4">
         <div className="glass-card rounded-xl p-5 space-y-4">
@@ -401,8 +403,12 @@ export default function QRChecklist() {
         {items.length > 0 && (
           <div className="glass-card rounded-xl p-5">
             <h2 className="font-bold mb-3 text-sm text-muted-foreground uppercase tracking-wider">Itens de Verificação</h2>
-            <div className="space-y-2">
-              {items.map(item => (
+            <div className="space-y-4">
+              {Array.from(new Set(items.map(i => i.group || 'Geral'))).map(groupName => (
+                <div key={groupName}>
+                  <p className="text-xs font-bold uppercase tracking-wider text-primary mb-2">{groupName}</p>
+                  <div className="space-y-2">
+                    {items.filter(i => (i.group || 'Geral') === groupName).map(item => (
                 <div key={item.id} className={`p-3 rounded-lg transition-colors ${item.na ? 'bg-muted/50' : item.checked === true ? 'bg-success/5' : item.checked === false ? 'bg-destructive/5' : 'bg-secondary/50'}`}>
                   <div className="flex items-center justify-between gap-2 mb-1">
                     <span className={`text-sm font-medium ${item.na ? 'text-muted-foreground line-through' : item.checked === true ? 'text-success' : item.checked === false ? 'text-destructive' : 'text-foreground'}`}>{item.label}</span>
@@ -426,6 +432,9 @@ export default function QRChecklist() {
                   {item.checked === false && !item.na && (
                     <Input className="mt-2 h-8 text-xs" placeholder="Observação (obrigatório p/ não conforme)" value={item.observation} onChange={e => setObservation(item.id, e.target.value)} />
                   )}
+                </div>
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>

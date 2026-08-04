@@ -1069,18 +1069,20 @@ export default function MaintenancePage() {
                   : calculateMaintenanceStatus(remaining, eq?.type || 'machine');
                 const sc = statusConfig[liveStatus];
                 const intervalApprox = isTempo ? 7 : (eq?.type === 'truck' ? 1000 : 50);
+                const [planTitle, ...planRest] = plan.description.split(' — ');
+                const planDetail = planRest.join(' — ');
                 return (
                   <div key={plan.id} className={`glass-card rounded-xl p-5 border-l-4 ${sc.border}`}>
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <h3 className="font-bold">{plan.description}</h3>
+                          <h3 className="font-bold">{planTitle}</h3>
                           <span className={`text-xs px-2 py-0.5 rounded-full ${sc.bg} ${sc.color} font-medium`}>{sc.label}</span>
                           <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium uppercase">
                             {isTempo ? 'Tempo' : planType === 'km' ? 'KM' : 'Horímetro'}
                           </span>
                         </div>
-                        <p className="text-sm text-muted-foreground">{eq ? eqLabel(eq) : 'Equipamento'}</p>
+                        <p className="text-sm text-muted-foreground">{eq ? eqLabel(eq) : (planDetail || 'Plano geral (sem equipamento)')}</p>
                         <div className="flex gap-4 mt-2 text-xs text-muted-foreground font-mono flex-wrap">
                           {isTempo ? (
                             <>

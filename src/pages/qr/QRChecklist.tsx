@@ -96,13 +96,19 @@ export default function QRChecklist() {
     })();
   }, [selectedEquipment]);
 
+  const selectedEq = equipments.find(e => e.id === selectedEquipment) || null;
+  const { category, items: templateItems, templateName } = useChecklistTemplate(selectedEq);
+  const templateKey = JSON.stringify(templateItems.map(t => `${t.group}|${t.label}`));
+
   useEffect(() => {
     if (checklistType === 'daily') {
-      setItems(defaultItems.map((label, i) => ({ id: String(i), label, checked: null as unknown as boolean, observation: '' })));
+      setItems(templateItems.map((t, i) => ({ id: t.id || String(i), label: t.label, group: t.group, checked: null as unknown as boolean, observation: '' })));
     } else {
       setItems([]);
     }
-  }, [checklistType]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checklistType, templateKey]);
+
 
   const toggleItem = (id: string, value: boolean) => setItems(prev => prev.map(i => i.id === id ? { ...i, checked: value, na: false } : i));
   const setNa = (id: string, value: boolean) => setItems(prev => prev.map(i => i.id === id ? { ...i, na: value, checked: value ? (null as unknown as boolean) : i.checked } : i));

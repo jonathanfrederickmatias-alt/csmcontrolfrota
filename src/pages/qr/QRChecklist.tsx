@@ -314,7 +314,12 @@ export default function QRChecklist() {
           <ClipboardCheck className="w-6 h-6 text-primary" />
           <h1 className="text-2xl font-black text-gradient">Checklist</h1>
         </div>
-        {equipments.find(e => e.id === selectedEquipment) && <p className="text-muted-foreground text-sm">{equipments.find(e => e.id === selectedEquipment)?.name}</p>}
+        {selectedEq && (
+          <p className="text-muted-foreground text-sm">
+            {selectedEq.name}
+            {category && <span className="ml-2 inline-block text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-primary/10 text-primary">{templateName || category.label}</span>}
+          </p>
+        )}
       </div>
       <div className="space-y-4">
         <div className="glass-card rounded-xl p-5 space-y-4">

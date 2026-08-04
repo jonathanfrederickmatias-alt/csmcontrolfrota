@@ -13,14 +13,6 @@ import PhotoUpload from "@/components/PhotoUpload";
 import { toast } from "sonner";
 import { useChecklistTemplate } from "@/hooks/useChecklistTemplate";
 
-const defaultItems = [
-  "Nível de óleo do motor","Nível de água/refrigerante","Nível de óleo hidráulico",
-  "Condições dos pneus/esteiras","Luzes e sinalização","Freios","Limpador de para-brisa",
-  "Vazamentos visíveis","Cintos e dispositivos de segurança","Extintor de incêndio",
-  "Estado geral de limpeza","Funcionamento dos instrumentos do painel",
-  "Calibração dos pneus","Condições do Tacógrafo",
-];
-
 type ChecklistType = 'daily' | 'corrective' | 'preventive';
 
 export default function QRChecklist() {
@@ -31,9 +23,7 @@ export default function QRChecklist() {
   const [operatorName, setOperatorName] = useState('');
   const [hourMeter, setHourMeter] = useState('');
   const [checklistType, setChecklistType] = useState<ChecklistType>('daily');
-  const [items, setItems] = useState<ChecklistItemDB[]>(
-    defaultItems.map((label, i) => ({ id: String(i), label, checked: null as unknown as boolean, observation: '' }))
-  );
+  const [items, setItems] = useState<ChecklistItemDB[]>([]);
   const [newItemLabel, setNewItemLabel] = useState('');
   const [photoUrl, setPhotoUrl] = useState('');
   const [generalObservations, setGeneralObservations] = useState('');

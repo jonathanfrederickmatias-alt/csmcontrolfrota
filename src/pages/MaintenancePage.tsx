@@ -165,6 +165,25 @@ export default function MaintenancePage() {
 
   const emptyForm = { equipmentId: '', description: '', planType: 'horimetro' as 'km' | 'horimetro' | 'tempo', intervalHours: '', lastDoneAt: '', intervalDays: '', lastDoneDate: '' };
 
+  // Avança a data programada em passos de `days`, mantendo o dia da semana original
+  // (ex.: 15 dias a partir de um sábado → ajusta para o sábado mais próximo),
+  // até que a data seja futura em relação a `from`.
+  const nextRecurrence = (anchor: Date, days: number, from: Date): Date => {
+    if (!days || days <= 0) return new Date(from.getTime() + 86400000);
+    const weekday = anchor.getDay();
+    let next = new Date(anchor);
+    do {
+      next = new Date(next.getTime() + days * 86400000);
+      if (days % 7 !== 0) {
+        // ajusta para o mesmo dia da semana mais próximo
+        let diff = (next.getDay() - weekday + 7) % 7;
+        if (diff > 3) diff -= 7;
+        next = new Date(next.getTime() - diff * 86400000);
+      }
+    } while (next.getTime() <= from.getTime());
+    return next;
+  };
+
   const computeTempoStatus = (nextDueIso: string): 'ok' | 'approaching' | 'overdue' => {
     const now = new Date();
     const next = new Date(nextDueIso);
@@ -180,7 +199,7 @@ export default function MaintenancePage() {
     const eqType = eq?.type || 'machine';
 
     let payload: any = {
-      equipment_id: form.equipmentId,
+      equipment_id: form.equipmentId || null,
       description: form.description,
       plan_type: form.planType,
     };
@@ -282,9 +301,12 @@ export default function MaintenancePage() {
     if (isTempo) {
       const now = new Date();
       const days = plan.interval_days || 0;
-      const nextDate = new Date(now.getTime() + days * 86400000);
+      // Ancora a recorrência na data programada (não na data de execução),
+      // mantendo o dia da semana original (ex.: sábados) e avançando até uma data futura.
+      const anchor = plan.next_due_date ? new Date(plan.next_due_date) : now;
+      const nextDate = nextRecurrence(anchor, days, now);
       await supabase.from('maintenance_plans').update({
-        last_done_date: now.toISOString(),
+        last_done_date: anchor.toISOString(),
         next_due_date: nextDate.toISOString(),
         status: computeTempoStatus(nextDate.toISOString()),
         last_executed_at: now.toISOString(),
@@ -298,9 +320,11 @@ export default function MaintenancePage() {
         last_executed_at: new Date().toISOString(),
       }).eq('id', plan.id);
 
-      await supabase.from('equipments').update({
-        current_hour_meter: Math.max(hm, equipments.find(e => e.id === plan.equipment_id)?.current_hour_meter || 0),
-      }).eq('id', plan.equipment_id);
+      if (plan.equipment_id) {
+        await supabase.from('equipments').update({
+          current_hour_meter: Math.max(hm, equipments.find(e => e.id === plan.equipment_id)?.current_hour_meter || 0),
+        }).eq('id', plan.equipment_id);
+      }
 
       toast({ title: 'Manutenção concluída e registrada no histórico!', description: `Próxima em ${hm + (plan.interval_hours || 0)}h` });
     }
@@ -313,7 +337,7 @@ export default function MaintenancePage() {
   const handleEditPlan = (plan: DBMaintenancePlan) => {
     setEditPlan(plan);
     setForm({
-      equipmentId: plan.equipment_id,
+      equipmentId: plan.equipment_id || '',
       description: plan.description,
       planType: (plan.plan_type as any) || 'horimetro',
       intervalHours: plan.interval_hours != null ? String(plan.interval_hours) : '',
@@ -1045,18 +1069,20 @@ export default function MaintenancePage() {
                   : calculateMaintenanceStatus(remaining, eq?.type || 'machine');
                 const sc = statusConfig[liveStatus];
                 const intervalApprox = isTempo ? 7 : (eq?.type === 'truck' ? 1000 : 50);
+                const [planTitle, ...planRest] = plan.description.split(' — ');
+                const planDetail = planRest.join(' — ');
                 return (
                   <div key={plan.id} className={`glass-card rounded-xl p-5 border-l-4 ${sc.border}`}>
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <h3 className="font-bold">{plan.description}</h3>
+                          <h3 className="font-bold">{planTitle}</h3>
                           <span className={`text-xs px-2 py-0.5 rounded-full ${sc.bg} ${sc.color} font-medium`}>{sc.label}</span>
                           <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium uppercase">
                             {isTempo ? 'Tempo' : planType === 'km' ? 'KM' : 'Horímetro'}
                           </span>
                         </div>
-                        <p className="text-sm text-muted-foreground">{eq ? eqLabel(eq) : 'Equipamento'}</p>
+                        <p className="text-sm text-muted-foreground">{eq ? eqLabel(eq) : (planDetail || 'Plano geral (sem equipamento)')}</p>
                         <div className="flex gap-4 mt-2 text-xs text-muted-foreground font-mono flex-wrap">
                           {isTempo ? (
                             <>

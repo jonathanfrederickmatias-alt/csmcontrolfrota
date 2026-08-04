@@ -1,0 +1,1 @@
+ALTER TABLE public.maintenance_plans ALTER COLUMN equipment_id DROP NOT NULL;

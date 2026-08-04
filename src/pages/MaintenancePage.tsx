@@ -165,6 +165,25 @@ export default function MaintenancePage() {
 
   const emptyForm = { equipmentId: '', description: '', planType: 'horimetro' as 'km' | 'horimetro' | 'tempo', intervalHours: '', lastDoneAt: '', intervalDays: '', lastDoneDate: '' };
 
+  // Avança a data programada em passos de `days`, mantendo o dia da semana original
+  // (ex.: 15 dias a partir de um sábado → ajusta para o sábado mais próximo),
+  // até que a data seja futura em relação a `from`.
+  const nextRecurrence = (anchor: Date, days: number, from: Date): Date => {
+    if (!days || days <= 0) return new Date(from.getTime() + 86400000);
+    const weekday = anchor.getDay();
+    let next = new Date(anchor);
+    do {
+      next = new Date(next.getTime() + days * 86400000);
+      if (days % 7 !== 0) {
+        // ajusta para o mesmo dia da semana mais próximo
+        let diff = (next.getDay() - weekday + 7) % 7;
+        if (diff > 3) diff -= 7;
+        next = new Date(next.getTime() - diff * 86400000);
+      }
+    } while (next.getTime() <= from.getTime());
+    return next;
+  };
+
   const computeTempoStatus = (nextDueIso: string): 'ok' | 'approaching' | 'overdue' => {
     const now = new Date();
     const next = new Date(nextDueIso);

@@ -624,7 +624,7 @@ export type Database = {
         Row: {
           created_at: string
           description: string
-          equipment_id: string
+          equipment_id: string | null
           id: string
           interval_days: number | null
           interval_hours: number | null
@@ -641,7 +641,7 @@ export type Database = {
         Insert: {
           created_at?: string
           description: string
-          equipment_id: string
+          equipment_id?: string | null
           id?: string
           interval_days?: number | null
           interval_hours?: number | null
@@ -658,7 +658,7 @@ export type Database = {
         Update: {
           created_at?: string
           description?: string
-          equipment_id?: string
+          equipment_id?: string | null
           id?: string
           interval_days?: number | null
           interval_hours?: number | null

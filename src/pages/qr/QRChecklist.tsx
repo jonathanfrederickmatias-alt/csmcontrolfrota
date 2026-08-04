@@ -11,6 +11,7 @@ import { loadEquipments, submitRecord } from "@/lib/offline";
 import { useSearchParams } from "react-router-dom";
 import PhotoUpload from "@/components/PhotoUpload";
 import { toast } from "sonner";
+import { useChecklistTemplate } from "@/hooks/useChecklistTemplate";
 
 const defaultItems = [
   "Nível de óleo do motor","Nível de água/refrigerante","Nível de óleo hidráulico",

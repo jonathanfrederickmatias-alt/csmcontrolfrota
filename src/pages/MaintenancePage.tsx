@@ -199,7 +199,7 @@ export default function MaintenancePage() {
     const eqType = eq?.type || 'machine';
 
     let payload: any = {
-      equipment_id: form.equipmentId,
+      equipment_id: form.equipmentId || null,
       description: form.description,
       plan_type: form.planType,
     };
@@ -337,7 +337,7 @@ export default function MaintenancePage() {
   const handleEditPlan = (plan: DBMaintenancePlan) => {
     setEditPlan(plan);
     setForm({
-      equipmentId: plan.equipment_id,
+      equipmentId: plan.equipment_id || '',
       description: plan.description,
       planType: (plan.plan_type as any) || 'horimetro',
       intervalHours: plan.interval_hours != null ? String(plan.interval_hours) : '',

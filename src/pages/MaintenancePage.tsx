@@ -146,6 +146,10 @@ export default function MaintenancePage() {
   // Controlled tab
   const [activeTab, setActiveTab] = useState('plans');
 
+  useEffect(() => {
+    if (isAbastecedor) setActiveTab('os');
+  }, [isAbastecedor]);
+
   const fetchAll = async () => {
     const [eqRes, plRes, reqRes, histRes, osRes] = await Promise.all([
       supabase.from('equipments').select('*').order('name'),
@@ -730,9 +734,19 @@ export default function MaintenancePage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-black text-gradient">Manutenção</h1>
-        <p className="text-muted-foreground mt-1">Planos preventivos, pedidos e histórico</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-black text-gradient">Manutenção</h1>
+          <p className="text-muted-foreground mt-1">Planos preventivos, pedidos e histórico</p>
+        </div>
+        {canCreateOS && (
+          <Button className="shrink-0 gap-2" onClick={() => {
+            setActiveTab('os');
+            setNewOsOpen(true);
+          }}>
+            <Plus className="w-4 h-4" /> Nova OS
+          </Button>
+        )}
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">

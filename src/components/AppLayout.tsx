@@ -13,6 +13,7 @@ const allNavItems = [
   { to: "/checklists", label: "Checklists Realizados", icon: ClipboardList, roles: ['admin', 'gestor', 'abastecedor'] },
   { to: "/modelos-checklist", label: "Modelos de Checklist", icon: ClipboardList, roles: ['admin', 'gestor'] },
   { to: "/manutencao", label: "Manutenção", icon: Wrench, roles: ['admin', 'gestor', 'abastecedor'] },
+  { to: "/pedido-manutencao", label: "Nova OS / Pedido", icon: Wrench, roles: ['admin', 'gestor', 'abastecedor'] },
   { to: "/mecanico", label: "Painel Mecânico", icon: Wrench, roles: ['mecanico'] },
   { to: "/abastecimento", label: "Abastecimento", icon: Fuel, roles: ['admin', 'gestor', 'abastecedor'] },
   { to: "/reabastecimento", label: "Reabastecimento", icon: Droplets, roles: ['admin', 'gestor'] },

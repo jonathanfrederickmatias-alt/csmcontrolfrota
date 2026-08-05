@@ -1,5 +1,7 @@
+import { registerSW } from 'virtual:pwa-register';
+
 /**
- * Guarded service-worker registration + checagem automática de versão.
+ * Registro protegido do service worker e atualização controlada do PWA.
  * Nunca registra em preview Lovable, iframes ou dev — apenas no app publicado.
  */
 const SW_URL = '/sw.js';
@@ -7,6 +9,7 @@ const SW_URL = '/sw.js';
 type UpdateListener = () => void;
 const updateListeners = new Set<UpdateListener>();
 let updateReady = false;
+let installUpdate: ((reloadPage?: boolean) => Promise<void>) | null = null;
 
 export function onUpdateAvailable(listener: UpdateListener) {
   updateListeners.add(listener);
@@ -20,9 +23,13 @@ function notifyUpdate() {
   updateListeners.forEach((l) => l());
 }
 
-/** Recarrega o app aplicando a versão nova. */
-export function applyUpdate() {
-  window.location.reload();
+/** Ativa o novo service worker e recarrega somente após ele assumir o app. */
+export async function applyUpdate() {
+  if (!installUpdate) {
+    window.location.reload();
+    return;
+  }
+  await installUpdate(true);
 }
 
 function isBlockedContext(): boolean {
@@ -58,27 +65,20 @@ export function registerServiceWorker() {
     return;
   }
 
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register(SW_URL).then((reg) => {
-      // Já existe versão nova esperando
-      if (reg.waiting && navigator.serviceWorker.controller) notifyUpdate();
+  installUpdate = registerSW({
+    immediate: true,
+    onNeedRefresh: notifyUpdate,
+    onRegisteredSW: (_swUrl, registration) => {
+      if (!registration) return;
 
-      reg.addEventListener('updatefound', () => {
-        const sw = reg.installing;
-        if (!sw) return;
-        sw.addEventListener('statechange', () => {
-          // Instalou uma versão nova sobre uma já existente
-          if (sw.state === 'installed' && navigator.serviceWorker.controller) notifyUpdate();
-        });
-      });
-
-      // Checa atualizações ao abrir, a cada 15 min e ao voltar para o app
-      const check = () => { reg.update().catch(() => {}); };
+      // Checa atualizações ao abrir, a cada 15 min e ao voltar para o app.
+      const check = () => { registration.update().catch(() => {}); };
       check();
-      setInterval(check, 15 * 60 * 1000);
+      window.setInterval(check, 15 * 60 * 1000);
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') check();
       });
-    }).catch(() => { /* ignore */ });
+    },
+    onRegisterError: () => { /* funcionamento online continua disponível */ },
   });
 }

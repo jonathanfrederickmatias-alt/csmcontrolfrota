@@ -51,6 +51,7 @@ const osStatusConfig = {
 export default function MaintenancePage() {
   const { isAdmin, isGestor, isMecanico, isAbastecedor } = useUserRoles();
   const canEdit = isAdmin || isGestor;
+  const canCreateOS = isAdmin || isGestor || isAbastecedor;
   const canComplete = isAdmin || isGestor || isMecanico || isAbastecedor;
   const [plans, setPlans] = useState<DBMaintenancePlan[]>([]);
   const [requests, setRequests] = useState<DBMaintenanceRequest[]>([]);
@@ -835,7 +836,7 @@ export default function MaintenancePage() {
                   <CheckCircle className="w-4 h-4 text-success" /> Serviço Executado
                 </Button>
               )}
-              {canEdit && (
+              {canCreateOS && (
                 <Button size="sm" className="gap-2" onClick={() => setNewOsOpen(true)}>
                   <Plus className="w-4 h-4" /> Nova OS
                 </Button>

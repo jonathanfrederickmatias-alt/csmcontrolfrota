@@ -21,7 +21,7 @@ const allNavItems = [
   { to: "/documentos", label: "Documentos", icon: FileText, roles: ['admin', 'gestor'] },
   { to: "/relatorios", label: "Relatórios", icon: BarChart2, roles: ['admin', 'gestor'] },
   { to: "/obras", label: "Obras", icon: Building2, roles: ['admin', 'gestor', 'abastecedor'] },
-  { to: "/qrcode", label: "QR Code", icon: QrCode, roles: ['admin', 'gestor'] },
+  { to: "/qrcode", label: "QR Code", icon: QrCode, roles: ['admin', 'gestor', 'abastecedor'] },
   { to: "/usuarios", label: "Usuários", icon: Users, roles: ['admin', 'gestor'] },
 ];
 

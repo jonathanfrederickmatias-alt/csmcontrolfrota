@@ -7,7 +7,10 @@ export default function UpdatePrompt() {
   const [available, setAvailable] = useState(false);
   const [updating, setUpdating] = useState(false);
 
-  useEffect(() => onUpdateAvailable(() => setAvailable(true)), []);
+  useEffect(() => {
+    const off = onUpdateAvailable(() => setAvailable(true));
+    return () => { off(); };
+  }, []);
 
   if (!available) return null;
 

@@ -31,6 +31,7 @@ import QRRegistroManutencao from "@/pages/qr/QRRegistroManutencao";
 import QRPrintPage from "@/pages/QRPrintPage";
 import MechanicDashboardPage from "@/pages/MechanicDashboardPage";
 import NotFound from "./pages/NotFound";
+import UpdatePrompt from "@/components/UpdatePrompt";
 
 const queryClient = new QueryClient();
 
@@ -49,6 +50,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
+      <UpdatePrompt />
       <BrowserRouter>
         <AuthProvider>
           <Routes>

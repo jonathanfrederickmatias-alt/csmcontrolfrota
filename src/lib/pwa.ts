@@ -37,7 +37,25 @@ export function registerServiceWorker() {
     void unregisterApp();
     return;
   }
+
+  // Quando um novo service worker assume o controle, recarrega para pegar a versão nova
+  let reloading = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (reloading) return;
+    reloading = true;
+    window.location.reload();
+  });
+
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register(SW_URL).catch(() => { /* ignore */ });
+    navigator.serviceWorker.register(SW_URL).then((reg) => {
+      // Checa atualizações imediatamente, a cada 15 min, e ao voltar para o app
+      const check = () => { reg.update().catch(() => {}); };
+      check();
+      setInterval(check, 15 * 60 * 1000);
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') check();
+      });
+    }).catch(() => { /* ignore */ });
   });
 }
+

@@ -87,10 +87,22 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <span className="text-logo-blue">CONTROLFROTA</span>
           </span>
         </Link>
-        <button onClick={() => setMobileOpen(!mobileOpen)} className="text-sidebar-foreground p-2">
-          {mobileOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-        </button>
+        <div className="flex items-center gap-1">
+          {canOpenOS && (
+            <Link
+              to="/pedido-manutencao"
+              aria-label="Abrir nova OS"
+              className="flex items-center gap-1 rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground"
+            >
+              <Wrench className="w-4 h-4" /> Nova OS
+            </Link>
+          )}
+          <button onClick={() => setMobileOpen(!mobileOpen)} className="text-sidebar-foreground p-2">
+            {mobileOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
+        </div>
       </div>
+
 
       {/* Mobile nav overlay */}
       {mobileOpen && (

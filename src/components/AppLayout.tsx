@@ -38,6 +38,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     ? []
     : allNavItems.filter(item => item.roles.some(r => roles.includes(r as any)));
 
+  const canOpenOS = !rolesLoading && ['admin', 'gestor', 'abastecedor'].some(r => roles.includes(r as any));
+
+
   return (
     <div className="min-h-screen flex">
       {/* Sidebar desktop */}

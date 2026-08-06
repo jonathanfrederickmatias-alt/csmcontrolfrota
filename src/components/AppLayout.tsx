@@ -144,10 +144,22 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Main content */}
       <main className="flex-1 lg:ml-64 pt-16 lg:pt-0">
         <OfflineBanner />
-        <div className="p-4 lg:p-8 max-w-7xl mx-auto">
+        <div className="p-4 lg:p-8 max-w-7xl mx-auto pb-24 lg:pb-8">
           {children}
         </div>
       </main>
+
+      {/* Botão flutuante mobile: abrir OS na hora */}
+      {canOpenOS && location.pathname !== "/pedido-manutencao" && (
+        <Link
+          to="/pedido-manutencao"
+          aria-label="Abrir nova OS"
+          className="lg:hidden fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full bg-primary px-5 py-4 text-sm font-bold text-primary-foreground shadow-lg"
+        >
+          <Wrench className="w-5 h-5" /> Nova OS
+        </Link>
+      )}
+
     </div>
   );
 }

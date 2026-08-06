@@ -38,7 +38,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     ? []
     : allNavItems.filter(item => item.roles.some(r => roles.includes(r as any)));
 
-  const canOpenOS = !rolesLoading && ['admin', 'gestor', 'abastecedor'].some(r => roles.includes(r as any));
+  // Mostra o atalho de nova OS para todos, exceto quem tem apenas o perfil mecânico
+  const canOpenOS = !(roles.length > 0 && roles.every(r => r === 'mecanico'));
 
 
   return (

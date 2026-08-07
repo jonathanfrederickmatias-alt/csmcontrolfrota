@@ -994,15 +994,32 @@ export default function MaintenancePage() {
                   {equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eqLabel(eq)}</SelectItem>)}
                 </SelectContent>
               </Select>
-              <Select value={planStatusFilter} onValueChange={setPlanStatusFilter}>
-                <SelectTrigger className="w-48"><SelectValue placeholder="Filtrar por status" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os status</SelectItem>
-                  <SelectItem value="ok">OK</SelectItem>
-                  <SelectItem value="approaching">Próxima</SelectItem>
-                  <SelectItem value="overdue">Atrasada</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {([
+                  { v: 'overdue', label: 'Atrasada' },
+                  { v: 'approaching', label: 'Próxima' },
+                  { v: 'ok', label: 'OK' },
+                ] as const).map(opt => {
+                  const active = planStatusFilters.includes(opt.v);
+                  return (
+                    <Button
+                      key={opt.v}
+                      type="button"
+                      size="sm"
+                      variant={active ? 'default' : 'outline'}
+                      onClick={() => togglePlanStatusFilter(opt.v)}
+                      className="h-9"
+                    >
+                      {opt.label}
+                    </Button>
+                  );
+                })}
+                {planStatusFilters.length > 0 && (
+                  <Button type="button" size="sm" variant="ghost" className="h-9" onClick={() => setPlanStatusFilters([])}>
+                    Limpar
+                  </Button>
+                )}
+              </div>
             </div>
             <div className="flex gap-2 flex-wrap">
               <Button size="sm" variant="outline" className="gap-1.5" onClick={() => {

@@ -1939,7 +1939,10 @@ export default function MaintenancePage() {
               setPdfExporting(true);
               try {
                 // Build plan rows
-                const filterName = planFilter === 'all' ? 'Todos' : equipments.find(e => e.id === planFilter)?.name || 'Filtrado';
+                const statusLabels: Record<string, string> = { ok: 'OK', approaching: 'Próxima', overdue: 'Atrasada' };
+                const eqPart = planFilter === 'all' ? 'Todos' : equipments.find(e => e.id === planFilter)?.name || 'Filtrado';
+                const statusPart = planStatusFilters.length > 0 ? ` — ${planStatusFilters.map(s => statusLabels[s]).join(', ')}` : '';
+                const filterName = `${eqPart}${statusPart}`;
                 const rows = filteredPlans.map(p => {
                   const eq = equipments.find(e => e.id === p.equipment_id);
                   const currentHM = eq?.current_hour_meter || 0;

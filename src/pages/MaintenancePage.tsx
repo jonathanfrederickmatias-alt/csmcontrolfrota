@@ -1994,6 +1994,7 @@ export default function MaintenancePage() {
                 allHist.forEach(h => {
                   const eq = equipments.find(e => e.id === h.equipment_id);
                   const eqName = eq ? eqLabel(eq) : '—';
+                  if (!includedEquipments.has(eqName)) return;
                   if (!historyByEquipment[eqName]) historyByEquipment[eqName] = [];
                   historyByEquipment[eqName].push({
                     description: h.description,

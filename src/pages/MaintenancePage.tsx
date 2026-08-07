@@ -74,7 +74,7 @@ export default function MaintenancePage() {
   const [planFilter, setPlanFilter] = useState('all');
   const [requestFilter, setRequestFilter] = useState('all');
   const [osFilter, setOsFilter] = useState('all');
-  const [planStatusFilter, setPlanStatusFilter] = useState('all');
+  const [planStatusFilters, setPlanStatusFilters] = useState<Array<'ok' | 'approaching' | 'overdue'>>([]);
   const [requestStatusFilter, setRequestStatusFilter] = useState('all');
   const [osStatusFilter, setOsStatusFilter] = useState('all');
   const [completedFilter, setCompletedFilter] = useState('all');
@@ -409,9 +409,23 @@ export default function MaintenancePage() {
     return order[a.status] - order[b.status];
   });
 
+  const planLiveStatus = (p: DBMaintenancePlan): 'ok' | 'approaching' | 'overdue' => {
+    const eq = equipments.find(e => e.id === p.equipment_id);
+    const planType = (p as any).plan_type || 'horimetro';
+    if (planType === 'tempo') {
+      const days = p.next_due_date ? Math.ceil((new Date(p.next_due_date).getTime() - Date.now()) / 86400000) : 0;
+      return days <= 0 ? 'overdue' : days <= 7 ? 'approaching' : 'ok';
+    }
+    const remaining = (p.next_due_at || 0) - (eq?.current_hour_meter || 0);
+    return calculateMaintenanceStatus(remaining, eq?.type || 'machine');
+  };
+
+  const togglePlanStatusFilter = (s: 'ok' | 'approaching' | 'overdue') =>
+    setPlanStatusFilters(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]);
+
   const filteredPlans = sortedPlans
     .filter(p => planFilter === 'all' || p.equipment_id === planFilter)
-    .filter(p => planStatusFilter === 'all' || p.status === planStatusFilter);
+    .filter(p => planStatusFilters.length === 0 || planStatusFilters.includes(planLiveStatus(p)));
   const filteredRequests = requests
     .filter(r => requestFilter === 'all' || r.equipment_id === requestFilter)
     .filter(r => requestStatusFilter === 'all' || r.status === requestStatusFilter);

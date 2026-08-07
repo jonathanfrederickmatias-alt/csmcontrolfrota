@@ -74,7 +74,7 @@ export default function MaintenancePage() {
   const [planFilter, setPlanFilter] = useState('all');
   const [requestFilter, setRequestFilter] = useState('all');
   const [osFilter, setOsFilter] = useState('all');
-  const [planStatusFilter, setPlanStatusFilter] = useState('all');
+  const [planStatusFilters, setPlanStatusFilters] = useState<Array<'ok' | 'approaching' | 'overdue'>>([]);
   const [requestStatusFilter, setRequestStatusFilter] = useState('all');
   const [osStatusFilter, setOsStatusFilter] = useState('all');
   const [completedFilter, setCompletedFilter] = useState('all');
@@ -409,9 +409,23 @@ export default function MaintenancePage() {
     return order[a.status] - order[b.status];
   });
 
+  const planLiveStatus = (p: DBMaintenancePlan): 'ok' | 'approaching' | 'overdue' => {
+    const eq = equipments.find(e => e.id === p.equipment_id);
+    const planType = (p as any).plan_type || 'horimetro';
+    if (planType === 'tempo') {
+      const days = p.next_due_date ? Math.ceil((new Date(p.next_due_date).getTime() - Date.now()) / 86400000) : 0;
+      return days <= 0 ? 'overdue' : days <= 7 ? 'approaching' : 'ok';
+    }
+    const remaining = (p.next_due_at || 0) - (eq?.current_hour_meter || 0);
+    return calculateMaintenanceStatus(remaining, eq?.type || 'machine');
+  };
+
+  const togglePlanStatusFilter = (s: 'ok' | 'approaching' | 'overdue') =>
+    setPlanStatusFilters(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]);
+
   const filteredPlans = sortedPlans
     .filter(p => planFilter === 'all' || p.equipment_id === planFilter)
-    .filter(p => planStatusFilter === 'all' || p.status === planStatusFilter);
+    .filter(p => planStatusFilters.length === 0 || planStatusFilters.includes(planLiveStatus(p)));
   const filteredRequests = requests
     .filter(r => requestFilter === 'all' || r.equipment_id === requestFilter)
     .filter(r => requestStatusFilter === 'all' || r.status === requestStatusFilter);
@@ -980,15 +994,32 @@ export default function MaintenancePage() {
                   {equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eqLabel(eq)}</SelectItem>)}
                 </SelectContent>
               </Select>
-              <Select value={planStatusFilter} onValueChange={setPlanStatusFilter}>
-                <SelectTrigger className="w-48"><SelectValue placeholder="Filtrar por status" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os status</SelectItem>
-                  <SelectItem value="ok">OK</SelectItem>
-                  <SelectItem value="approaching">Próxima</SelectItem>
-                  <SelectItem value="overdue">Atrasada</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {([
+                  { v: 'overdue', label: 'Atrasada' },
+                  { v: 'approaching', label: 'Próxima' },
+                  { v: 'ok', label: 'OK' },
+                ] as const).map(opt => {
+                  const active = planStatusFilters.includes(opt.v);
+                  return (
+                    <Button
+                      key={opt.v}
+                      type="button"
+                      size="sm"
+                      variant={active ? 'default' : 'outline'}
+                      onClick={() => togglePlanStatusFilter(opt.v)}
+                      className="h-9"
+                    >
+                      {opt.label}
+                    </Button>
+                  );
+                })}
+                {planStatusFilters.length > 0 && (
+                  <Button type="button" size="sm" variant="ghost" className="h-9" onClick={() => setPlanStatusFilters([])}>
+                    Limpar
+                  </Button>
+                )}
+              </div>
             </div>
             <div className="flex gap-2 flex-wrap">
               <Button size="sm" variant="outline" className="gap-1.5" onClick={() => {
@@ -1908,7 +1939,10 @@ export default function MaintenancePage() {
               setPdfExporting(true);
               try {
                 // Build plan rows
-                const filterName = planFilter === 'all' ? 'Todos' : equipments.find(e => e.id === planFilter)?.name || 'Filtrado';
+                const statusLabels: Record<string, string> = { ok: 'OK', approaching: 'Próxima', overdue: 'Atrasada' };
+                const eqPart = planFilter === 'all' ? 'Todos' : equipments.find(e => e.id === planFilter)?.name || 'Filtrado';
+                const statusPart = planStatusFilters.length > 0 ? ` — ${planStatusFilters.map(s => statusLabels[s]).join(', ')}` : '';
+                const filterName = `${eqPart}${statusPart}`;
                 const rows = filteredPlans.map(p => {
                   const eq = equipments.find(e => e.id === p.equipment_id);
                   const currentHM = eq?.current_hour_meter || 0;
@@ -1920,7 +1954,7 @@ export default function MaintenancePage() {
                     lastDoneAt: p.last_done_at,
                     currentHM,
                     remaining: p.next_due_at - currentHM,
-                    status: p.status as 'ok' | 'approaching' | 'overdue',
+                    status: planLiveStatus(p),
                     lastExecuted: p.last_executed_at ? new Date(p.last_executed_at).toLocaleDateString('pt-BR') : undefined,
                     plate: eq?.plate || undefined,
                     model: eq?.model || undefined,
@@ -1929,21 +1963,24 @@ export default function MaintenancePage() {
                     year: eq?.year || undefined,
                   };
                 });
-                // Add equipments without plans
-                const eqsWithPlans = new Set(filteredPlans.map(p => p.equipment_id));
-                const targetEqs = planFilter === 'all' ? equipments : equipments.filter(e => e.id === planFilter);
-                targetEqs.filter(eq => !eqsWithPlans.has(eq.id)).forEach(eq => {
-                  rows.push({
-                    equipment: eqLabel(eq),
-                    description: 'Nenhum plano de manutenção cadastrado',
-                    intervalHours: 0, nextDueAt: 0, lastDoneAt: 0,
-                    currentHM: eq.current_hour_meter, remaining: 0,
-                    status: 'ok' as const, lastExecuted: undefined,
-                    plate: eq.plate || undefined, model: eq.model || undefined,
-                    brand: eq.brand || undefined, costCenter: eq.cost_center || undefined,
-                    year: eq.year || undefined,
+                // Equipamentos sem plano só entram quando não há filtro de status
+                if (planStatusFilters.length === 0) {
+                  const eqsWithPlans = new Set(filteredPlans.map(p => p.equipment_id));
+                  const targetEqs = planFilter === 'all' ? equipments : equipments.filter(e => e.id === planFilter);
+                  targetEqs.filter(eq => !eqsWithPlans.has(eq.id)).forEach(eq => {
+                    rows.push({
+                      equipment: eqLabel(eq),
+                      description: 'Nenhum plano de manutenção cadastrado',
+                      intervalHours: 0, nextDueAt: 0, lastDoneAt: 0,
+                      currentHM: eq.current_hour_meter, remaining: 0,
+                      status: 'ok' as const, lastExecuted: undefined,
+                      plate: eq.plate || undefined, model: eq.model || undefined,
+                      brand: eq.brand || undefined, costCenter: eq.cost_center || undefined,
+                      year: eq.year || undefined,
+                    });
                   });
-                });
+                }
+                const includedEquipments = new Set(rows.map(r => r.equipment));
 
                 // Fetch history with optional date filter
                 let query = supabase.from('maintenance_history').select('*').order('executed_at', { ascending: false });
@@ -1957,6 +1994,7 @@ export default function MaintenancePage() {
                 allHist.forEach(h => {
                   const eq = equipments.find(e => e.id === h.equipment_id);
                   const eqName = eq ? eqLabel(eq) : '—';
+                  if (!includedEquipments.has(eqName)) return;
                   if (!historyByEquipment[eqName]) historyByEquipment[eqName] = [];
                   historyByEquipment[eqName].push({
                     description: h.description,

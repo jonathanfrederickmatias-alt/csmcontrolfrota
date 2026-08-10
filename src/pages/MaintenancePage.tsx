@@ -640,15 +640,27 @@ export default function MaintenancePage() {
       return;
     }
 
-    // Create work order
-    const { error: osErr } = await supabase.from('work_orders').insert([{
-      tenant_id,
-      equipment_id: newOsForm.equipmentId,
-      maintenance_request_id: reqData.id,
-      description: newOsForm.description,
-      priority: newOsForm.priority,
-      status: 'open',
-    }]);
+    // A OS é criada automaticamente pelo trigger auto_create_work_order.
+    // Só criamos manualmente se o trigger não tiver gerado nenhuma (fallback).
+    let osRow: any = null;
+    for (let i = 0; i < 6 && !osRow; i++) {
+      const { data } = await supabase.from('work_orders').select('id').eq('maintenance_request_id', reqData.id).maybeSingle();
+      if (data) { osRow = data; break; }
+      await new Promise(r => setTimeout(r, 200));
+    }
+
+    let osErr: any = null;
+    if (!osRow) {
+      const res = await supabase.from('work_orders').insert([{
+        tenant_id,
+        equipment_id: newOsForm.equipmentId,
+        maintenance_request_id: reqData.id,
+        description: newOsForm.description,
+        priority: newOsForm.priority,
+        status: 'open',
+      }]);
+      osErr = res.error;
+    }
 
     if (osErr) {
       toast({ title: 'Erro ao criar OS', variant: 'destructive' });

@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Camera, X, Loader2, Paperclip, FileText, Plus } from "lucide-react";
+import { toast } from "sonner";
 
 interface MultiPhotoUploadProps {
   label?: string;

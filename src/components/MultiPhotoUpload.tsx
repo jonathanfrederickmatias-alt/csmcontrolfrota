@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Camera, X, Loader2, Paperclip, FileText, Plus } from "lucide-react";
+import { Camera, X, Loader2, Paperclip, FileText } from "lucide-react";
 import { toast } from "sonner";
 
 interface MultiPhotoUploadProps {
@@ -30,29 +30,47 @@ export default function MultiPhotoUpload({
     setUploading(true);
     const { compressImage, withTimeout } = await import('@/lib/image');
     const uploaded: string[] = [];
-    let failed = 0;
+    const failures: string[] = [];
     for (const file of Array.from(files)) {
       try {
+        if (file.size === 0) throw new Error('A câmera gerou uma foto vazia');
         const prepared = await compressImage(file);
-        const ext = (prepared.name.split('.').pop() || 'jpg').toLowerCase();
+        const ext = prepared.type === 'image/jpeg'
+          ? 'jpg'
+          : (prepared.name.split('.').pop() || 'jpg').toLowerCase();
         const fName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
         const path = `uploads/${fName}`;
-        const { error } = await withTimeout(
+        const send = () => withTimeout(
           supabase.storage.from('photos').upload(path, prepared, {
             cacheControl: '3600',
+            contentType: prepared.type || 'image/jpeg',
             upsert: false,
           }),
-          30000
+          60000,
         );
+
+        let result = await send();
+        if (result.error && /jwt|token|auth|unauthorized/i.test(result.error.message)) {
+          await supabase.auth.refreshSession();
+          result = await send();
+        }
+        const { error } = result;
         if (error) throw error;
         const { data } = supabase.storage.from('photos').getPublicUrl(path);
         uploaded.push(data.publicUrl);
-      } catch {
-        failed++;
+      } catch (error) {
+        failures.push(error instanceof Error ? error.message : 'Falha desconhecida');
       }
     }
     if (uploaded.length) onChange([...(values || []), ...uploaded]);
-    if (failed) toast.error(`Não foi possível enviar ${failed} foto(s). Verifique a internet e tente novamente.`);
+    if (failures.length) {
+      const reason = failures[0] === 'timeout'
+        ? 'A conexão demorou demais.'
+        : failures[0];
+      toast.error(`Foto não anexada. ${reason} Tente novamente.`, { duration: 8000 });
+    } else if (uploaded.length) {
+      toast.success(uploaded.length === 1 ? 'Foto anexada.' : `${uploaded.length} fotos anexadas.`);
+    }
     setUploading(false);
     if (cameraRef.current) cameraRef.current.value = '';
     if (fileRef.current) fileRef.current.value = '';
@@ -88,6 +106,7 @@ export default function MultiPhotoUpload({
           type="file"
           accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
           multiple
+          onClick={e => { e.currentTarget.value = ''; }}
           onChange={e => uploadFiles(e.target.files)}
           className="hidden"
         />

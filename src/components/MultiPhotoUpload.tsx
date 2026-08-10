@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Camera, X, Loader2, Paperclip, FileText, Plus } from "lucide-react";
+import { toast } from "sonner";
 
 interface MultiPhotoUploadProps {
   label?: string;
@@ -27,21 +28,31 @@ export default function MultiPhotoUpload({
   const uploadFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     setUploading(true);
+    const { compressImage, withTimeout } = await import('@/lib/image');
     const uploaded: string[] = [];
+    let failed = 0;
     for (const file of Array.from(files)) {
-      const ext = file.name.split('.').pop();
-      const fName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const path = `uploads/${fName}`;
-      const { error } = await supabase.storage.from('photos').upload(path, file, {
-        cacheControl: '3600',
-        upsert: false,
-      });
-      if (!error) {
+      try {
+        const prepared = await compressImage(file);
+        const ext = (prepared.name.split('.').pop() || 'jpg').toLowerCase();
+        const fName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+        const path = `uploads/${fName}`;
+        const { error } = await withTimeout(
+          supabase.storage.from('photos').upload(path, prepared, {
+            cacheControl: '3600',
+            upsert: false,
+          }),
+          30000
+        );
+        if (error) throw error;
         const { data } = supabase.storage.from('photos').getPublicUrl(path);
         uploaded.push(data.publicUrl);
+      } catch {
+        failed++;
       }
     }
     if (uploaded.length) onChange([...(values || []), ...uploaded]);
+    if (failed) toast.error(`Não foi possível enviar ${failed} foto(s). Verifique a internet e tente novamente.`);
     setUploading(false);
     if (cameraRef.current) cameraRef.current.value = '';
     if (fileRef.current) fileRef.current.value = '';

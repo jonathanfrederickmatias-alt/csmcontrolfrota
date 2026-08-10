@@ -90,11 +90,13 @@ async function uploadPhoto(blob: Blob, name: string): Promise<string> {
 
 /** Uploads a file right away; falls back to the offline store when there is no connection. */
 export async function uploadOrQueuePhoto(file: File): Promise<string> {
-  if (!navigator.onLine) return savePhotoOffline(file);
+  const { compressImage, withTimeout } = await import('@/lib/image');
+  const prepared = await compressImage(file);
+  if (!navigator.onLine) return savePhotoOffline(prepared);
   try {
-    return await uploadPhoto(file, file.name);
+    return await withTimeout(uploadPhoto(prepared, prepared.name), 30000);
   } catch {
-    return savePhotoOffline(file);
+    return savePhotoOffline(prepared);
   }
 }
 

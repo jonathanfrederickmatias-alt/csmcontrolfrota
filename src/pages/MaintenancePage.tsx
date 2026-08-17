@@ -56,6 +56,8 @@ export default function MaintenancePage() {
   const [plans, setPlans] = useState<DBMaintenancePlan[]>([]);
   const [requests, setRequests] = useState<DBMaintenanceRequest[]>([]);
   const [equipments, setEquipments] = useState<DBEquipment[]>([]);
+  const [obras, setObras] = useState<Array<{ id: string; name: string }>>([]);
+  const [obraFilter, setObraFilter] = useState('all');
   const [history, setHistory] = useState<DBMaintenanceHistory[]>([]);
   const [workOrders, setWorkOrders] = useState<DBWorkOrder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -155,18 +157,20 @@ export default function MaintenancePage() {
   }, [isAbastecedor]);
 
   const fetchAll = async () => {
-    const [eqRes, plRes, reqRes, histRes, osRes] = await Promise.all([
+    const [eqRes, plRes, reqRes, histRes, osRes, obrasRes] = await Promise.all([
       supabase.from('equipments').select('*').order('name'),
       supabase.from('maintenance_plans').select('*').order('status'),
       supabase.from('maintenance_requests').select('*').order('created_at', { ascending: false }),
       supabase.from('maintenance_history').select('*').order('executed_at', { ascending: false }).limit(200),
       supabase.from('work_orders').select('*').order('created_at', { ascending: false }),
+      supabase.from('obras').select('id,name').order('name'),
     ]);
     setEquipments((eqRes.data || []) as DBEquipment[]);
     setPlans((plRes.data || []) as DBMaintenancePlan[]);
     setRequests((reqRes.data || []) as unknown as DBMaintenanceRequest[]);
     setHistory((histRes.data || []) as DBMaintenanceHistory[]);
     setWorkOrders((osRes.data || []) as DBWorkOrder[]);
+    setObras((obrasRes.data || []) as Array<{ id: string; name: string }>);
     setLoading(false);
   };
 
@@ -427,26 +431,40 @@ export default function MaintenancePage() {
   const togglePlanStatusFilter = (s: 'ok' | 'approaching' | 'overdue') =>
     setPlanStatusFilters(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]);
 
+  // Filtro por obra (aplicado em todas as abas)
+  const filterEquipments = obraFilter === 'all' ? equipments : equipments.filter(e => e.obra_id === obraFilter);
+  const matchesObra = (equipmentId?: string | null) => {
+    if (obraFilter === 'all') return true;
+    if (!equipmentId) return false;
+    return equipments.find(e => e.id === equipmentId)?.obra_id === obraFilter;
+  };
+
   const filteredPlans = sortedPlans
     .filter(p => planFilter === 'all' || p.equipment_id === planFilter)
+    .filter(p => matchesObra(p.equipment_id))
     .filter(p => planStatusFilters.length === 0 || planStatusFilters.includes(planLiveStatus(p)));
   const filteredRequests = requests
     .filter(r => requestFilter === 'all' || r.equipment_id === requestFilter)
+    .filter(r => matchesObra(r.equipment_id))
     .filter(r => requestStatusFilter === 'all' || r.status === requestStatusFilter);
-  const filteredHistory = historyFilter === 'all' ? history : history.filter(h => h.equipment_id === historyFilter);
+  const filteredHistory = (historyFilter === 'all' ? history : history.filter(h => h.equipment_id === historyFilter))
+    .filter(h => matchesObra(h.equipment_id));
   const filteredOrders = workOrders
     .filter(o => osFilter === 'all' || o.equipment_id === osFilter)
+    .filter(o => matchesObra(o.equipment_id))
     .filter(o => osStatusFilter === 'all' || o.status === osStatusFilter);
 
   // Serviços Realizados: histórico (vem de OS concluídas + planos concluídos + manuais)
   // Só aparecem aqui depois que o master fizer a valoração (lançar os custos)
   const filteredCompleted = (completedFilter === 'all' ? history : history.filter(h => h.equipment_id === completedFilter))
+    .filter(h => matchesObra(h.equipment_id))
     .filter(h => h.costs_validated !== false)
     .slice()
     .sort((a, b) => new Date(b.executed_at).getTime() - new Date(a.executed_at).getTime());
 
   // Pendentes de valoração (apenas admin enxerga essa aba)
   const pendingValuation = (valuationFilter === 'all' ? history : history.filter(h => h.equipment_id === valuationFilter))
+    .filter(h => matchesObra(h.equipment_id))
     .filter(h => h.costs_validated === false)
     .slice()
     .sort((a, b) => new Date(b.executed_at).getTime() - new Date(a.executed_at).getTime());

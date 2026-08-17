@@ -1396,50 +1396,10 @@ export default function MaintenancePage() {
               }}>
                 <FileSpreadsheet className="w-4 h-4 text-success" /> Excel
               </Button>
-              <Button size="sm" className="gap-1.5" disabled={pdfExporting} onClick={async () => {
-                setPdfExporting(true);
-                try {
-                const filterName = completedFilter === 'all' ? 'Todos os equipamentos' : equipments.find(e => e.id === completedFilter)?.name || 'Filtrado';
-                const selectedEq = completedFilter !== 'all' ? equipments.find(e => e.id === completedFilter) : undefined;
-                const eqDetails = selectedEq ? {
-                  name: selectedEq.name,
-                  plate: selectedEq.plate || undefined,
-                  model: selectedEq.model || undefined,
-                  brand: selectedEq.brand || undefined,
-                  costCenter: selectedEq.cost_center || undefined,
-                  year: selectedEq.year || undefined,
-                  currentHourMeter: selectedEq.current_hour_meter,
-                } : undefined;
-                const rows = filteredCompleted.map(h => {
-                  const eq = equipments.find(e => e.id === h.equipment_id);
-                  const plan = plans.find(p => p.id === h.plan_id);
-                  const osMatch = h.description?.match(/OS #(\d+)/);
-                  const linkedOS = osMatch ? workOrders.find(o => o.os_number === Number(osMatch[1])) : undefined;
-                  const photosStart = (linkedOS?.photos_start && linkedOS.photos_start.length ? linkedOS.photos_start : (linkedOS?.photo_start_url ? [linkedOS.photo_start_url] : [])) as string[];
-                  const photosEnd = (linkedOS?.photos_end && linkedOS.photos_end.length ? linkedOS.photos_end : (linkedOS?.photo_end_url ? [linkedOS.photo_end_url] : [])) as string[];
-                  return {
-                    equipment: eq ? eqLabel(eq) : '—',
-                    description: h.description,
-                    hourMeter: h.hour_meter,
-                    executedAt: new Date(h.executed_at).toLocaleDateString('pt-BR'),
-                    operator: h.operator_name || undefined,
-                    notes: h.notes || undefined,
-                    planDescription: plan?.description || undefined,
-                    problem: linkedOS?.cause_identified || undefined,
-                    solution: linkedOS?.service_executed || undefined,
-                    photosStart,
-                    photosEnd,
-                  };
-                });
-                await exportMaintenanceHistoryPDF(rows, filterName, eqDetails);
-                } catch (err: any) {
-                  sonnerToast.error('Erro ao gerar PDF', { description: err?.message || 'Tente novamente.' });
-                } finally {
-                  setPdfExporting(false);
-                }
-              }}>
+              <Button size="sm" className="gap-1.5" disabled={pdfExporting} onClick={() => { setPdfPeriodFrom(''); setPdfPeriodTo(''); setPdfPeriodTarget('completed'); }}>
                 {pdfExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />} PDF
               </Button>
+
             </div>
           </div>
 

@@ -111,6 +111,10 @@ export default function MaintenancePage() {
   const [pdfHistoryFrom, setPdfHistoryFrom] = useState('');
   const [pdfHistoryTo, setPdfHistoryTo] = useState('');
   const [pdfExporting, setPdfExporting] = useState(false);
+  // PDF período (Realizados / Histórico)
+  const [pdfPeriodTarget, setPdfPeriodTarget] = useState<'completed' | 'history' | null>(null);
+  const [pdfPeriodFrom, setPdfPeriodFrom] = useState('');
+  const [pdfPeriodTo, setPdfPeriodTo] = useState('');
 
   // New OS dialog
   const [newOsOpen, setNewOsOpen] = useState(false);

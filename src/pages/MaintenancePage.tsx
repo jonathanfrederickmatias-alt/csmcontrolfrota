@@ -1943,7 +1943,25 @@ export default function MaintenancePage() {
           </div>
         </DialogContent>
       </Dialog>
+      {/* Seleção de período para PDF de Realizados / Histórico */}
+      <Dialog open={pdfPeriodTarget !== null} onOpenChange={(v) => { if (!v) setPdfPeriodTarget(null); }}>
+        <DialogContent className="bg-card border-border max-w-sm">
+          <DialogHeader><DialogTitle>Período do PDF</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">Selecione o período dos serviços a incluir no PDF. Deixe em branco para incluir tudo.</p>
+          <div className="space-y-3">
+            <div><Label>Data inicial</Label><Input type="date" value={pdfPeriodFrom} onChange={e => setPdfPeriodFrom(e.target.value)} /></div>
+            <div><Label>Data final</Label><Input type="date" value={pdfPeriodTo} onChange={e => setPdfPeriodTo(e.target.value)} /></div>
+            <Button className="w-full" disabled={pdfExporting} onClick={() => pdfPeriodTarget && runHistoryPdfExport(pdfPeriodTarget, pdfPeriodFrom, pdfPeriodTo)}>
+              {pdfExporting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />} Gerar PDF
+            </Button>
+            <Button variant="outline" className="w-full" disabled={pdfExporting} onClick={() => { setPdfPeriodFrom(''); setPdfPeriodTo(''); pdfPeriodTarget && runHistoryPdfExport(pdfPeriodTarget, '', ''); }}>
+              Gerar com todo o período
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       {/* PDF History Period Filter Dialog */}
+
       <Dialog open={pdfHistoryDialog} onOpenChange={(v) => { setPdfHistoryDialog(v); if (!v) { setPdfHistoryFrom(''); setPdfHistoryTo(''); } }}>
         <DialogContent className="bg-card border-border max-w-sm">
           <DialogHeader><DialogTitle>Exportar PDF com Histórico</DialogTitle></DialogHeader>

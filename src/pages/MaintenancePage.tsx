@@ -447,6 +447,72 @@ export default function MaintenancePage() {
     .slice()
     .sort((a, b) => new Date(b.executed_at).getTime() - new Date(a.executed_at).getTime());
 
+  // Exportação de PDF com seleção de período (Realizados / Histórico)
+  const runHistoryPdfExport = async (source: 'completed' | 'history', from: string, to: string) => {
+    setPdfExporting(true);
+    try {
+      const base = source === 'completed' ? filteredCompleted : filteredHistory;
+      const fromTime = from ? new Date(`${from}T00:00:00`).getTime() : null;
+      const toTime = to ? new Date(`${to}T23:59:59`).getTime() : null;
+      const list = base.filter(h => {
+        const t = new Date(h.executed_at).getTime();
+        if (fromTime !== null && t < fromTime) return false;
+        if (toTime !== null && t > toTime) return false;
+        return true;
+      });
+      if (list.length === 0) {
+        sonnerToast.error('Nenhum serviço no período selecionado');
+        return;
+      }
+      const eqFilter = source === 'completed' ? completedFilter : historyFilter;
+      const eqName = eqFilter === 'all'
+        ? (source === 'completed' ? 'Todos os equipamentos' : 'Todos')
+        : equipments.find(e => e.id === eqFilter)?.name || 'Filtrado';
+      const fmt = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString('pt-BR');
+      const periodLabel = from && to ? ` — ${fmt(from)} a ${fmt(to)}`
+        : from ? ` — a partir de ${fmt(from)}`
+        : to ? ` — até ${fmt(to)}` : '';
+      const filterName = `${eqName}${periodLabel}`;
+      const selectedEq = eqFilter !== 'all' ? equipments.find(e => e.id === eqFilter) : undefined;
+      const eqDetails = selectedEq ? {
+        name: selectedEq.name,
+        plate: selectedEq.plate || undefined,
+        model: selectedEq.model || undefined,
+        brand: selectedEq.brand || undefined,
+        costCenter: selectedEq.cost_center || undefined,
+        year: selectedEq.year || undefined,
+        currentHourMeter: selectedEq.current_hour_meter,
+      } : undefined;
+      const rows = list.map(h => {
+        const eq = equipments.find(e => e.id === h.equipment_id);
+        const plan = plans.find(p => p.id === h.plan_id);
+        const osMatch = h.description?.match(/OS #(\d+)/);
+        const linkedOS = osMatch ? workOrders.find(o => o.os_number === Number(osMatch[1])) : undefined;
+        const photosStart = (linkedOS?.photos_start && linkedOS.photos_start.length ? linkedOS.photos_start : (linkedOS?.photo_start_url ? [linkedOS.photo_start_url] : [])) as string[];
+        const photosEnd = (linkedOS?.photos_end && linkedOS.photos_end.length ? linkedOS.photos_end : (linkedOS?.photo_end_url ? [linkedOS.photo_end_url] : [])) as string[];
+        return {
+          equipment: eq ? eqLabel(eq) : '—',
+          description: h.description,
+          hourMeter: h.hour_meter,
+          executedAt: new Date(h.executed_at).toLocaleDateString('pt-BR'),
+          operator: h.operator_name || undefined,
+          notes: h.notes || undefined,
+          planDescription: plan?.description || undefined,
+          problem: linkedOS?.cause_identified || undefined,
+          solution: linkedOS?.service_executed || undefined,
+          photosStart,
+          photosEnd,
+        };
+      });
+      await exportMaintenanceHistoryPDF(rows, filterName, eqDetails);
+      setPdfPeriodTarget(null);
+    } catch (err: any) {
+      sonnerToast.error('Erro ao gerar PDF', { description: err?.message || 'Tente novamente.' });
+    } finally {
+      setPdfExporting(false);
+    }
+  };
+
   const handleOsStatusChange = async (os: DBWorkOrder, newStatus: string) => {
     if (newStatus === 'done') {
       setClosureOS(os);

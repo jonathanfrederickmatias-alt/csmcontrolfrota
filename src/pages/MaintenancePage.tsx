@@ -111,6 +111,10 @@ export default function MaintenancePage() {
   const [pdfHistoryFrom, setPdfHistoryFrom] = useState('');
   const [pdfHistoryTo, setPdfHistoryTo] = useState('');
   const [pdfExporting, setPdfExporting] = useState(false);
+  // PDF período (Realizados / Histórico)
+  const [pdfPeriodTarget, setPdfPeriodTarget] = useState<'completed' | 'history' | null>(null);
+  const [pdfPeriodFrom, setPdfPeriodFrom] = useState('');
+  const [pdfPeriodTo, setPdfPeriodTo] = useState('');
 
   // New OS dialog
   const [newOsOpen, setNewOsOpen] = useState(false);
@@ -446,6 +450,72 @@ export default function MaintenancePage() {
     .filter(h => h.costs_validated === false)
     .slice()
     .sort((a, b) => new Date(b.executed_at).getTime() - new Date(a.executed_at).getTime());
+
+  // Exportação de PDF com seleção de período (Realizados / Histórico)
+  const runHistoryPdfExport = async (source: 'completed' | 'history', from: string, to: string) => {
+    setPdfExporting(true);
+    try {
+      const base = source === 'completed' ? filteredCompleted : filteredHistory;
+      const fromTime = from ? new Date(`${from}T00:00:00`).getTime() : null;
+      const toTime = to ? new Date(`${to}T23:59:59`).getTime() : null;
+      const list = base.filter(h => {
+        const t = new Date(h.executed_at).getTime();
+        if (fromTime !== null && t < fromTime) return false;
+        if (toTime !== null && t > toTime) return false;
+        return true;
+      });
+      if (list.length === 0) {
+        sonnerToast.error('Nenhum serviço no período selecionado');
+        return;
+      }
+      const eqFilter = source === 'completed' ? completedFilter : historyFilter;
+      const eqName = eqFilter === 'all'
+        ? (source === 'completed' ? 'Todos os equipamentos' : 'Todos')
+        : equipments.find(e => e.id === eqFilter)?.name || 'Filtrado';
+      const fmt = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString('pt-BR');
+      const periodLabel = from && to ? ` — ${fmt(from)} a ${fmt(to)}`
+        : from ? ` — a partir de ${fmt(from)}`
+        : to ? ` — até ${fmt(to)}` : '';
+      const filterName = `${eqName}${periodLabel}`;
+      const selectedEq = eqFilter !== 'all' ? equipments.find(e => e.id === eqFilter) : undefined;
+      const eqDetails = selectedEq ? {
+        name: selectedEq.name,
+        plate: selectedEq.plate || undefined,
+        model: selectedEq.model || undefined,
+        brand: selectedEq.brand || undefined,
+        costCenter: selectedEq.cost_center || undefined,
+        year: selectedEq.year || undefined,
+        currentHourMeter: selectedEq.current_hour_meter,
+      } : undefined;
+      const rows = list.map(h => {
+        const eq = equipments.find(e => e.id === h.equipment_id);
+        const plan = plans.find(p => p.id === h.plan_id);
+        const osMatch = h.description?.match(/OS #(\d+)/);
+        const linkedOS = osMatch ? workOrders.find(o => o.os_number === Number(osMatch[1])) : undefined;
+        const photosStart = (linkedOS?.photos_start && linkedOS.photos_start.length ? linkedOS.photos_start : (linkedOS?.photo_start_url ? [linkedOS.photo_start_url] : [])) as string[];
+        const photosEnd = (linkedOS?.photos_end && linkedOS.photos_end.length ? linkedOS.photos_end : (linkedOS?.photo_end_url ? [linkedOS.photo_end_url] : [])) as string[];
+        return {
+          equipment: eq ? eqLabel(eq) : '—',
+          description: h.description,
+          hourMeter: h.hour_meter,
+          executedAt: new Date(h.executed_at).toLocaleDateString('pt-BR'),
+          operator: h.operator_name || undefined,
+          notes: h.notes || undefined,
+          planDescription: plan?.description || undefined,
+          problem: linkedOS?.cause_identified || undefined,
+          solution: linkedOS?.service_executed || undefined,
+          photosStart,
+          photosEnd,
+        };
+      });
+      await exportMaintenanceHistoryPDF(rows, filterName, eqDetails);
+      setPdfPeriodTarget(null);
+    } catch (err: any) {
+      sonnerToast.error('Erro ao gerar PDF', { description: err?.message || 'Tente novamente.' });
+    } finally {
+      setPdfExporting(false);
+    }
+  };
 
   const handleOsStatusChange = async (os: DBWorkOrder, newStatus: string) => {
     if (newStatus === 'done') {
@@ -1326,50 +1396,10 @@ export default function MaintenancePage() {
               }}>
                 <FileSpreadsheet className="w-4 h-4 text-success" /> Excel
               </Button>
-              <Button size="sm" className="gap-1.5" disabled={pdfExporting} onClick={async () => {
-                setPdfExporting(true);
-                try {
-                const filterName = completedFilter === 'all' ? 'Todos os equipamentos' : equipments.find(e => e.id === completedFilter)?.name || 'Filtrado';
-                const selectedEq = completedFilter !== 'all' ? equipments.find(e => e.id === completedFilter) : undefined;
-                const eqDetails = selectedEq ? {
-                  name: selectedEq.name,
-                  plate: selectedEq.plate || undefined,
-                  model: selectedEq.model || undefined,
-                  brand: selectedEq.brand || undefined,
-                  costCenter: selectedEq.cost_center || undefined,
-                  year: selectedEq.year || undefined,
-                  currentHourMeter: selectedEq.current_hour_meter,
-                } : undefined;
-                const rows = filteredCompleted.map(h => {
-                  const eq = equipments.find(e => e.id === h.equipment_id);
-                  const plan = plans.find(p => p.id === h.plan_id);
-                  const osMatch = h.description?.match(/OS #(\d+)/);
-                  const linkedOS = osMatch ? workOrders.find(o => o.os_number === Number(osMatch[1])) : undefined;
-                  const photosStart = (linkedOS?.photos_start && linkedOS.photos_start.length ? linkedOS.photos_start : (linkedOS?.photo_start_url ? [linkedOS.photo_start_url] : [])) as string[];
-                  const photosEnd = (linkedOS?.photos_end && linkedOS.photos_end.length ? linkedOS.photos_end : (linkedOS?.photo_end_url ? [linkedOS.photo_end_url] : [])) as string[];
-                  return {
-                    equipment: eq ? eqLabel(eq) : '—',
-                    description: h.description,
-                    hourMeter: h.hour_meter,
-                    executedAt: new Date(h.executed_at).toLocaleDateString('pt-BR'),
-                    operator: h.operator_name || undefined,
-                    notes: h.notes || undefined,
-                    planDescription: plan?.description || undefined,
-                    problem: linkedOS?.cause_identified || undefined,
-                    solution: linkedOS?.service_executed || undefined,
-                    photosStart,
-                    photosEnd,
-                  };
-                });
-                await exportMaintenanceHistoryPDF(rows, filterName, eqDetails);
-                } catch (err: any) {
-                  sonnerToast.error('Erro ao gerar PDF', { description: err?.message || 'Tente novamente.' });
-                } finally {
-                  setPdfExporting(false);
-                }
-              }}>
+              <Button size="sm" className="gap-1.5" disabled={pdfExporting} onClick={() => { setPdfPeriodFrom(''); setPdfPeriodTo(''); setPdfPeriodTarget('completed'); }}>
                 {pdfExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />} PDF
               </Button>
+
             </div>
           </div>
 
@@ -1539,50 +1569,10 @@ export default function MaintenancePage() {
               }}>
                 <FileSpreadsheet className="w-4 h-4 text-success" /> Excel
               </Button>
-              <Button size="sm" variant="outline" className="gap-1.5" disabled={pdfExporting} onClick={async () => {
-                setPdfExporting(true);
-                try {
-                const filterName = historyFilter === 'all' ? 'Todos' : equipments.find(e => e.id === historyFilter)?.name || 'Filtrado';
-                const selectedEq = historyFilter !== 'all' ? equipments.find(e => e.id === historyFilter) : undefined;
-                const eqDetails = selectedEq ? {
-                  name: selectedEq.name,
-                  plate: selectedEq.plate || undefined,
-                  model: selectedEq.model || undefined,
-                  brand: selectedEq.brand || undefined,
-                  costCenter: selectedEq.cost_center || undefined,
-                  year: selectedEq.year || undefined,
-                  currentHourMeter: selectedEq.current_hour_meter,
-                } : undefined;
-                const rows = filteredHistory.map(h => {
-                  const eq = equipments.find(e => e.id === h.equipment_id);
-                  const plan = plans.find(p => p.id === h.plan_id);
-                  const osMatch = h.description?.match(/OS #(\d+)/);
-                  const linkedOS = osMatch ? workOrders.find(o => o.os_number === Number(osMatch[1])) : undefined;
-                  const photosStart = (linkedOS?.photos_start && linkedOS.photos_start.length ? linkedOS.photos_start : (linkedOS?.photo_start_url ? [linkedOS.photo_start_url] : [])) as string[];
-                  const photosEnd = (linkedOS?.photos_end && linkedOS.photos_end.length ? linkedOS.photos_end : (linkedOS?.photo_end_url ? [linkedOS.photo_end_url] : [])) as string[];
-                  return {
-                    equipment: eq ? eqLabel(eq) : '—',
-                    description: h.description,
-                    hourMeter: h.hour_meter,
-                    executedAt: new Date(h.executed_at).toLocaleDateString('pt-BR'),
-                    operator: h.operator_name || undefined,
-                    notes: h.notes || undefined,
-                    planDescription: plan?.description || undefined,
-                    problem: linkedOS?.cause_identified || undefined,
-                    solution: linkedOS?.service_executed || undefined,
-                    photosStart,
-                    photosEnd,
-                  };
-                });
-                await exportMaintenanceHistoryPDF(rows, filterName, eqDetails);
-                } catch (err: any) {
-                  sonnerToast.error('Erro ao gerar PDF', { description: err?.message || 'Tente novamente.' });
-                } finally {
-                  setPdfExporting(false);
-                }
-              }}>
+              <Button size="sm" variant="outline" className="gap-1.5" disabled={pdfExporting} onClick={() => { setPdfPeriodFrom(''); setPdfPeriodTo(''); setPdfPeriodTarget('history'); }}>
                 {pdfExporting ? <Loader2 className="w-4 h-4 animate-spin text-primary" /> : <FileText className="w-4 h-4 text-primary" />} PDF
               </Button>
+
               {canEdit && (
               <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
                 <DialogTrigger asChild>
@@ -1953,7 +1943,25 @@ export default function MaintenancePage() {
           </div>
         </DialogContent>
       </Dialog>
+      {/* Seleção de período para PDF de Realizados / Histórico */}
+      <Dialog open={pdfPeriodTarget !== null} onOpenChange={(v) => { if (!v) setPdfPeriodTarget(null); }}>
+        <DialogContent className="bg-card border-border max-w-sm">
+          <DialogHeader><DialogTitle>Período do PDF</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">Selecione o período dos serviços a incluir no PDF. Deixe em branco para incluir tudo.</p>
+          <div className="space-y-3">
+            <div><Label>Data inicial</Label><Input type="date" value={pdfPeriodFrom} onChange={e => setPdfPeriodFrom(e.target.value)} /></div>
+            <div><Label>Data final</Label><Input type="date" value={pdfPeriodTo} onChange={e => setPdfPeriodTo(e.target.value)} /></div>
+            <Button className="w-full" disabled={pdfExporting} onClick={() => pdfPeriodTarget && runHistoryPdfExport(pdfPeriodTarget, pdfPeriodFrom, pdfPeriodTo)}>
+              {pdfExporting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />} Gerar PDF
+            </Button>
+            <Button variant="outline" className="w-full" disabled={pdfExporting} onClick={() => { setPdfPeriodFrom(''); setPdfPeriodTo(''); pdfPeriodTarget && runHistoryPdfExport(pdfPeriodTarget, '', ''); }}>
+              Gerar com todo o período
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       {/* PDF History Period Filter Dialog */}
+
       <Dialog open={pdfHistoryDialog} onOpenChange={(v) => { setPdfHistoryDialog(v); if (!v) { setPdfHistoryFrom(''); setPdfHistoryTo(''); } }}>
         <DialogContent className="bg-card border-border max-w-sm">
           <DialogHeader><DialogTitle>Exportar PDF com Histórico</DialogTitle></DialogHeader>

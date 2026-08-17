@@ -1539,7 +1539,9 @@ export default function MaintenancePage() {
               }}>
                 <FileSpreadsheet className="w-4 h-4 text-success" /> Excel
               </Button>
-              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => {
+              <Button size="sm" variant="outline" className="gap-1.5" disabled={pdfExporting} onClick={async () => {
+                setPdfExporting(true);
+                try {
                 const filterName = historyFilter === 'all' ? 'Todos' : equipments.find(e => e.id === historyFilter)?.name || 'Filtrado';
                 const selectedEq = historyFilter !== 'all' ? equipments.find(e => e.id === historyFilter) : undefined;
                 const eqDetails = selectedEq ? {

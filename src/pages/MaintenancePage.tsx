@@ -869,7 +869,7 @@ export default function MaintenancePage() {
                 <SelectTrigger className="w-64"><SelectValue placeholder="Filtrar por equipamento" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos os equipamentos</SelectItem>
-                  {equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eqLabel(eq)}</SelectItem>)}
+                  {filterEquipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eqLabel(eq)}</SelectItem>)}
                 </SelectContent>
               </Select>
               <Select value={osStatusFilter} onValueChange={setOsStatusFilter}>
@@ -1073,7 +1073,7 @@ export default function MaintenancePage() {
                 <SelectTrigger className="w-64"><SelectValue placeholder="Filtrar por equipamento" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos os equipamentos</SelectItem>
-                  {equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eqLabel(eq)}</SelectItem>)}
+                  {filterEquipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eqLabel(eq)}</SelectItem>)}
                 </SelectContent>
               </Select>
               <div className="flex items-center gap-1.5 flex-wrap">
@@ -1274,7 +1274,7 @@ export default function MaintenancePage() {
                 <SelectTrigger className="w-72"><SelectValue placeholder="Filtrar por equipamento" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos os equipamentos</SelectItem>
-                  {equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eqLabel(eq)}</SelectItem>)}
+                  {filterEquipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eqLabel(eq)}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -1362,7 +1362,7 @@ export default function MaintenancePage() {
               <SelectTrigger className="w-72"><SelectValue placeholder="Filtrar por equipamento" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos os equipamentos</SelectItem>
-                {equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eqLabel(eq)}</SelectItem>)}
+                {filterEquipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eqLabel(eq)}</SelectItem>)}
               </SelectContent>
             </Select>
             <div className="flex gap-2 flex-wrap">
@@ -1543,7 +1543,7 @@ export default function MaintenancePage() {
               <SelectTrigger className="w-64"><SelectValue placeholder="Filtrar por equipamento" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos os equipamentos</SelectItem>
-                {equipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eqLabel(eq)}</SelectItem>)}
+                {filterEquipments.map(eq => <SelectItem key={eq.id} value={eq.id}>{eqLabel(eq)}</SelectItem>)}
               </SelectContent>
             </Select>
             <div className="flex gap-2 flex-wrap">

@@ -863,6 +863,16 @@ export default function MaintenancePage() {
         )}
       </div>
 
+      <div className="flex items-center gap-2 flex-wrap mb-3">
+        <span className="text-xs font-medium text-muted-foreground">Obra:</span>
+        <Select value={obraFilter} onValueChange={v => { setObraFilter(v); setPlanFilter('all'); setOsFilter('all'); setHistoryFilter('all'); setCompletedFilter('all'); setValuationFilter('all'); }}>
+          <SelectTrigger className="w-64"><SelectValue placeholder="Filtrar por obra" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas as obras</SelectItem>
+            {obras.map(o => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className={`w-full grid grid-cols-2 ${isAdmin ? 'md:grid-cols-5' : 'md:grid-cols-4'}`}>
           <TabsTrigger value="os" className="gap-1.5"><Clipboard className="w-4 h-4" /> OS</TabsTrigger>

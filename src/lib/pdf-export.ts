@@ -150,17 +150,28 @@ function wrapText(pdf: jsPDF, text: string, maxWidth: number): string[] {
 // Cache for logo image data
 let logoCache: string | null = null;
 
+async function fetchWithTimeout(url: string, ms = 12000): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  try {
+    return await fetch(url, { signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function loadLogoAsBase64(): Promise<string | null> {
   if (logoCache) return logoCache;
   try {
-    const response = await fetch('/csm-logo.png');
+    const response = await fetchWithTimeout('/csm-logo.png', 8000);
     const blob = await response.blob();
-    return new Promise((resolve) => {
+    return await new Promise((resolve) => {
       const reader = new FileReader();
       reader.onloadend = () => {
         logoCache = reader.result as string;
         resolve(logoCache);
       };
+      reader.onerror = () => resolve(null);
       reader.readAsDataURL(blob);
     });
   } catch {
@@ -175,7 +186,7 @@ async function loadImageAsBase64(url: string): Promise<{ data: string; format: '
   if (!url) return null;
   if (imageCache.has(url)) return imageCache.get(url)!;
   try {
-    const response = await fetch(url, { mode: 'cors' });
+    const response = await fetchWithTimeout(url);
     if (!response.ok) throw new Error('fetch failed');
     const blob = await response.blob();
     const isPng = blob.type.includes('png');
@@ -198,6 +209,7 @@ async function loadImageAsBase64(url: string): Promise<{ data: string; format: '
     return null;
   }
 }
+
 
 function addHeader(pdf: jsPDF, title: string, subtitle: string, logoData?: string | null) {
   // White header band with blue accent

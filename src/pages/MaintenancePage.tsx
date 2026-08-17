@@ -1326,7 +1326,9 @@ export default function MaintenancePage() {
               }}>
                 <FileSpreadsheet className="w-4 h-4 text-success" /> Excel
               </Button>
-              <Button size="sm" className="gap-1.5" onClick={() => {
+              <Button size="sm" className="gap-1.5" disabled={pdfExporting} onClick={async () => {
+                setPdfExporting(true);
+                try {
                 const filterName = completedFilter === 'all' ? 'Todos os equipamentos' : equipments.find(e => e.id === completedFilter)?.name || 'Filtrado';
                 const selectedEq = completedFilter !== 'all' ? equipments.find(e => e.id === completedFilter) : undefined;
                 const eqDetails = selectedEq ? {
@@ -1359,9 +1361,14 @@ export default function MaintenancePage() {
                     photosEnd,
                   };
                 });
-                exportMaintenanceHistoryPDF(rows, filterName, eqDetails);
+                await exportMaintenanceHistoryPDF(rows, filterName, eqDetails);
+                } catch (err: any) {
+                  sonnerToast.error('Erro ao gerar PDF', { description: err?.message || 'Tente novamente.' });
+                } finally {
+                  setPdfExporting(false);
+                }
               }}>
-                <FileText className="w-4 h-4" /> PDF
+                {pdfExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />} PDF
               </Button>
             </div>
           </div>
@@ -1532,7 +1539,9 @@ export default function MaintenancePage() {
               }}>
                 <FileSpreadsheet className="w-4 h-4 text-success" /> Excel
               </Button>
-              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => {
+              <Button size="sm" variant="outline" className="gap-1.5" disabled={pdfExporting} onClick={async () => {
+                setPdfExporting(true);
+                try {
                 const filterName = historyFilter === 'all' ? 'Todos' : equipments.find(e => e.id === historyFilter)?.name || 'Filtrado';
                 const selectedEq = historyFilter !== 'all' ? equipments.find(e => e.id === historyFilter) : undefined;
                 const eqDetails = selectedEq ? {
@@ -1565,9 +1574,14 @@ export default function MaintenancePage() {
                     photosEnd,
                   };
                 });
-                exportMaintenanceHistoryPDF(rows, filterName, eqDetails);
+                await exportMaintenanceHistoryPDF(rows, filterName, eqDetails);
+                } catch (err: any) {
+                  sonnerToast.error('Erro ao gerar PDF', { description: err?.message || 'Tente novamente.' });
+                } finally {
+                  setPdfExporting(false);
+                }
               }}>
-                <FileText className="w-4 h-4 text-primary" /> PDF
+                {pdfExporting ? <Loader2 className="w-4 h-4 animate-spin text-primary" /> : <FileText className="w-4 h-4 text-primary" />} PDF
               </Button>
               {canEdit && (
               <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>

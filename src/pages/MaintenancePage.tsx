@@ -1326,7 +1326,9 @@ export default function MaintenancePage() {
               }}>
                 <FileSpreadsheet className="w-4 h-4 text-success" /> Excel
               </Button>
-              <Button size="sm" className="gap-1.5" onClick={() => {
+              <Button size="sm" className="gap-1.5" disabled={pdfExporting} onClick={async () => {
+                setPdfExporting(true);
+                try {
                 const filterName = completedFilter === 'all' ? 'Todos os equipamentos' : equipments.find(e => e.id === completedFilter)?.name || 'Filtrado';
                 const selectedEq = completedFilter !== 'all' ? equipments.find(e => e.id === completedFilter) : undefined;
                 const eqDetails = selectedEq ? {

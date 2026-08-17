@@ -1361,9 +1361,14 @@ export default function MaintenancePage() {
                     photosEnd,
                   };
                 });
-                exportMaintenanceHistoryPDF(rows, filterName, eqDetails);
+                await exportMaintenanceHistoryPDF(rows, filterName, eqDetails);
+                } catch (err: any) {
+                  sonnerToast.error('Erro ao gerar PDF', { description: err?.message || 'Tente novamente.' });
+                } finally {
+                  setPdfExporting(false);
+                }
               }}>
-                <FileText className="w-4 h-4" /> PDF
+                {pdfExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />} PDF
               </Button>
             </div>
           </div>

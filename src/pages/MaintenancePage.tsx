@@ -267,7 +267,37 @@ export default function MaintenancePage() {
   };
 
   const handleDelete = async (id: string) => {
-    await supabase.from('maintenance_plans').delete().eq('id', id);
+    if (!window.confirm('Excluir este plano? O histórico de manutenções realizadas será mantido.')) return;
+
+    // Desvincula o histórico e as OS para preservar os registros já realizados
+    const { error: histError } = await supabase
+      .from('maintenance_history')
+      .update({ plan_id: null })
+      .eq('plan_id', id);
+
+    if (histError) {
+      toast({ title: 'Erro ao desvincular histórico', description: histError.message, variant: 'destructive' });
+      return;
+    }
+
+    const { error: osError } = await supabase
+      .from('work_orders')
+      .update({ maintenance_plan_id: null })
+      .eq('maintenance_plan_id', id);
+
+    if (osError) {
+      toast({ title: 'Erro ao desvincular OS', description: osError.message, variant: 'destructive' });
+      return;
+    }
+
+    const { error } = await supabase.from('maintenance_plans').delete().eq('id', id);
+
+    if (error) {
+      toast({ title: 'Não foi possível excluir o plano', description: error.message, variant: 'destructive' });
+      return;
+    }
+
+    toast({ title: 'Plano excluído', description: 'O histórico de manutenções foi preservado.' });
     fetchAll();
   };
 

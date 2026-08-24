@@ -120,7 +120,7 @@ export default function MaintenancePage() {
 
   // New OS dialog
   const [newOsOpen, setNewOsOpen] = useState(false);
-  const [newOsForm, setNewOsForm] = useState({ equipmentId: '', description: '', priority: 'medium', operator_name: '' });
+  const [newOsForm, setNewOsForm] = useState({ equipmentId: '', description: '', priority: 'medium', operator_name: '', hour_meter: '' });
   const [newOsSaving, setNewOsSaving] = useState(false);
 
   // Novo Serviço Executado (avulso, sem OS prévia)

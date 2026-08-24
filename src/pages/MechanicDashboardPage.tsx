@@ -44,6 +44,8 @@ interface WorkOrder {
   started_at: string | null;
   completed_at: string | null;
   created_at: string;
+  opening_meter?: number | null;
+  execution_meter?: number | null;
 }
 
 const priorityLabels: Record<string, string> = {
@@ -274,7 +276,7 @@ function OSDetailView({
   };
 
   const handleStartService = async () => {
-    if (!mechanicName || !photoStartUrl) return;
+    if (!mechanicName || !photoStartUrl || !openingMeter) return;
     setSaving(true);
     await supabase.from('work_orders').update({
       status: 'in_progress',
@@ -284,6 +286,7 @@ function OSDetailView({
       parts: cleanParts() as unknown as any,
       part_code: cleanParts().map(p => p.code).filter(Boolean).join(', ') || null,
       notes: notes || null,
+      opening_meter: openingMeter ? parseFloat(openingMeter) : null,
     }).eq('id', os.id);
     await saveItemsStatus();
     setSaving(false);
@@ -291,7 +294,7 @@ function OSDetailView({
   };
 
   const handleCompleteService = async () => {
-    if (!photoEndUrl || !photoStartUrl) return;
+    if (!photoEndUrl || !photoStartUrl || !executionMeter) return;
     setSaving(true);
     await supabase.from('work_orders').update({
       status: 'done',
@@ -300,6 +303,8 @@ function OSDetailView({
       parts: cleanParts() as unknown as any,
       part_code: cleanParts().map(p => p.code).filter(Boolean).join(', ') || null,
       notes: notes || null,
+      opening_meter: openingMeter ? parseFloat(openingMeter) : null,
+      execution_meter: executionMeter ? parseFloat(executionMeter) : 0,
     }).eq('id', os.id);
     const allDoneItems = requestItems.map(i => ({ ...i, done: true }));
     await supabase.from('maintenance_requests').update({

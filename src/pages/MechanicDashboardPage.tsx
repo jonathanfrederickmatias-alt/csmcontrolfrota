@@ -291,7 +291,7 @@ function OSDetailView({
   };
 
   const handleCompleteService = async () => {
-    if (!photoEndUrl) return;
+    if (!photoEndUrl || !photoStartUrl) return;
     setSaving(true);
     await supabase.from('work_orders').update({
       status: 'done',
@@ -519,7 +519,7 @@ function OSDetailView({
             </div>
             <Button
               onClick={handleCompleteService}
-              disabled={!photoEndUrl || saving}
+              disabled={!photoEndUrl || !photoStartUrl || saving}
               className="w-full h-12 text-base font-bold bg-success hover:bg-success/90 text-success-foreground"
             >
               {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}

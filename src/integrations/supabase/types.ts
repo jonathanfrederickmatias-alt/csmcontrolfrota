@@ -550,6 +550,8 @@ export type Database = {
           operator_name: string | null
           parts_cost: number | null
           photo_url: string | null
+          photos_end: Json
+          photos_start: Json
           plan_id: string | null
           tenant_id: string
         }
@@ -568,6 +570,8 @@ export type Database = {
           operator_name?: string | null
           parts_cost?: number | null
           photo_url?: string | null
+          photos_end?: Json
+          photos_start?: Json
           plan_id?: string | null
           tenant_id: string
         }
@@ -586,6 +590,8 @@ export type Database = {
           operator_name?: string | null
           parts_cost?: number | null
           photo_url?: string | null
+          photos_end?: Json
+          photos_start?: Json
           plan_id?: string | null
           tenant_id?: string
         }

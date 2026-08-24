@@ -760,6 +760,7 @@ export default function MaintenancePage() {
       description: newOsForm.description,
       priority: newOsForm.priority,
       operator_name: newOsForm.operator_name || 'Sistema',
+      hour_meter: newOsForm.hour_meter ? parseFloat(newOsForm.hour_meter) : null,
       status: 'open',
     }]).select().single();
 

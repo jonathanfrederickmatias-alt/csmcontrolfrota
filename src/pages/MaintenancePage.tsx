@@ -861,7 +861,6 @@ export default function MaintenancePage() {
         labor_cost: execForm.labor_cost ? parseFloat(execForm.labor_cost) : 0,
         parts_cost: execForm.parts_cost ? parseFloat(execForm.parts_cost) : 0,
         execution_meter: execMeter,
-        machine_released: true,
         final_status: 'concluida',
         photos_start: execForm.photos_start,
         photos_end: execForm.photos_end,

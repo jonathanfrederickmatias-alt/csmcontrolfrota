@@ -179,8 +179,8 @@ export default function EquipmentPage() {
 
 
   const typeLabels: Record<string, string> = { machine: 'Máquina', truck: 'Caminhão', combo: 'Comboio' };
-  const statusLabels: Record<string, string> = { active: 'Ativo', maintenance: 'Em Manutenção', inactive: 'Inativo' };
-  const statusColors: Record<string, string> = { active: 'bg-green-500/10 text-green-500', maintenance: 'bg-yellow-500/10 text-yellow-500', inactive: 'bg-red-500/10 text-red-500' };
+  const statusLabels: Record<string, string> = { active: 'Ativo', maintenance: 'Não Liberado (OS Urgente)', inactive: 'Inativo' };
+  const statusColors: Record<string, string> = { active: 'bg-green-500/10 text-green-500', maintenance: 'bg-red-500/10 text-red-600', inactive: 'bg-red-500/10 text-red-500' };
 
   const tabLabel = activeTab === 'own' ? 'Equipamento' : 'Equipamento Terceiro';
 

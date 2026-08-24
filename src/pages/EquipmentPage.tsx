@@ -18,6 +18,7 @@ const emptyForm = { name: '', type: 'machine' as EqType, plate: '', model: '', b
 export default function EquipmentPage() {
   const [equipments, setEquipments] = useState<DBEquipment[]>([]);
   const [obras, setObras] = useState<{ id: string; name: string }[]>([]);
+  const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
@@ -28,12 +29,17 @@ export default function EquipmentPage() {
   const [activeTab, setActiveTab] = useState<OwnershipType>('own');
 
   const fetchData = async () => {
-    const [{ data: eqs }, { data: obs }] = await Promise.all([
+    const [{ data: eqs }, { data: obs }, { data: urgent }] = await Promise.all([
       supabase.from('equipments').select('*').order('created_at'),
       supabase.from('obras').select('id, name').order('name'),
+      supabase.from('work_orders')
+        .select('equipment_id')
+        .in('status', ['open', 'in_progress'])
+        .ilike('priority', 'urgent'),
     ]);
     setEquipments((eqs || []) as DBEquipment[]);
     setObras((obs || []) as { id: string; name: string }[]);
+    setBlockedIds(new Set((urgent || []).map((w: any) => w.equipment_id).filter(Boolean)));
     setLoading(false);
   };
 
@@ -134,7 +140,12 @@ export default function EquipmentPage() {
 
   const handlePrint = () => {
     const title = activeTab === 'own' ? 'Equipamentos Próprios' : 'Equipamentos Terceiros';
-    const rows = filteredEquipments.map(eq => `
+    const rows = filteredEquipments.map(eq => {
+      const blocked = blockedIds.has(eq.id);
+      const releaseBadge = blocked
+        ? '<span style="color:#b91c1c;font-weight:700">NÃO LIBERADO</span>'
+        : '<span style="color:#15803d;font-weight:700">LIBERADO</span>';
+      return `
       <tr>
         <td>${eq.name}</td>
         <td>${typeLabels[eq.type] || eq.type}</td>
@@ -146,9 +157,9 @@ export default function EquipmentPage() {
         <td>${eq.cost_center || '-'}</td>
         <td>${obraNameById(eq.obra_id) || '-'}</td>
         <td style="text-align:right">${eq.current_hour_meter}h</td>
-        <td>${statusLabels[eq.status] || eq.status}</td>
-      </tr>
-    `).join('');
+        <td>${releaseBadge}</td>
+      </tr>`;
+    }).join('');
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>
       <style>
         body{font-family:Arial,sans-serif;padding:20px;color:#111}
@@ -165,7 +176,7 @@ export default function EquipmentPage() {
       <table>
         <thead><tr>
           <th>Nome</th><th>Tipo</th><th>Placa/Série</th><th>Marca</th><th>Modelo</th>
-          <th>Ano</th><th>Chassi</th><th>C. Custo</th><th>Obra</th><th>Horímetro</th><th>Status</th>
+          <th>Ano</th><th>Chassi</th><th>C. Custo</th><th>Obra</th><th>Horímetro</th><th>Liberação</th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>
@@ -206,6 +217,17 @@ export default function EquipmentPage() {
               <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[eq.status] || ''}`}>
                 {statusLabels[eq.status] || eq.status}
               </span>
+            </div>
+            <div className="mt-2">
+              {blockedIds.has(eq.id) ? (
+                <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-red-500/15 text-red-600 font-bold border border-red-500/30">
+                  ✕ Não Liberado
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-green-500/15 text-green-600 font-bold border border-green-500/30">
+                  ✓ Liberado
+                </span>
+              )}
             </div>
             {eq.plate && <p className="text-xs text-muted-foreground">Placa/Série: {eq.plate}</p>}
             {eq.model && <p className="text-xs text-muted-foreground">Modelo: {eq.model}</p>}
@@ -316,6 +338,14 @@ export default function EquipmentPage() {
                   <div className="bg-secondary/50 rounded-lg p-3">
                     <p className="text-xs text-muted-foreground">Horímetro</p>
                     <p className="font-mono font-bold text-primary text-lg">{selectedEq.current_hour_meter}h</p>
+                  </div>
+                  <div className="bg-secondary/50 rounded-lg p-3">
+                    <p className="text-xs text-muted-foreground">Liberação</p>
+                    {blockedIds.has(selectedEq.id) ? (
+                      <p className="font-bold text-red-600">✕ Não Liberado</p>
+                    ) : (
+                      <p className="font-bold text-green-600">✓ Liberado</p>
+                    )}
                   </div>
                   {obraNameById(selectedEq.obra_id) && (
                     <div className="col-span-2 bg-secondary/50 rounded-lg p-3">

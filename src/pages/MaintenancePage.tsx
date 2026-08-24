@@ -796,7 +796,7 @@ export default function MaintenancePage() {
     } else {
       toast({ title: 'OS criada com sucesso!' });
       setNewOsOpen(false);
-      setNewOsForm({ equipmentId: '', description: '', priority: 'medium', operator_name: '' });
+      setNewOsForm({ equipmentId: '', description: '', priority: 'medium', operator_name: '', hour_meter: '' });
     }
     setNewOsSaving(false);
     fetchAll();
@@ -2234,7 +2234,7 @@ export default function MaintenancePage() {
       </Dialog>
 
       {/* Nova OS Dialog */}
-      <Dialog open={newOsOpen} onOpenChange={(v) => { setNewOsOpen(v); if (!v) setNewOsForm({ equipmentId: '', description: '', priority: 'medium', operator_name: '' }); }}>
+      <Dialog open={newOsOpen} onOpenChange={(v) => { setNewOsOpen(v); if (!v) setNewOsForm({ equipmentId: '', description: '', priority: 'medium', operator_name: '', hour_meter: '' }); }}>
         <DialogContent className="bg-card border-border">
           <DialogHeader><DialogTitle>Nova Ordem de Serviço</DialogTitle></DialogHeader>
           <div className="space-y-4">

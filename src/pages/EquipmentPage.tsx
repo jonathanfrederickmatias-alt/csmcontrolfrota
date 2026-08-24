@@ -140,7 +140,12 @@ export default function EquipmentPage() {
 
   const handlePrint = () => {
     const title = activeTab === 'own' ? 'Equipamentos Próprios' : 'Equipamentos Terceiros';
-    const rows = filteredEquipments.map(eq => `
+    const rows = filteredEquipments.map(eq => {
+      const blocked = blockedIds.has(eq.id);
+      const releaseBadge = blocked
+        ? '<span style="color:#b91c1c;font-weight:700">NÃO LIBERADO</span>'
+        : '<span style="color:#15803d;font-weight:700">LIBERADO</span>';
+      return `
       <tr>
         <td>${eq.name}</td>
         <td>${typeLabels[eq.type] || eq.type}</td>
@@ -152,9 +157,9 @@ export default function EquipmentPage() {
         <td>${eq.cost_center || '-'}</td>
         <td>${obraNameById(eq.obra_id) || '-'}</td>
         <td style="text-align:right">${eq.current_hour_meter}h</td>
-        <td>${statusLabels[eq.status] || eq.status}</td>
-      </tr>
-    `).join('');
+        <td>${releaseBadge}</td>
+      </tr>`;
+    }).join('');
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>
       <style>
         body{font-family:Arial,sans-serif;padding:20px;color:#111}
@@ -171,7 +176,7 @@ export default function EquipmentPage() {
       <table>
         <thead><tr>
           <th>Nome</th><th>Tipo</th><th>Placa/Série</th><th>Marca</th><th>Modelo</th>
-          <th>Ano</th><th>Chassi</th><th>C. Custo</th><th>Obra</th><th>Horímetro</th><th>Status</th>
+          <th>Ano</th><th>Chassi</th><th>C. Custo</th><th>Obra</th><th>Horímetro</th><th>Liberação</th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>

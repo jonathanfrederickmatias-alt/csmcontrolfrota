@@ -218,6 +218,16 @@ export default function EquipmentPage() {
                 {statusLabels[eq.status] || eq.status}
               </span>
             </div>
+            <div className="mt-2">
+              {blockedIds.has(eq.id) ? (
+                <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-red-500/15 text-red-600 font-bold border border-red-500/30">
+                  ✕ Não Liberado
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-green-500/15 text-green-600 font-bold border border-green-500/30">
+                  ✓ Liberado
+                </span>
+              )}
             {eq.plate && <p className="text-xs text-muted-foreground">Placa/Série: {eq.plate}</p>}
             {eq.model && <p className="text-xs text-muted-foreground">Modelo: {eq.model}</p>}
             {eq.brand && <p className="text-xs text-muted-foreground">Marca: {eq.brand}</p>}

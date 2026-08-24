@@ -146,7 +146,7 @@ export default function MaintenancePage() {
 
   // Complete plan dialog
   const [completePlan, setCompletePlanState] = useState<DBMaintenancePlan | null>(null);
-  const [completeForm, setCompleteForm] = useState({ hourMeter: '', operatorName: '', notes: '', laborCost: '', partsCost: '', photoUrl: '' });
+  const [completeForm, setCompleteForm] = useState({ hourMeter: '', operatorName: '', notes: '', laborCost: '', partsCost: '', photosStart: [] as string[], photosEnd: [] as string[] });
   const [completeSaving, setCompleteSaving] = useState(false);
 
   // Controlled tab
@@ -311,7 +311,8 @@ export default function MaintenancePage() {
       notes: '',
       laborCost: '',
       partsCost: '',
-      photoUrl: '',
+      photosStart: [],
+      photosEnd: [],
     });
   };
 
@@ -322,6 +323,10 @@ export default function MaintenancePage() {
     const hm = isTempo ? 0 : parseFloat(completeForm.hourMeter);
     if (!isTempo && (isNaN(hm) || hm < 0)) {
       toast({ title: 'Horímetro/Km inválido', description: 'Informe um valor numérico válido.', variant: 'destructive' });
+      return;
+    }
+    if (completeForm.photosStart.length === 0 || completeForm.photosEnd.length === 0) {
+      toast({ title: 'Registro fotográfico obrigatório', description: 'Anexe pelo menos uma foto do ANTES e uma do DEPOIS do serviço.', variant: 'destructive' });
       return;
     }
     setCompleteSaving(true);
@@ -338,7 +343,9 @@ export default function MaintenancePage() {
       notes: completeForm.notes || null,
       labor_cost: completeForm.laborCost ? parseFloat(completeForm.laborCost) : 0,
       parts_cost: completeForm.partsCost ? parseFloat(completeForm.partsCost) : 0,
-      photo_url: completeForm.photoUrl || null,
+      photo_url: completeForm.photosStart[0] || null,
+      photos_start: completeForm.photosStart as unknown as any,
+      photos_end: completeForm.photosEnd as unknown as any,
     }]);
 
     if (isTempo) {
@@ -602,6 +609,10 @@ export default function MaintenancePage() {
 
   const handleClosureConfirm = async () => {
     if (!closureOS) return;
+    if (closureForm.photos_start.length === 0 || closureForm.photos_end.length === 0) {
+      toast({ title: 'Registro fotográfico obrigatório', description: 'Anexe pelo menos uma foto do ANTES e uma do DEPOIS do serviço.', variant: 'destructive' });
+      return;
+    }
     const update: any = {
       status: 'done',
       completed_at: new Date().toISOString(),
@@ -793,6 +804,10 @@ export default function MaintenancePage() {
 
   const handleCreateExecutedService = async () => {
     if (!execForm.equipmentId || !execForm.description || !execForm.service_executed) return;
+    if (execForm.photos_start.length === 0 || execForm.photos_end.length === 0) {
+      toast({ title: 'Registro fotográfico obrigatório', description: 'Anexe pelo menos uma foto do ANTES e uma do DEPOIS do serviço.', variant: 'destructive' });
+      return;
+    }
     setExecSaving(true);
     try {
       const { getMyTenantId } = await import('@/lib/tenant');
@@ -1979,21 +1994,24 @@ export default function MaintenancePage() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <MultiPhotoUpload
-                label="Fotos/Arquivos Início"
+                label="Fotos/Arquivos Início *"
                 acceptFiles
                 values={closureForm.photos_start}
                 onChange={(urls) => setClosureForm({ ...closureForm, photos_start: urls })}
               />
               <MultiPhotoUpload
-                label="Fotos/Arquivos Término"
+                label="Fotos/Arquivos Término *"
                 acceptFiles
                 values={closureForm.photos_end}
                 onChange={(urls) => setClosureForm({ ...closureForm, photos_end: urls })}
               />
             </div>
+            {(closureForm.photos_start.length === 0 || closureForm.photos_end.length === 0) && (
+              <p className="text-xs text-destructive">Obrigatório anexar registro fotográfico do início e do término do serviço.</p>
+            )}
             <Button
               onClick={handleClosureConfirm}
-              disabled={!closureForm.service_executed}
+              disabled={!closureForm.service_executed || closureForm.photos_start.length === 0 || closureForm.photos_end.length === 0}
               className="w-full"
             >
               Confirmar e Concluir OS
@@ -2198,14 +2216,14 @@ export default function MaintenancePage() {
               <Textarea value={execForm.technical_observations} onChange={e => setExecForm({ ...execForm, technical_observations: e.target.value })} placeholder="Peças, detalhes técnicos..." rows={2} />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <MultiPhotoUpload label="Fotos Antes" acceptFiles values={execForm.photos_start} onChange={(urls) => setExecForm({ ...execForm, photos_start: urls })} />
-              <MultiPhotoUpload label="Fotos Depois" acceptFiles values={execForm.photos_end} onChange={(urls) => setExecForm({ ...execForm, photos_end: urls })} />
+              <MultiPhotoUpload label="Fotos Antes *" acceptFiles values={execForm.photos_start} onChange={(urls) => setExecForm({ ...execForm, photos_start: urls })} />
+              <MultiPhotoUpload label="Fotos Depois *" acceptFiles values={execForm.photos_end} onChange={(urls) => setExecForm({ ...execForm, photos_end: urls })} />
             </div>
             <div className="flex gap-2 pt-2">
               <Button variant="outline" onClick={() => setExecOpen(false)} className="flex-1">Cancelar</Button>
               <Button
                 onClick={handleCreateExecutedService}
-                disabled={!execForm.equipmentId || !execForm.description || !execForm.service_executed || execSaving}
+                disabled={!execForm.equipmentId || !execForm.description || !execForm.service_executed || execForm.photos_start.length === 0 || execForm.photos_end.length === 0 || execSaving}
                 className="flex-1 bg-success hover:bg-success/90 text-success-foreground"
               >
                 {execSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
@@ -2328,12 +2346,23 @@ export default function MaintenancePage() {
                     rows={3}
                   />
                 </div>
-                <PhotoUpload
-                  label="Foto da Execução"
-                  value={completeForm.photoUrl}
-                  onUploaded={(url) => setCompleteForm({ ...completeForm, photoUrl: url })}
-                  acceptFiles
-                />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <MultiPhotoUpload
+                    label="Fotos ANTES do serviço *"
+                    acceptFiles
+                    values={completeForm.photosStart}
+                    onChange={(urls) => setCompleteForm({ ...completeForm, photosStart: urls })}
+                  />
+                  <MultiPhotoUpload
+                    label="Fotos DEPOIS do serviço *"
+                    acceptFiles
+                    values={completeForm.photosEnd}
+                    onChange={(urls) => setCompleteForm({ ...completeForm, photosEnd: urls })}
+                  />
+                </div>
+                {(completeForm.photosStart.length === 0 || completeForm.photosEnd.length === 0) && (
+                  <p className="text-xs text-destructive">Obrigatório anexar registro fotográfico do antes e do depois.</p>
+                )}
                 <div className="bg-primary/5 rounded-lg p-2 text-xs text-muted-foreground">
                   Próxima manutenção será agendada para: <strong className="text-primary">
                     {isTempo
@@ -2346,7 +2375,7 @@ export default function MaintenancePage() {
 
                     Cancelar
                   </Button>
-                  <Button onClick={submitCompletePlan} disabled={completeSaving || (!isTempo && !completeForm.hourMeter)} className="flex-1 bg-success hover:bg-success/90 text-success-foreground">
+                  <Button onClick={submitCompletePlan} disabled={completeSaving || (!isTempo && !completeForm.hourMeter) || completeForm.photosStart.length === 0 || completeForm.photosEnd.length === 0} className="flex-1 bg-success hover:bg-success/90 text-success-foreground">
                     {completeSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                     <CheckCircle className="w-4 h-4 mr-1" /> Confirmar Conclusão
                   </Button>

@@ -787,6 +787,7 @@ export default function MaintenancePage() {
         maintenance_request_id: reqData.id,
         description: newOsForm.description,
         priority: newOsForm.priority,
+        opening_meter: newOsForm.hour_meter ? parseFloat(newOsForm.hour_meter) : null,
         status: 'open',
       }]);
       osErr = res.error;

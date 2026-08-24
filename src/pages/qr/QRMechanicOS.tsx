@@ -166,7 +166,7 @@ export default function QRMechanicOS() {
   };
 
   const handleCompleteService = async () => {
-    if (!os || photosEnd.length === 0 || !serviceExecuted.trim()) return;
+    if (!os || photosStart.length === 0 || photosEnd.length === 0 || !serviceExecuted.trim()) return;
     setSaving(true);
     await supabase.from('work_orders').update({
       status: 'done',
@@ -537,7 +537,7 @@ export default function QRMechanicOS() {
             </div>
             <Button
               onClick={handleCompleteService}
-              disabled={photosEnd.length === 0 || !serviceExecuted.trim() || (!resolvingReported && !causeIdentified.trim()) || saving}
+              disabled={photosStart.length === 0 || photosEnd.length === 0 || !serviceExecuted.trim() || (!resolvingReported && !causeIdentified.trim()) || saving}
               className="w-full h-12 text-base font-bold bg-success hover:bg-success/90 text-success-foreground"
             >
               {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}

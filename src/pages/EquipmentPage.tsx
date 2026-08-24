@@ -339,6 +339,14 @@ export default function EquipmentPage() {
                     <p className="text-xs text-muted-foreground">Horímetro</p>
                     <p className="font-mono font-bold text-primary text-lg">{selectedEq.current_hour_meter}h</p>
                   </div>
+                  <div className="bg-secondary/50 rounded-lg p-3">
+                    <p className="text-xs text-muted-foreground">Liberação</p>
+                    {blockedIds.has(selectedEq.id) ? (
+                      <p className="font-bold text-red-600">✕ Não Liberado</p>
+                    ) : (
+                      <p className="font-bold text-green-600">✓ Liberado</p>
+                    )}
+                  </div>
                   {obraNameById(selectedEq.obra_id) && (
                     <div className="col-span-2 bg-secondary/50 rounded-lg p-3">
                       <p className="text-xs text-muted-foreground">Obra</p>

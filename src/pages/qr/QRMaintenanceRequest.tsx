@@ -146,6 +146,22 @@ export default function QRMaintenanceRequest() {
           </div>
         )}
         <div><Label>Seu Nome *</Label><Input value={operatorName} onChange={e => setOperatorName(e.target.value)} placeholder="Nome do operador" /></div>
+        <div>
+          <Label>Horímetro / Km atual *</Label>
+          <Input
+            type="number"
+            inputMode="decimal"
+            value={hourMeter}
+            onChange={e => setHourMeter(e.target.value)}
+            placeholder={selectedEq ? `Atual: ${selectedEq.current_hour_meter}` : 'Ex: 1250'}
+          />
+          {selectedEq && hourMeter && parseFloat(hourMeter) < (selectedEq.current_hour_meter || 0) && (
+            <p className="text-xs text-destructive mt-1">
+              Valor inferior ao último registrado ({selectedEq.current_hour_meter}). Confira a leitura.
+            </p>
+          )}
+        </div>
+
 
         {/* Items */}
         <div className="space-y-3">

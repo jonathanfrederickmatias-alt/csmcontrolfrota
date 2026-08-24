@@ -31,6 +31,7 @@ export default function QRMaintenanceRequest() {
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [photoUrl, setPhotoUrl] = useState('');
+  const [hourMeter, setHourMeter] = useState('');
   const [items, setItems] = useState<RequestItem[]>([newItem()]);
 
   useEffect(() => {
@@ -82,6 +83,7 @@ export default function QRMaintenanceRequest() {
         status: 'open',
         operator_name: operatorName,
         photo_start_url: photoUrl || null,
+        hour_meter: hourMeter ? parseFloat(hourMeter) : null,
         items: itemsPayload,
       }, `Pedido de manutenção — ${operatorName}`);
       queued = res.queued;
@@ -144,6 +146,22 @@ export default function QRMaintenanceRequest() {
           </div>
         )}
         <div><Label>Seu Nome *</Label><Input value={operatorName} onChange={e => setOperatorName(e.target.value)} placeholder="Nome do operador" /></div>
+        <div>
+          <Label>Horímetro / Km atual *</Label>
+          <Input
+            type="number"
+            inputMode="decimal"
+            value={hourMeter}
+            onChange={e => setHourMeter(e.target.value)}
+            placeholder={selectedEq ? `Atual: ${selectedEq.current_hour_meter}` : 'Ex: 1250'}
+          />
+          {selectedEq && hourMeter && parseFloat(hourMeter) < (selectedEq.current_hour_meter || 0) && (
+            <p className="text-xs text-destructive mt-1">
+              Valor inferior ao último registrado ({selectedEq.current_hour_meter}). Confira a leitura.
+            </p>
+          )}
+        </div>
+
 
         {/* Items */}
         <div className="space-y-3">
@@ -194,7 +212,7 @@ export default function QRMaintenanceRequest() {
 
         <PhotoUpload label="Foto do Problema (opcional)" onUploaded={setPhotoUrl} />
         {error && <p className="text-destructive text-sm font-medium">{error}</p>}
-        <Button onClick={handleSave} disabled={!equipmentId || validItems.length === 0 || !operatorName || saving} className="w-full h-12 text-base font-bold">
+        <Button onClick={handleSave} disabled={!equipmentId || validItems.length === 0 || !operatorName || !hourMeter || saving} className="w-full h-12 text-base font-bold">
           {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
           <Wrench className="w-5 h-5 mr-2" /> Enviar Pedido ({validItems.length} item{validItems.length !== 1 ? 's' : ''})
         </Button>

@@ -120,7 +120,7 @@ export default function MaintenancePage() {
 
   // New OS dialog
   const [newOsOpen, setNewOsOpen] = useState(false);
-  const [newOsForm, setNewOsForm] = useState({ equipmentId: '', description: '', priority: 'medium', operator_name: '' });
+  const [newOsForm, setNewOsForm] = useState({ equipmentId: '', description: '', priority: 'medium', operator_name: '', hour_meter: '' });
   const [newOsSaving, setNewOsSaving] = useState(false);
 
   // Novo Serviço Executado (avulso, sem OS prévia)
@@ -760,6 +760,7 @@ export default function MaintenancePage() {
       description: newOsForm.description,
       priority: newOsForm.priority,
       operator_name: newOsForm.operator_name || 'Sistema',
+      hour_meter: newOsForm.hour_meter ? parseFloat(newOsForm.hour_meter) : null,
       status: 'open',
     }]).select().single();
 
@@ -786,6 +787,7 @@ export default function MaintenancePage() {
         maintenance_request_id: reqData.id,
         description: newOsForm.description,
         priority: newOsForm.priority,
+        opening_meter: newOsForm.hour_meter ? parseFloat(newOsForm.hour_meter) : null,
         status: 'open',
       }]);
       osErr = res.error;
@@ -796,7 +798,7 @@ export default function MaintenancePage() {
     } else {
       toast({ title: 'OS criada com sucesso!' });
       setNewOsOpen(false);
-      setNewOsForm({ equipmentId: '', description: '', priority: 'medium', operator_name: '' });
+      setNewOsForm({ equipmentId: '', description: '', priority: 'medium', operator_name: '', hour_meter: '' });
     }
     setNewOsSaving(false);
     fetchAll();
@@ -2234,7 +2236,7 @@ export default function MaintenancePage() {
       </Dialog>
 
       {/* Nova OS Dialog */}
-      <Dialog open={newOsOpen} onOpenChange={(v) => { setNewOsOpen(v); if (!v) setNewOsForm({ equipmentId: '', description: '', priority: 'medium', operator_name: '' }); }}>
+      <Dialog open={newOsOpen} onOpenChange={(v) => { setNewOsOpen(v); if (!v) setNewOsForm({ equipmentId: '', description: '', priority: 'medium', operator_name: '', hour_meter: '' }); }}>
         <DialogContent className="bg-card border-border">
           <DialogHeader><DialogTitle>Nova Ordem de Serviço</DialogTitle></DialogHeader>
           <div className="space-y-4">
@@ -2257,7 +2259,17 @@ export default function MaintenancePage() {
               </Select>
             </div>
             <div><Label>Solicitante</Label><Input value={newOsForm.operator_name} onChange={e => setNewOsForm({...newOsForm, operator_name: e.target.value})} placeholder="Nome do solicitante" /></div>
-            <Button onClick={handleCreateOS} disabled={!newOsForm.equipmentId || !newOsForm.description || newOsSaving} className="w-full">
+            <div>
+              <Label>Horímetro / Km na abertura *</Label>
+              <Input
+                type="number"
+                inputMode="decimal"
+                value={newOsForm.hour_meter}
+                onChange={e => setNewOsForm({...newOsForm, hour_meter: e.target.value})}
+                placeholder={(() => { const eq = equipments.find(e => e.id === newOsForm.equipmentId); return eq ? `Atual: ${eq.current_hour_meter}` : 'Ex: 1250'; })()}
+              />
+            </div>
+            <Button onClick={handleCreateOS} disabled={!newOsForm.equipmentId || !newOsForm.description || !newOsForm.hour_meter || newOsSaving} className="w-full">
               {newOsSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Criar OS
             </Button>
           </div>

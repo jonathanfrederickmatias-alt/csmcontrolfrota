@@ -44,6 +44,8 @@ interface WorkOrder {
   started_at: string | null;
   completed_at: string | null;
   created_at: string;
+  opening_meter?: number | null;
+  execution_meter?: number | null;
 }
 
 const priorityLabels: Record<string, string> = {
@@ -217,6 +219,8 @@ function OSDetailView({
   const [photoStartUrl, setPhotoStartUrl] = useState(initialOS.photo_start_url || '');
   const [photoEndUrl, setPhotoEndUrl] = useState(initialOS.photo_end_url || '');
   const [requestItems, setRequestItems] = useState<RequestItem[]>([]);
+  const [openingMeter, setOpeningMeter] = useState(initialOS.opening_meter != null ? String(initialOS.opening_meter) : '');
+  const [executionMeter, setExecutionMeter] = useState(initialOS.execution_meter ? String(initialOS.execution_meter) : '');
 
   useEffect(() => {
     // Fetch request items
@@ -274,7 +278,7 @@ function OSDetailView({
   };
 
   const handleStartService = async () => {
-    if (!mechanicName || !photoStartUrl) return;
+    if (!mechanicName || !photoStartUrl || !openingMeter) return;
     setSaving(true);
     await supabase.from('work_orders').update({
       status: 'in_progress',
@@ -284,6 +288,7 @@ function OSDetailView({
       parts: cleanParts() as unknown as any,
       part_code: cleanParts().map(p => p.code).filter(Boolean).join(', ') || null,
       notes: notes || null,
+      opening_meter: openingMeter ? parseFloat(openingMeter) : null,
     }).eq('id', os.id);
     await saveItemsStatus();
     setSaving(false);
@@ -291,7 +296,7 @@ function OSDetailView({
   };
 
   const handleCompleteService = async () => {
-    if (!photoEndUrl || !photoStartUrl) return;
+    if (!photoEndUrl || !photoStartUrl || !executionMeter) return;
     setSaving(true);
     await supabase.from('work_orders').update({
       status: 'done',
@@ -300,6 +305,8 @@ function OSDetailView({
       parts: cleanParts() as unknown as any,
       part_code: cleanParts().map(p => p.code).filter(Boolean).join(', ') || null,
       notes: notes || null,
+      opening_meter: openingMeter ? parseFloat(openingMeter) : null,
+      execution_meter: executionMeter ? parseFloat(executionMeter) : 0,
     }).eq('id', os.id);
     const allDoneItems = requestItems.map(i => ({ ...i, done: true }));
     await supabase.from('maintenance_requests').update({
@@ -440,6 +447,18 @@ function OSDetailView({
           <Input value={mechanicName} onChange={e => setMechanicName(e.target.value)} placeholder="Seu nome" disabled={isInProgress && !!os.mechanic_name} />
         </div>
 
+        {/* Opening meter */}
+        <div>
+          <Label>Horímetro / Km na abertura *</Label>
+          <Input
+            type="number" inputMode="decimal"
+            value={openingMeter}
+            onChange={e => setOpeningMeter(e.target.value)}
+            placeholder={equipment ? `Atual: ${equipment.current_hour_meter}` : 'Ex: 1250'}
+            disabled={isInProgress}
+          />
+        </div>
+
         {/* Parts */}
         <div>
           <div className="flex items-center justify-between mb-2">
@@ -480,7 +499,7 @@ function OSDetailView({
               </p>
               <PhotoUpload label="Foto de Início do Serviço *" required onUploaded={setPhotoStartUrl} value={photoStartUrl} />
             </div>
-            <Button onClick={handleStartService} disabled={!mechanicName || !photoStartUrl || saving} className="w-full h-12 text-base font-bold">
+            <Button onClick={handleStartService} disabled={!mechanicName || !openingMeter || !photoStartUrl || saving} className="w-full h-12 text-base font-bold">
               {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               <Play className="w-5 h-5 mr-2" /> Iniciar Serviço
             </Button>
@@ -515,11 +534,20 @@ function OSDetailView({
               <p className="text-sm font-semibold flex items-center gap-2 mb-3">
                 <Square className="w-4 h-4 text-success" /> Término do Serviço
               </p>
+              <div className="mb-3">
+                <Label>Horímetro / Km no fechamento *</Label>
+                <Input
+                  type="number" inputMode="decimal"
+                  value={executionMeter}
+                  onChange={e => setExecutionMeter(e.target.value)}
+                  placeholder={equipment ? `Atual: ${equipment.current_hour_meter}` : 'Ex: 1250'}
+                />
+              </div>
               <PhotoUpload label="Foto de Término do Serviço *" required onUploaded={setPhotoEndUrl} value={photoEndUrl} />
             </div>
             <Button
               onClick={handleCompleteService}
-              disabled={!photoEndUrl || !photoStartUrl || saving}
+              disabled={!photoEndUrl || !photoStartUrl || !executionMeter || saving}
               className="w-full h-12 text-base font-bold bg-success hover:bg-success/90 text-success-foreground"
             >
               {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}

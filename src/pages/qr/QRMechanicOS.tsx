@@ -44,6 +44,8 @@ interface WorkOrder {
   created_at: string;
   cause_identified: string | null;
   service_executed: string | null;
+  opening_meter: number | null;
+  execution_meter: number | null;
 }
 
 const priorityLabels: Record<string, string> = {
@@ -70,6 +72,8 @@ export default function QRMechanicOS() {
   const [resolvingReported, setResolvingReported] = useState(true);
   const [causeIdentified, setCauseIdentified] = useState('');
   const [serviceExecuted, setServiceExecuted] = useState('');
+  const [openingMeter, setOpeningMeter] = useState('');
+  const [executionMeter, setExecutionMeter] = useState('');
 
   // Request items for per-item completion
   const [requestItems, setRequestItems] = useState<RequestItem[]>([]);
@@ -86,6 +90,8 @@ export default function QRMechanicOS() {
       setPhotosEnd(wo.photos_end && wo.photos_end.length ? wo.photos_end : (wo.photo_end_url ? [wo.photo_end_url] : []));
       setCauseIdentified(wo.cause_identified || '');
       setServiceExecuted(wo.service_executed || '');
+      setOpeningMeter(wo.opening_meter != null ? String(wo.opening_meter) : '');
+      setExecutionMeter(wo.execution_meter ? String(wo.execution_meter) : '');
       // If a distinct cause was already recorded and differs from OS description, mark as not resolving reported
       setResolvingReported(!wo.cause_identified || wo.cause_identified === wo.description);
 
@@ -146,7 +152,7 @@ export default function QRMechanicOS() {
   const resolvedCause = () => resolvingReported ? (os?.description || '') : (causeIdentified.trim() || '');
 
   const handleStartService = async () => {
-    if (!os || !mechanicName || photosStart.length === 0) return;
+    if (!os || !mechanicName || photosStart.length === 0 || !openingMeter) return;
     setSaving(true);
     await supabase.from('work_orders').update({
       status: 'in_progress',
@@ -159,6 +165,7 @@ export default function QRMechanicOS() {
       notes: notes || null,
       cause_identified: resolvedCause() || null,
       service_executed: serviceExecuted || null,
+      opening_meter: openingMeter ? parseFloat(openingMeter) : null,
     }).eq('id', os.id);
     await saveItemsStatus();
     setSaving(false);
@@ -166,7 +173,7 @@ export default function QRMechanicOS() {
   };
 
   const handleCompleteService = async () => {
-    if (!os || photosStart.length === 0 || photosEnd.length === 0 || !serviceExecuted.trim()) return;
+    if (!os || photosStart.length === 0 || photosEnd.length === 0 || !serviceExecuted.trim() || !executionMeter) return;
     setSaving(true);
     await supabase.from('work_orders').update({
       status: 'done',
@@ -178,6 +185,8 @@ export default function QRMechanicOS() {
       notes: notes || null,
       cause_identified: resolvedCause() || null,
       service_executed: serviceExecuted.trim(),
+      opening_meter: openingMeter ? parseFloat(openingMeter) : null,
+      execution_meter: executionMeter ? parseFloat(executionMeter) : 0,
     }).eq('id', os.id);
     // Mark all items as done on completion
     const allDoneItems = requestItems.map(i => ({ ...i, done: true }));
@@ -363,6 +372,19 @@ export default function QRMechanicOS() {
           />
         </div>
 
+        {/* Opening meter */}
+        <div>
+          <Label>Horímetro / Km na abertura *</Label>
+          <Input
+            type="number"
+            inputMode="decimal"
+            value={openingMeter}
+            onChange={e => setOpeningMeter(e.target.value)}
+            placeholder={equipment ? `Atual: ${equipment.current_hour_meter}` : 'Ex: 1250'}
+            disabled={isInProgress}
+          />
+        </div>
+
         {/* Problema x Solução */}
         <div className="border border-border rounded-lg p-3 bg-secondary/30 space-y-3">
           <div>
@@ -478,7 +500,7 @@ export default function QRMechanicOS() {
             </div>
             <Button
               onClick={handleStartService}
-              disabled={!mechanicName || photosStart.length === 0 || (!resolvingReported && !causeIdentified.trim()) || saving}
+              disabled={!mechanicName || !openingMeter || photosStart.length === 0 || (!resolvingReported && !causeIdentified.trim()) || saving}
               className="w-full h-12 text-base font-bold"
             >
               {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
@@ -528,6 +550,16 @@ export default function QRMechanicOS() {
               <p className="text-sm font-semibold flex items-center gap-2 mb-3">
                 <Square className="w-4 h-4 text-success" /> Término do Serviço
               </p>
+              <div className="mb-3">
+                <Label>Horímetro / Km no fechamento *</Label>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  value={executionMeter}
+                  onChange={e => setExecutionMeter(e.target.value)}
+                  placeholder={equipment ? `Atual: ${equipment.current_hour_meter}` : 'Ex: 1250'}
+                />
+              </div>
               <MultiPhotoUpload
                 label="Fotos de Término do Serviço *"
                 required
@@ -537,7 +569,7 @@ export default function QRMechanicOS() {
             </div>
             <Button
               onClick={handleCompleteService}
-              disabled={photosStart.length === 0 || photosEnd.length === 0 || !serviceExecuted.trim() || (!resolvingReported && !causeIdentified.trim()) || saving}
+              disabled={photosStart.length === 0 || photosEnd.length === 0 || !serviceExecuted.trim() || !executionMeter || (!resolvingReported && !causeIdentified.trim()) || saving}
               className="w-full h-12 text-base font-bold bg-success hover:bg-success/90 text-success-foreground"
             >
               {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}

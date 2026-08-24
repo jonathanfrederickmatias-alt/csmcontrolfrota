@@ -219,6 +219,8 @@ function OSDetailView({
   const [photoStartUrl, setPhotoStartUrl] = useState(initialOS.photo_start_url || '');
   const [photoEndUrl, setPhotoEndUrl] = useState(initialOS.photo_end_url || '');
   const [requestItems, setRequestItems] = useState<RequestItem[]>([]);
+  const [openingMeter, setOpeningMeter] = useState(initialOS.opening_meter != null ? String(initialOS.opening_meter) : '');
+  const [executionMeter, setExecutionMeter] = useState(initialOS.execution_meter ? String(initialOS.execution_meter) : '');
 
   useEffect(() => {
     // Fetch request items
@@ -445,6 +447,18 @@ function OSDetailView({
           <Input value={mechanicName} onChange={e => setMechanicName(e.target.value)} placeholder="Seu nome" disabled={isInProgress && !!os.mechanic_name} />
         </div>
 
+        {/* Opening meter */}
+        <div>
+          <Label>Horímetro / Km na abertura *</Label>
+          <Input
+            type="number" inputMode="decimal"
+            value={openingMeter}
+            onChange={e => setOpeningMeter(e.target.value)}
+            placeholder={equipment ? `Atual: ${equipment.current_hour_meter}` : 'Ex: 1250'}
+            disabled={isInProgress}
+          />
+        </div>
+
         {/* Parts */}
         <div>
           <div className="flex items-center justify-between mb-2">
@@ -485,7 +499,7 @@ function OSDetailView({
               </p>
               <PhotoUpload label="Foto de Início do Serviço *" required onUploaded={setPhotoStartUrl} value={photoStartUrl} />
             </div>
-            <Button onClick={handleStartService} disabled={!mechanicName || !photoStartUrl || saving} className="w-full h-12 text-base font-bold">
+            <Button onClick={handleStartService} disabled={!mechanicName || !openingMeter || !photoStartUrl || saving} className="w-full h-12 text-base font-bold">
               {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               <Play className="w-5 h-5 mr-2" /> Iniciar Serviço
             </Button>
@@ -520,11 +534,20 @@ function OSDetailView({
               <p className="text-sm font-semibold flex items-center gap-2 mb-3">
                 <Square className="w-4 h-4 text-success" /> Término do Serviço
               </p>
+              <div className="mb-3">
+                <Label>Horímetro / Km no fechamento *</Label>
+                <Input
+                  type="number" inputMode="decimal"
+                  value={executionMeter}
+                  onChange={e => setExecutionMeter(e.target.value)}
+                  placeholder={equipment ? `Atual: ${equipment.current_hour_meter}` : 'Ex: 1250'}
+                />
+              </div>
               <PhotoUpload label="Foto de Término do Serviço *" required onUploaded={setPhotoEndUrl} value={photoEndUrl} />
             </div>
             <Button
               onClick={handleCompleteService}
-              disabled={!photoEndUrl || !photoStartUrl || saving}
+              disabled={!photoEndUrl || !photoStartUrl || !executionMeter || saving}
               className="w-full h-12 text-base font-bold bg-success hover:bg-success/90 text-success-foreground"
             >
               {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}

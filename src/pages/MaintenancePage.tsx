@@ -2259,7 +2259,17 @@ export default function MaintenancePage() {
               </Select>
             </div>
             <div><Label>Solicitante</Label><Input value={newOsForm.operator_name} onChange={e => setNewOsForm({...newOsForm, operator_name: e.target.value})} placeholder="Nome do solicitante" /></div>
-            <Button onClick={handleCreateOS} disabled={!newOsForm.equipmentId || !newOsForm.description || newOsSaving} className="w-full">
+            <div>
+              <Label>Horímetro / Km na abertura *</Label>
+              <Input
+                type="number"
+                inputMode="decimal"
+                value={newOsForm.hour_meter}
+                onChange={e => setNewOsForm({...newOsForm, hour_meter: e.target.value})}
+                placeholder={(() => { const eq = equipments.find(e => e.id === newOsForm.equipmentId); return eq ? `Atual: ${eq.current_hour_meter}` : 'Ex: 1250'; })()}
+              />
+            </div>
+            <Button onClick={handleCreateOS} disabled={!newOsForm.equipmentId || !newOsForm.description || !newOsForm.hour_meter || newOsSaving} className="w-full">
               {newOsSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Criar OS
             </Button>
           </div>

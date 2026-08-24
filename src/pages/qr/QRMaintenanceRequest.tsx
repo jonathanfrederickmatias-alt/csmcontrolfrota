@@ -31,6 +31,7 @@ export default function QRMaintenanceRequest() {
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [photoUrl, setPhotoUrl] = useState('');
+  const [hourMeter, setHourMeter] = useState('');
   const [items, setItems] = useState<RequestItem[]>([newItem()]);
 
   useEffect(() => {

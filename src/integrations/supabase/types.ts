@@ -1282,6 +1282,10 @@ export type Database = {
           status: string
         }[]
       }
+      recalc_equipment_release_status: {
+        Args: { _equipment_id: string }
+        Returns: undefined
+      }
       update_my_tenant_branding: {
         Args: {
           _cep?: string

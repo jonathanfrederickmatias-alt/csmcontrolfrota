@@ -228,6 +228,7 @@ export default function EquipmentPage() {
                   ✓ Liberado
                 </span>
               )}
+            </div>
             {eq.plate && <p className="text-xs text-muted-foreground">Placa/Série: {eq.plate}</p>}
             {eq.model && <p className="text-xs text-muted-foreground">Modelo: {eq.model}</p>}
             {eq.brand && <p className="text-xs text-muted-foreground">Marca: {eq.brand}</p>}

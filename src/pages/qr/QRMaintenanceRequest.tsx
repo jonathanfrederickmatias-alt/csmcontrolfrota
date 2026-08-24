@@ -83,6 +83,7 @@ export default function QRMaintenanceRequest() {
         status: 'open',
         operator_name: operatorName,
         photo_start_url: photoUrl || null,
+        hour_meter: hourMeter ? parseFloat(hourMeter) : null,
         items: itemsPayload,
       }, `Pedido de manutenção — ${operatorName}`);
       queued = res.queued;

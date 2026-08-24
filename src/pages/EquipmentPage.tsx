@@ -18,6 +18,7 @@ const emptyForm = { name: '', type: 'machine' as EqType, plate: '', model: '', b
 export default function EquipmentPage() {
   const [equipments, setEquipments] = useState<DBEquipment[]>([]);
   const [obras, setObras] = useState<{ id: string; name: string }[]>([]);
+  const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
@@ -28,12 +29,17 @@ export default function EquipmentPage() {
   const [activeTab, setActiveTab] = useState<OwnershipType>('own');
 
   const fetchData = async () => {
-    const [{ data: eqs }, { data: obs }] = await Promise.all([
+    const [{ data: eqs }, { data: obs }, { data: urgent }] = await Promise.all([
       supabase.from('equipments').select('*').order('created_at'),
       supabase.from('obras').select('id, name').order('name'),
+      supabase.from('work_orders')
+        .select('equipment_id')
+        .in('status', ['open', 'in_progress'])
+        .ilike('priority', 'urgent'),
     ]);
     setEquipments((eqs || []) as DBEquipment[]);
     setObras((obs || []) as { id: string; name: string }[]);
+    setBlockedIds(new Set((urgent || []).map((w: any) => w.equipment_id).filter(Boolean)));
     setLoading(false);
   };
 

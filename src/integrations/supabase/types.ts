@@ -707,6 +707,7 @@ export type Database = {
           created_at: string
           description: string
           equipment_id: string
+          hour_meter: number | null
           id: string
           items: Json
           notes: string | null
@@ -723,6 +724,7 @@ export type Database = {
           created_at?: string
           description: string
           equipment_id: string
+          hour_meter?: number | null
           id?: string
           items?: Json
           notes?: string | null
@@ -739,6 +741,7 @@ export type Database = {
           created_at?: string
           description?: string
           equipment_id?: string
+          hour_meter?: number | null
           id?: string
           items?: Json
           notes?: string | null
@@ -1049,6 +1052,7 @@ export type Database = {
             | null
           mechanic_name: string | null
           notes: string | null
+          opening_meter: number | null
           os_number: number
           part_code: string | null
           parts: Json
@@ -1086,6 +1090,7 @@ export type Database = {
             | null
           mechanic_name?: string | null
           notes?: string | null
+          opening_meter?: number | null
           os_number?: number
           part_code?: string | null
           parts?: Json
@@ -1123,6 +1128,7 @@ export type Database = {
             | null
           mechanic_name?: string | null
           notes?: string | null
+          opening_meter?: number | null
           os_number?: number
           part_code?: string | null
           parts?: Json

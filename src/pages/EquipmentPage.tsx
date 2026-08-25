@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
+import NewAssetWizard from "@/components/NewAssetWizard";
 
 type EqType = 'machine' | 'truck' | 'combo';
 type OwnershipType = 'own' | 'third_party';
@@ -26,6 +27,7 @@ export default function EquipmentPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [selectedEq, setSelectedEq] = useState<DBEquipment | null>(null);
+  const [wizardEq, setWizardEq] = useState<DBEquipment | null>(null);
   const [activeTab, setActiveTab] = useState<OwnershipType>('own');
 
   const fetchData = async () => {
@@ -99,7 +101,7 @@ export default function EquipmentPage() {
     } else {
       const { getMyTenantId } = await import('@/lib/tenant');
       const tenant_id = await getMyTenantId();
-      const { error } = await supabase.from('equipments').insert([{
+      const { data: created, error } = await supabase.from('equipments').insert([{
         tenant_id,
         name: form.name,
         type: form.type,
@@ -115,9 +117,12 @@ export default function EquipmentPage() {
         obra_id: form.obraId || null,
         status: 'active',
         ownership: activeTab,
-      }]);
+      }]).select().single();
       if (error) toast.error("Erro ao criar");
-      else toast.success("Equipamento criado!");
+      else {
+        toast.success("Equipamento criado!");
+        if (created) setWizardEq(created as DBEquipment);
+      }
     }
     setSaving(false);
     setOpen(false);
@@ -433,6 +438,17 @@ export default function EquipmentPage() {
             {renderEquipmentGrid(filteredEquipments)}
           </TabsContent>
         </Tabs>
+      )}
+
+      {wizardEq && (
+        <NewAssetWizard
+          open={!!wizardEq}
+          equipmentId={wizardEq.id}
+          equipmentName={wizardEq.name}
+          equipmentType={wizardEq.type}
+          currentHourMeter={wizardEq.current_hour_meter || 0}
+          onClose={() => { setWizardEq(null); fetchData(); }}
+        />
       )}
     </div>
   );

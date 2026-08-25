@@ -99,7 +99,7 @@ export default function EquipmentPage() {
     } else {
       const { getMyTenantId } = await import('@/lib/tenant');
       const tenant_id = await getMyTenantId();
-      const { error } = await supabase.from('equipments').insert([{
+      const { data: created, error } = await supabase.from('equipments').insert([{
         tenant_id,
         name: form.name,
         type: form.type,
@@ -115,9 +115,12 @@ export default function EquipmentPage() {
         obra_id: form.obraId || null,
         status: 'active',
         ownership: activeTab,
-      }]);
+      }]).select().single();
       if (error) toast.error("Erro ao criar");
-      else toast.success("Equipamento criado!");
+      else {
+        toast.success("Equipamento criado!");
+        if (created) setWizardEq(created as DBEquipment);
+      }
     }
     setSaving(false);
     setOpen(false);

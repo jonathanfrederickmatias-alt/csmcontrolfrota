@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
+import NewAssetWizard from "@/components/NewAssetWizard";
 
 type EqType = 'machine' | 'truck' | 'combo';
 type OwnershipType = 'own' | 'third_party';
@@ -26,6 +27,7 @@ export default function EquipmentPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [selectedEq, setSelectedEq] = useState<DBEquipment | null>(null);
+  const [wizardEq, setWizardEq] = useState<DBEquipment | null>(null);
   const [activeTab, setActiveTab] = useState<OwnershipType>('own');
 
   const fetchData = async () => {

@@ -439,6 +439,17 @@ export default function EquipmentPage() {
           </TabsContent>
         </Tabs>
       )}
+
+      {wizardEq && (
+        <NewAssetWizard
+          open={!!wizardEq}
+          equipmentId={wizardEq.id}
+          equipmentName={wizardEq.name}
+          equipmentType={wizardEq.type}
+          currentHourMeter={wizardEq.current_hour_meter || 0}
+          onClose={() => { setWizardEq(null); fetchData(); }}
+        />
+      )}
     </div>
   );
 }

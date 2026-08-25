@@ -313,6 +313,33 @@ export default function DocumentosPage() {
           )}
         </CardContent>
       </Card>
+
+      {(() => {
+        const withDocs = new Set(docs.map(d => d.equipment_id));
+        const semDoc = equipments.filter(e => (e as any).status !== "inactive" && !withDocs.has(e.id));
+        return (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <AlertTriangle className="w-4 h-4 text-amber-600" />
+              <h2 className="font-semibold text-amber-800">
+                Equipamentos sem documento cadastrado ({semDoc.length})
+              </h2>
+            </div>
+            {semDoc.length === 0 ? (
+              <p className="text-sm text-amber-700">Todos os equipamentos possuem ao menos um documento.</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {semDoc.map(e => (
+                  <Badge key={e.id} variant="outline" className="bg-white text-amber-800 border-amber-300">
+                    {eqMap.get(e.id) || e.name}
+                  </Badge>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }
+

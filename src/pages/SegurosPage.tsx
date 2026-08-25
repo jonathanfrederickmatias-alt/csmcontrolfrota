@@ -148,7 +148,7 @@ export default function SegurosPage() {
   // Equipamentos ativos sem seguro vinculado
   const allInsuredIds = new Set(records.flatMap(r => r.equipment_ids));
   const uninsuredActive = equipments
-    .filter(e => e.type !== 'combo' && e.status === 'active' && !allInsuredIds.has(e.id));
+    .filter(e => e.type !== 'combo' && e.status !== 'inactive' && !allInsuredIds.has(e.id));
 
   return (
     <div className="space-y-6">

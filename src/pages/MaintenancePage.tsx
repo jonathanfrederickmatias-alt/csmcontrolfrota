@@ -1333,7 +1333,34 @@ export default function MaintenancePage() {
             </div>
           )}
           </div>
+
+          {(() => {
+            const withPlan = new Set(plans.map(p => p.equipment_id).filter(Boolean) as string[]);
+            const semPlano = filterEquipments.filter(e => e.status !== 'inactive' && !withPlan.has(e.id));
+            return (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <AlertTriangle className="w-4 h-4 text-amber-600" />
+                  <h2 className="font-semibold text-amber-800">
+                    Equipamentos sem plano de manutenção ({semPlano.length})
+                  </h2>
+                </div>
+                {semPlano.length === 0 ? (
+                  <p className="text-sm text-amber-700">Todos os equipamentos possuem plano cadastrado.</p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {semPlano.map(e => (
+                      <span key={e.id} className="text-xs px-2 py-1 rounded-md bg-white text-amber-800 border border-amber-300">
+                        {eqLabel(e)}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </TabsContent>
+
 
 
         {/* ===== VALORAÇÃO (somente admin) ===== */}

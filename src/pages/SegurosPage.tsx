@@ -259,6 +259,26 @@ export default function SegurosPage() {
           </Table>
         </div>
       )}
+
+      <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <AlertTriangle className="w-4 h-4 text-amber-600" />
+          <h2 className="font-semibold text-amber-800">
+            Equipamentos ativos sem seguro ({uninsuredActive.length})
+          </h2>
+        </div>
+        {uninsuredActive.length === 0 ? (
+          <p className="text-sm text-amber-700">Todos os equipamentos ativos possuem seguro vinculado.</p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {uninsuredActive.map(e => (
+              <Badge key={e.id} variant="outline" className="bg-white text-amber-800 border-amber-300">
+                {getEquipLabel(e.id)}
+              </Badge>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

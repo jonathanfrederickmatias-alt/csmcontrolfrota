@@ -856,6 +856,29 @@ export async function exportMaintenanceHistoryPDF(
       drawStrip(photos.end, 'Fotos — Depois');
       y += 2;
     }
+
+    // Non-image attachments (PDF, Word, Excel, etc.) as clickable links
+    if (filesCount > 0) {
+      const drawFiles = (files: string[], label: string) => {
+        if (files.length === 0) return;
+        y = checkPageBreak(pdf, y, photoLabelH + files.length * 4);
+        pdf.setFontSize(6.5);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(...COLORS.textMuted);
+        pdf.text(label, margin + 2, y + 2.5);
+        y += photoLabelH;
+        files.forEach((url) => {
+          pdf.setFont('helvetica', 'normal');
+          pdf.setTextColor(37, 99, 235);
+          const name = clipText(pdf, fileNameFromUrl(url), contentWidth - 30);
+          pdf.textWithLink(`📎 ${name}`, margin + 2, y + 3, { url });
+          y += 4;
+        });
+      };
+      drawFiles(photos.startFiles, 'Anexos — Antes');
+      drawFiles(photos.endFiles, 'Anexos — Depois');
+      y += 1;
+    }
   });
 
   const totalPages = pdf.getNumberOfPages();

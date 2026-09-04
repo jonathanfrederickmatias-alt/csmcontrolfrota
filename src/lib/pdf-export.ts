@@ -765,12 +765,14 @@ export async function exportMaintenanceHistoryPDF(
     const rowHeight = Math.max(6.5, descLines.length * lineHeight + 3);
 
     const photos = photoData[idx];
+    const filesCount = photos.startFiles.length + photos.endFiles.length;
     const hasPhotos = photos.start.length + photos.end.length > 0;
     const startRows = Math.ceil(photos.start.length / photosPerRow);
     const endRows = Math.ceil(photos.end.length / photosPerRow);
-    const photoBlockH = hasPhotos
+    const photoBlockH = (hasPhotos || filesCount > 0)
       ? (photos.start.length ? photoLabelH + startRows * (photoBoxH + photoGap) : 0)
       + (photos.end.length ? photoLabelH + endRows * (photoBoxH + photoGap) : 0)
+      + (filesCount > 0 ? photoLabelH + filesCount * 4 : 0)
       + 2
       : 0;
 

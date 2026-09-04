@@ -723,9 +723,22 @@ export async function exportMaintenanceHistoryPDF(
   y += 6;
 
   // Preload photos in parallel so PDF stays deterministic
+  const isImageUrl = (url: string) => /\.(jpg|jpeg|png|gif|webp|bmp)(\?|#|$)/i.test(url);
+  const fileNameFromUrl = (url: string) => {
+    try {
+      const path = decodeURIComponent(url.split('?')[0]);
+      return path.split('/').pop() || 'Anexo';
+    } catch {
+      return 'Anexo';
+    }
+  };
   const photoData = await Promise.all(records.map(async (r) => {
-    const startUrls = (r.photosStart || []).slice(0, 6);
-    const endUrls = (r.photosEnd || []).slice(0, 6);
+    const allStart = (r.photosStart || []);
+    const allEnd = (r.photosEnd || []);
+    const startUrls = allStart.filter(isImageUrl).slice(0, 6);
+    const endUrls = allEnd.filter(isImageUrl).slice(0, 6);
+    const startFiles = allStart.filter(u => !isImageUrl(u));
+    const endFiles = allEnd.filter(u => !isImageUrl(u));
     const [starts, ends] = await Promise.all([
       Promise.all(startUrls.map(loadImageAsBase64)),
       Promise.all(endUrls.map(loadImageAsBase64)),
@@ -733,6 +746,8 @@ export async function exportMaintenanceHistoryPDF(
     return {
       start: starts.filter(Boolean) as { data: string; format: 'JPEG' | 'PNG' }[],
       end: ends.filter(Boolean) as { data: string; format: 'JPEG' | 'PNG' }[],
+      startFiles,
+      endFiles,
     };
   }));
 
@@ -750,12 +765,14 @@ export async function exportMaintenanceHistoryPDF(
     const rowHeight = Math.max(6.5, descLines.length * lineHeight + 3);
 
     const photos = photoData[idx];
+    const filesCount = photos.startFiles.length + photos.endFiles.length;
     const hasPhotos = photos.start.length + photos.end.length > 0;
     const startRows = Math.ceil(photos.start.length / photosPerRow);
     const endRows = Math.ceil(photos.end.length / photosPerRow);
-    const photoBlockH = hasPhotos
+    const photoBlockH = (hasPhotos || filesCount > 0)
       ? (photos.start.length ? photoLabelH + startRows * (photoBoxH + photoGap) : 0)
       + (photos.end.length ? photoLabelH + endRows * (photoBoxH + photoGap) : 0)
+      + (filesCount > 0 ? photoLabelH + filesCount * 4 : 0)
       + 2
       : 0;
 
@@ -838,6 +855,29 @@ export async function exportMaintenanceHistoryPDF(
       drawStrip(photos.start, 'Fotos — Antes');
       drawStrip(photos.end, 'Fotos — Depois');
       y += 2;
+    }
+
+    // Non-image attachments (PDF, Word, Excel, etc.) as clickable links
+    if (filesCount > 0) {
+      const drawFiles = (files: string[], label: string) => {
+        if (files.length === 0) return;
+        y = checkPageBreak(pdf, y, photoLabelH + files.length * 4);
+        pdf.setFontSize(6.5);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(...COLORS.textMuted);
+        pdf.text(label, margin + 2, y + 2.5);
+        y += photoLabelH;
+        files.forEach((url) => {
+          pdf.setFont('helvetica', 'normal');
+          pdf.setTextColor(37, 99, 235);
+          const name = clipText(pdf, fileNameFromUrl(url), contentWidth - 30);
+          pdf.textWithLink(`📎 ${name}`, margin + 2, y + 3, { url });
+          y += 4;
+        });
+      };
+      drawFiles(photos.startFiles, 'Anexos — Antes');
+      drawFiles(photos.endFiles, 'Anexos — Depois');
+      y += 1;
     }
   });
 

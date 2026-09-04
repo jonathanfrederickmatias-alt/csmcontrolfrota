@@ -48,6 +48,9 @@ export interface DBMaintenanceHistory {
   costs_validated?: boolean;
   costs_validated_at?: string | null;
   costs_validated_by?: string | null;
+  photo_url?: string | null;
+  photos_start?: string[];
+  photos_end?: string[];
   created_at: string;
 }
 

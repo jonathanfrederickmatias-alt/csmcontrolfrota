@@ -723,9 +723,22 @@ export async function exportMaintenanceHistoryPDF(
   y += 6;
 
   // Preload photos in parallel so PDF stays deterministic
+  const isImageUrl = (url: string) => /\.(jpg|jpeg|png|gif|webp|bmp)(\?|#|$)/i.test(url);
+  const fileNameFromUrl = (url: string) => {
+    try {
+      const path = decodeURIComponent(url.split('?')[0]);
+      return path.split('/').pop() || 'Anexo';
+    } catch {
+      return 'Anexo';
+    }
+  };
   const photoData = await Promise.all(records.map(async (r) => {
-    const startUrls = (r.photosStart || []).slice(0, 6);
-    const endUrls = (r.photosEnd || []).slice(0, 6);
+    const allStart = (r.photosStart || []);
+    const allEnd = (r.photosEnd || []);
+    const startUrls = allStart.filter(isImageUrl).slice(0, 6);
+    const endUrls = allEnd.filter(isImageUrl).slice(0, 6);
+    const startFiles = allStart.filter(u => !isImageUrl(u));
+    const endFiles = allEnd.filter(u => !isImageUrl(u));
     const [starts, ends] = await Promise.all([
       Promise.all(startUrls.map(loadImageAsBase64)),
       Promise.all(endUrls.map(loadImageAsBase64)),
@@ -733,6 +746,8 @@ export async function exportMaintenanceHistoryPDF(
     return {
       start: starts.filter(Boolean) as { data: string; format: 'JPEG' | 'PNG' }[],
       end: ends.filter(Boolean) as { data: string; format: 'JPEG' | 'PNG' }[],
+      startFiles,
+      endFiles,
     };
   }));
 

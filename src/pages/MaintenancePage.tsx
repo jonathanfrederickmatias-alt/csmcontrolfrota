@@ -547,8 +547,12 @@ export default function MaintenancePage() {
         const plan = plans.find(p => p.id === h.plan_id);
         const osMatch = h.description?.match(/OS #(\d+)/);
         const linkedOS = osMatch ? workOrders.find(o => o.os_number === Number(osMatch[1])) : undefined;
-        const photosStart = (linkedOS?.photos_start && linkedOS.photos_start.length ? linkedOS.photos_start : (linkedOS?.photo_start_url ? [linkedOS.photo_start_url] : [])) as string[];
-        const photosEnd = (linkedOS?.photos_end && linkedOS.photos_end.length ? linkedOS.photos_end : (linkedOS?.photo_end_url ? [linkedOS.photo_end_url] : [])) as string[];
+        const histStart = (h.photos_start?.length ? h.photos_start : (h.photo_url ? [h.photo_url] : [])) as string[];
+        const histEnd = (h.photos_end?.length ? h.photos_end : []) as string[];
+        const osStart = (linkedOS?.photos_start?.length ? linkedOS.photos_start : (linkedOS?.photo_start_url ? [linkedOS.photo_start_url] : [])) as string[];
+        const osEnd = (linkedOS?.photos_end?.length ? linkedOS.photos_end : (linkedOS?.photo_end_url ? [linkedOS.photo_end_url] : [])) as string[];
+        const photosStart = [...new Set([...histStart, ...osStart])];
+        const photosEnd = [...new Set([...histEnd, ...osEnd])];
         return {
           equipment: eq ? eqLabel(eq) : '—',
           description: h.description,

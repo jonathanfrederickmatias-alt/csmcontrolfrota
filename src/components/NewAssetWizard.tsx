@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, Trash2, ShieldCheck, FileText, Wrench, Check } from "lucide-react";
+import { Plus, Trash2, ShieldCheck, FileText, Wrench, Check, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { calculateMaintenanceStatus } from "@/lib/maintenance-utils";
 
@@ -62,9 +62,16 @@ export default function NewAssetWizard({ equipmentId, equipmentName, equipmentTy
   // Planos
   const [plans, setPlans] = useState<PlanRow[]>([]);
 
+  // Copiar planos de outro ativo
+  const [sourceEquipments, setSourceEquipments] = useState<{ id: string; label: string }[]>([]);
+  const [sourceId, setSourceId] = useState("");
+  const [baseMeter, setBaseMeter] = useState<string>(String(currentHourMeter || 0));
+  const [copying, setCopying] = useState(false);
+
   useEffect(() => {
     if (!open) return;
     setStep(1);
+    setBaseMeter(String(currentHourMeter || 0));
     supabase.from("insurance_records").select("*").order("end_date", { ascending: false }).then(({ data }) => {
       setPolicies((data || []).map((r: any) => ({
         id: r.id,
@@ -74,7 +81,38 @@ export default function NewAssetWizard({ equipmentId, equipmentName, equipmentTy
         equipment_ids: Array.isArray(r.equipment_ids) ? r.equipment_ids : [],
       })));
     });
-  }, [open]);
+    supabase.from("equipments").select("id, name, cost_center, plate").order("name").then(({ data }) => {
+      setSourceEquipments((data || [])
+        .filter((e: any) => e.id !== equipmentId)
+        .map((e: any) => ({ id: e.id, label: `${e.name}${e.cost_center ? ` (${e.cost_center})` : e.plate ? ` (${e.plate})` : ''}` })));
+    });
+  }, [open, equipmentId, currentHourMeter]);
+
+  const copyPlansFromSource = async () => {
+    if (!sourceId) { toast.error("Selecione o ativo de origem"); return; }
+    setCopying(true);
+    try {
+      const { data, error } = await supabase
+        .from("maintenance_plans")
+        .select("description, plan_type, interval_hours, interval_days")
+        .eq("equipment_id", sourceId);
+      if (error) throw error;
+      if (!data || data.length === 0) { toast.error("Este ativo não possui planos cadastrados"); return; }
+      const base = baseMeter || String(currentHourMeter || 0);
+      const copied: PlanRow[] = data.map((p: any) => ({
+        description: p.description,
+        planType: (p.plan_type || 'horimetro') as PlanRow['planType'],
+        interval: String(p.plan_type === 'tempo' ? (p.interval_days || 0) : (p.interval_hours || 0)),
+        lastDone: p.plan_type === 'tempo' ? '' : base,
+      }));
+      setPlans(prev => [...prev, ...copied]);
+      toast.success(`${copied.length} plano(s) copiado(s)`);
+    } catch (e: any) {
+      toast.error("Erro ao copiar planos: " + (e?.message || ""));
+    } finally {
+      setCopying(false);
+    }
+  };
 
   const toggleDoc = (type: string) => {
     setDocs(prev => prev.some(d => d.type === type)
@@ -305,6 +343,32 @@ export default function NewAssetWizard({ equipmentId, equipmentName, equipmentTy
         {step === 3 && (
           <div className="space-y-4">
             <StepHeader icon={Wrench} title="Planos de manutenção" desc="Quais planos preventivos este ativo terá?" />
+
+            <div className="rounded-lg border border-dashed p-3 space-y-2 bg-muted/30">
+              <p className="text-sm font-medium flex items-center gap-2"><Copy className="w-4 h-4" /> Copiar planos de outro ativo</p>
+              <div>
+                <Label className="text-xs">Ativo de origem</Label>
+                <select
+                  className="w-full h-9 rounded-md border border-input bg-background px-2 text-sm"
+                  value={sourceId}
+                  onChange={e => setSourceId(e.target.value)}
+                >
+                  <option value="">Selecione...</option>
+                  {sourceEquipments.map(e => (
+                    <option key={e.id} value={e.id}>{e.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label className="text-xs">Horímetro/Hodômetro inicial para contar as manutenções</Label>
+                <Input inputMode="decimal" value={baseMeter} onChange={e => setBaseMeter(e.target.value)} className="h-9" />
+                <p className="text-[11px] text-muted-foreground mt-1">Os planos copiados começarão a contar a partir deste valor.</p>
+              </div>
+              <Button variant="outline" size="sm" onClick={copyPlansFromSource} disabled={copying} className="w-full">
+                {copying ? "Copiando..." : "Copiar planos"}
+              </Button>
+            </div>
+
             {plans.length === 0 && (
               <p className="text-sm text-muted-foreground">Nenhum plano adicionado. Você pode pular esta etapa.</p>
             )}

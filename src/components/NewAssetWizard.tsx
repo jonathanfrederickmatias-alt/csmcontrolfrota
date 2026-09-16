@@ -62,9 +62,16 @@ export default function NewAssetWizard({ equipmentId, equipmentName, equipmentTy
   // Planos
   const [plans, setPlans] = useState<PlanRow[]>([]);
 
+  // Copiar planos de outro ativo
+  const [sourceEquipments, setSourceEquipments] = useState<{ id: string; label: string }[]>([]);
+  const [sourceId, setSourceId] = useState("");
+  const [baseMeter, setBaseMeter] = useState<string>(String(currentHourMeter || 0));
+  const [copying, setCopying] = useState(false);
+
   useEffect(() => {
     if (!open) return;
     setStep(1);
+    setBaseMeter(String(currentHourMeter || 0));
     supabase.from("insurance_records").select("*").order("end_date", { ascending: false }).then(({ data }) => {
       setPolicies((data || []).map((r: any) => ({
         id: r.id,
@@ -74,7 +81,38 @@ export default function NewAssetWizard({ equipmentId, equipmentName, equipmentTy
         equipment_ids: Array.isArray(r.equipment_ids) ? r.equipment_ids : [],
       })));
     });
-  }, [open]);
+    supabase.from("equipments").select("id, name, cost_center, plate").order("name").then(({ data }) => {
+      setSourceEquipments((data || [])
+        .filter((e: any) => e.id !== equipmentId)
+        .map((e: any) => ({ id: e.id, label: `${e.name}${e.cost_center ? ` (${e.cost_center})` : e.plate ? ` (${e.plate})` : ''}` })));
+    });
+  }, [open, equipmentId, currentHourMeter]);
+
+  const copyPlansFromSource = async () => {
+    if (!sourceId) { toast.error("Selecione o ativo de origem"); return; }
+    setCopying(true);
+    try {
+      const { data, error } = await supabase
+        .from("maintenance_plans")
+        .select("description, plan_type, interval_hours, interval_days")
+        .eq("equipment_id", sourceId);
+      if (error) throw error;
+      if (!data || data.length === 0) { toast.error("Este ativo não possui planos cadastrados"); return; }
+      const base = baseMeter || String(currentHourMeter || 0);
+      const copied: PlanRow[] = data.map((p: any) => ({
+        description: p.description,
+        planType: (p.plan_type || 'horimetro') as PlanRow['planType'],
+        interval: String(p.plan_type === 'tempo' ? (p.interval_days || 0) : (p.interval_hours || 0)),
+        lastDone: p.plan_type === 'tempo' ? '' : base,
+      }));
+      setPlans(prev => [...prev, ...copied]);
+      toast.success(`${copied.length} plano(s) copiado(s)`);
+    } catch (e: any) {
+      toast.error("Erro ao copiar planos: " + (e?.message || ""));
+    } finally {
+      setCopying(false);
+    }
+  };
 
   const toggleDoc = (type: string) => {
     setDocs(prev => prev.some(d => d.type === type)

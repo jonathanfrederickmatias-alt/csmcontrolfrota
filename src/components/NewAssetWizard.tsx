@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, Trash2, ShieldCheck, FileText, Wrench, Check } from "lucide-react";
+import { Plus, Trash2, ShieldCheck, FileText, Wrench, Check, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { calculateMaintenanceStatus } from "@/lib/maintenance-utils";
 
@@ -343,6 +343,32 @@ export default function NewAssetWizard({ equipmentId, equipmentName, equipmentTy
         {step === 3 && (
           <div className="space-y-4">
             <StepHeader icon={Wrench} title="Planos de manutenção" desc="Quais planos preventivos este ativo terá?" />
+
+            <div className="rounded-lg border border-dashed p-3 space-y-2 bg-muted/30">
+              <p className="text-sm font-medium flex items-center gap-2"><Copy className="w-4 h-4" /> Copiar planos de outro ativo</p>
+              <div>
+                <Label className="text-xs">Ativo de origem</Label>
+                <select
+                  className="w-full h-9 rounded-md border border-input bg-background px-2 text-sm"
+                  value={sourceId}
+                  onChange={e => setSourceId(e.target.value)}
+                >
+                  <option value="">Selecione...</option>
+                  {sourceEquipments.map(e => (
+                    <option key={e.id} value={e.id}>{e.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label className="text-xs">Horímetro/Hodômetro inicial para contar as manutenções</Label>
+                <Input inputMode="decimal" value={baseMeter} onChange={e => setBaseMeter(e.target.value)} className="h-9" />
+                <p className="text-[11px] text-muted-foreground mt-1">Os planos copiados começarão a contar a partir deste valor.</p>
+              </div>
+              <Button variant="outline" size="sm" onClick={copyPlansFromSource} disabled={copying} className="w-full">
+                {copying ? "Copiando..." : "Copiar planos"}
+              </Button>
+            </div>
+
             {plans.length === 0 && (
               <p className="text-sm text-muted-foreground">Nenhum plano adicionado. Você pode pular esta etapa.</p>
             )}

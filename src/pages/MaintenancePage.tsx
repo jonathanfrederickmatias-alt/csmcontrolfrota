@@ -333,7 +333,7 @@ export default function MaintenancePage() {
     const { getMyTenantId } = await import('@/lib/tenant');
     const tenant_id = await getMyTenantId();
 
-    await supabase.from('maintenance_history').insert([{
+    const { error: histErr } = await supabase.from('maintenance_history').insert([{
       tenant_id,
       equipment_id: plan.equipment_id,
       plan_id: plan.id,
@@ -347,6 +347,11 @@ export default function MaintenancePage() {
       photos_start: completeForm.photosStart as unknown as any,
       photos_end: completeForm.photosEnd as unknown as any,
     }]);
+    if (histErr) {
+      setCompleteSaving(false);
+      toast({ title: 'Erro ao concluir manutenção', description: histErr.message, variant: 'destructive' });
+      return;
+    }
 
     if (isTempo) {
       const now = new Date();
@@ -2309,7 +2314,7 @@ export default function MaintenancePage() {
 
       {/* Complete Plan Dialog */}
       <Dialog open={!!completePlan} onOpenChange={(v) => !v && setCompletePlanState(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <CheckCircle className="w-5 h-5 text-success" /> Concluir Manutenção
@@ -2393,13 +2398,13 @@ export default function MaintenancePage() {
                     label="Fotos ANTES do serviço *"
                     acceptFiles
                     values={completeForm.photosStart}
-                    onChange={(urls) => setCompleteForm({ ...completeForm, photosStart: urls })}
+                    onChange={(urls) => setCompleteForm(f => ({ ...f, photosStart: urls }))}
                   />
                   <MultiPhotoUpload
                     label="Fotos DEPOIS do serviço *"
                     acceptFiles
                     values={completeForm.photosEnd}
-                    onChange={(urls) => setCompleteForm({ ...completeForm, photosEnd: urls })}
+                    onChange={(urls) => setCompleteForm(f => ({ ...f, photosEnd: urls }))}
                   />
                 </div>
                 {(completeForm.photosStart.length === 0 || completeForm.photosEnd.length === 0) && (

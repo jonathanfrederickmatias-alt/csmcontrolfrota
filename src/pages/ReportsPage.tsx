@@ -43,6 +43,19 @@ export default function ReportsPage() {
   const [workOrders, setWorkOrders] = useState<DBWorkOrder[]>([]);
   const [maintenanceHistory, setMaintenanceHistory] = useState<DBMaintenanceHistory[]>([]);
   const [loading, setLoading] = useState(true);
+  const [savedReports, setSavedReports] = useState<{ id: string; title: string; file_url: string | null; period_start: string; period_end: string; created_at: string; summary: { total_records?: number; total_liters?: number } }[]>([]);
+
+  useEffect(() => {
+    supabase.from('generated_reports').select('id, title, file_url, period_start, period_end, created_at, summary')
+      .order('created_at', { ascending: false }).limit(30)
+      .then(({ data }) => setSavedReports((data || []) as never));
+  }, []);
+
+  const openSavedReport = async (fileUrl: string | null) => {
+    if (!fileUrl) return;
+    const { data, error } = await supabase.storage.from('reports').createSignedUrl(fileUrl, 3600);
+    if (!error && data?.signedUrl) window.open(data.signedUrl, '_blank');
+  };
 
   useEffect(() => {
     const fetchAll = async () => {

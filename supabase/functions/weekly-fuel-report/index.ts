@@ -125,7 +125,7 @@ serve(async (req) => {
         title: `Abastecimentos — ${periodLabel}`,
         period_start: startStr,
         period_end: endStr,
-        file_url: fileUrl,
+        file_url: fileName,
         summary: { total_records: records.length, total_liters: totalLiters, equipments: byTarget.size },
       });
     }

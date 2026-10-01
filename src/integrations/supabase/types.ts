@@ -480,6 +480,50 @@ export type Database = {
           },
         ]
       }
+      generated_reports: {
+        Row: {
+          created_at: string
+          file_url: string | null
+          id: string
+          period_end: string
+          period_start: string
+          report_type: string
+          summary: Json
+          tenant_id: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          file_url?: string | null
+          id?: string
+          period_end: string
+          period_start: string
+          report_type?: string
+          summary?: Json
+          tenant_id: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          file_url?: string | null
+          id?: string
+          period_end?: string
+          period_start?: string
+          report_type?: string
+          summary?: Json
+          tenant_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generated_reports_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       insurance_records: {
         Row: {
           created_at: string

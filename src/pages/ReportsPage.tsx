@@ -463,6 +463,32 @@ export default function ReportsPage() {
         )}
       </div>
 
+      {/* Saved automatic reports */}
+      {savedReports.length > 0 && (
+        <div className="glass-card rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Calendar className="w-5 h-5 text-primary" />
+            <h2 className="font-bold">Relatórios Automáticos Salvos</h2>
+            <span className="text-xs text-muted-foreground">(gerados toda segunda-feira às 06h)</span>
+          </div>
+          <div className="space-y-2">
+            {savedReports.map(r => (
+              <div key={r.id} className="flex items-center justify-between gap-3 border border-border rounded-lg px-3 py-2">
+                <div className="min-w-0">
+                  <p className="font-medium text-sm truncate">{r.title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {r.summary?.total_records ?? 0} registros · {(r.summary?.total_liters ?? 0).toLocaleString('pt-BR')} L
+                  </p>
+                </div>
+                <Button size="sm" variant="outline" onClick={() => openSavedReport(r.file_url)} className="gap-1.5 shrink-0">
+                  <FileText className="w-4 h-4" /> Abrir
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <div className="glass-card rounded-xl p-4">

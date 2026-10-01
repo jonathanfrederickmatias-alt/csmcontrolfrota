@@ -105,7 +105,12 @@ serve(async (req) => {
       .from('reports')
       .upload(fileName, new Blob([html], { type: 'text/html' }), { contentType: 'text/html', upsert: true });
     if (upErr) throw upErr;
-    const fileUrl = supabase.storage.from('reports').getPublicUrl(fileName).data.publicUrl;
+    // Signed URL valid for 7 days (used in the email; the app regenerates on demand)
+    const { data: signed, error: signErr } = await supabase.storage
+      .from('reports')
+      .createSignedUrl(fileName, 60 * 60 * 24 * 7);
+    if (signErr) throw signErr;
+    const fileUrl = signed.signedUrl;
 
     // Register in generated_reports (one row per tenant that had records, or default tenant)
     const tenantIds = [...new Set(records.map((r) => r.tenant_id).filter(Boolean))];

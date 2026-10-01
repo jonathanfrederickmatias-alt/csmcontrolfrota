@@ -8,6 +8,20 @@
       "when": 1790877157914,
       "tag": "0000_combo_fuel_on_update",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790882798418,
+      "tag": "0001_create_generated_reports",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790882824860,
+      "tag": "0002_reports_bucket_policies",
+      "breakpoints": true
     }
   ]
 }

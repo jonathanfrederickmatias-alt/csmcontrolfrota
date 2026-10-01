@@ -35,7 +35,7 @@ export default function FuelPage() {
   // Detail & Edit state
   const [detailRecord, setDetailRecord] = useState<DBFuelRecord | null>(null);
   const [editRecord, setEditRecord] = useState<DBFuelRecord | null>(null);
-  const [editForm, setEditForm] = useState({ liters: '', operator_name: '', date: '', hour_meter: '', fuel_type: '' });
+  const [editForm, setEditForm] = useState({ liters: '', operator_name: '', date: '', hour_meter: '', fuel_type: '', combo_equipment_id: '' });
   const [editExtraItems, setEditExtraItems] = useState<FuelSupplyExtraItem[]>([]);
 
   const fetchData = async () => {
@@ -127,12 +127,13 @@ export default function FuelPage() {
   const openEdit = (r: DBFuelRecord) => {
     setEditRecord(r);
     setEditExtraItems(((r as any).extra_items || []) as FuelSupplyExtraItem[]);
-    setEditForm({ liters: String(r.liters), operator_name: r.operator_name, date: r.date, hour_meter: r.hour_meter ? String(r.hour_meter) : '', fuel_type: (r as any).fuel_type || '' });
+    setEditForm({ liters: String(r.liters), operator_name: r.operator_name, date: r.date, hour_meter: r.hour_meter ? String(r.hour_meter) : '', fuel_type: (r as any).fuel_type || '', combo_equipment_id: r.combo_equipment_id || '' });
   };
 
   const handleSaveEdit = async () => {
     if (!editRecord) return;
     await supabase.from('fuel_records').update({
+      combo_equipment_id: editForm.combo_equipment_id || null,
       liters: Number(editForm.liters),
       operator_name: editForm.operator_name,
       date: editForm.date,
@@ -553,6 +554,13 @@ export default function FuelPage() {
         <DialogContent className="bg-card border-border">
           <DialogHeader><DialogTitle>Editar Abastecimento</DialogTitle></DialogHeader>
           <div className="space-y-4">
+            <div>
+              <Label>Posto (Comboio) *</Label>
+              <Select value={editForm.combo_equipment_id} onValueChange={v => setEditForm({ ...editForm, combo_equipment_id: v })}>
+                <SelectTrigger><SelectValue placeholder="Selecionar posto..." /></SelectTrigger>
+                <SelectContent>{combos.map(c => <SelectItem key={c.id} value={c.id}>{c.name}{c.cost_center ? ` (${c.cost_center})` : ''}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
             <div><Label>Litros *</Label><Input type="number" value={editForm.liters} onChange={e => setEditForm({...editForm, liters: e.target.value})} /></div>
             <div><Label>Operador *</Label><Input value={editForm.operator_name} onChange={e => setEditForm({...editForm, operator_name: e.target.value})} /></div>
             <div><Label>Data</Label><Input type="date" value={editForm.date} onChange={e => setEditForm({...editForm, date: e.target.value})} /></div>

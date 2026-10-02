@@ -19,6 +19,7 @@ const emptyForm = { name: '', type: 'machine' as EqType, plate: '', model: '', b
 export default function EquipmentPage() {
   const [equipments, setEquipments] = useState<DBEquipment[]>([]);
   const [obras, setObras] = useState<{ id: string; name: string }[]>([]);
+  const [insuranceRecords, setInsuranceRecords] = useState<{ id: string; equipment_ids: string[]; insurance_company: string; end_date: string }[]>([]);
   const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -31,23 +32,33 @@ export default function EquipmentPage() {
   const [activeTab, setActiveTab] = useState<OwnershipType>('own');
 
   const fetchData = async () => {
-    const [{ data: eqs }, { data: obs }, { data: urgent }] = await Promise.all([
+    const [{ data: eqs }, { data: obs }, { data: urgent }, { data: ins }] = await Promise.all([
       supabase.from('equipments').select('*').order('created_at'),
       supabase.from('obras').select('id, name').order('name'),
       supabase.from('work_orders')
         .select('equipment_id')
         .in('status', ['open', 'in_progress'])
         .ilike('priority', 'urgent'),
+      supabase.from('insurance_records')
+        .select('id, equipment_ids, insurance_company, end_date')
+        .order('end_date', { ascending: false }),
     ]);
     setEquipments((eqs || []) as DBEquipment[]);
     setObras((obs || []) as { id: string; name: string }[]);
     setBlockedIds(new Set((urgent || []).map((w: any) => w.equipment_id).filter(Boolean)));
+    setInsuranceRecords(((ins || []) as any[]).map(r => ({
+      ...r,
+      equipment_ids: Array.isArray(r.equipment_ids) ? (r.equipment_ids as string[]) : [],
+    })));
     setLoading(false);
   };
 
   useEffect(() => { fetchData(); }, []);
 
   const obraNameById = (id?: string) => (id ? obras.find(o => o.id === id)?.name : undefined);
+
+  const fmtDate = (d?: string | null) => (d ? d.split('-').reverse().join('/') : '');
+  const insuranceFor = (id: string) => insuranceRecords.find(r => r.equipment_ids.includes(id));
 
   const filteredEquipments = equipments
     .filter(eq => (eq.ownership || 'own') === activeTab)
@@ -147,9 +158,13 @@ export default function EquipmentPage() {
     const title = activeTab === 'own' ? 'Equipamentos Próprios' : 'Equipamentos Terceiros';
     const rows = filteredEquipments.map(eq => {
       const blocked = blockedIds.has(eq.id);
+      const ins = insuranceFor(eq.id);
       const releaseBadge = blocked
         ? '<span style="color:#b91c1c;font-weight:700">NÃO LIBERADO</span>'
         : '<span style="color:#15803d;font-weight:700">LIBERADO</span>';
+      const insuranceCell = ins
+        ? `${ins.insurance_company}${ins.end_date ? ` (até ${fmtDate(ins.end_date)})` : ''}`
+        : '<span style="color:#b45309">Sem seguro</span>';
       return `
       <tr>
         <td>${eq.name}</td>
@@ -161,6 +176,7 @@ export default function EquipmentPage() {
         <td>${eq.chassis || '-'}</td>
         <td>${eq.cost_center || '-'}</td>
         <td>${obraNameById(eq.obra_id) || '-'}</td>
+        <td>${insuranceCell}</td>
         <td style="text-align:right">${eq.current_hour_meter}h</td>
         <td>${releaseBadge}</td>
       </tr>`;
@@ -181,7 +197,7 @@ export default function EquipmentPage() {
       <table>
         <thead><tr>
           <th>Nome</th><th>Tipo</th><th>Placa/Série</th><th>Marca</th><th>Modelo</th>
-          <th>Ano</th><th>Chassi</th><th>C. Custo</th><th>Obra</th><th>Horímetro</th><th>Liberação</th>
+          <th>Ano</th><th>Chassi</th><th>C. Custo</th><th>Obra</th><th>Seguro (Seguradora)</th><th>Horímetro</th><th>Liberação</th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>
@@ -240,6 +256,14 @@ export default function EquipmentPage() {
             {eq.chassis && <p className="text-xs text-muted-foreground">Chassi: {eq.chassis}</p>}
             {eq.year && <p className="text-xs text-muted-foreground">Ano: {eq.year}</p>}
             {obraNameById(eq.obra_id) && <p className="text-xs text-muted-foreground">Obra: {obraNameById(eq.obra_id)}</p>}
+            {(() => {
+              const ins = insuranceFor(eq.id);
+              return ins ? (
+                <p className="text-xs text-muted-foreground">Seguro: {ins.insurance_company} (até {fmtDate(ins.end_date)})</p>
+              ) : (
+                <p className="text-xs font-medium text-amber-600">Sem seguro cadastrado</p>
+              );
+            })()}
             <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
               <div>
                 <p className="text-xs text-muted-foreground">Horímetro</p>
@@ -351,6 +375,20 @@ export default function EquipmentPage() {
                     ) : (
                       <p className="font-bold text-green-600">✓ Liberado</p>
                     )}
+                  </div>
+                  <div className="bg-secondary/50 rounded-lg p-3">
+                    <p className="text-xs text-muted-foreground">Seguro</p>
+                    {(() => {
+                      const ins = insuranceFor(selectedEq.id);
+                      return ins ? (
+                        <>
+                          <p className="font-semibold text-foreground">{ins.insurance_company}</p>
+                          <p className="text-xs text-muted-foreground">Válido até {fmtDate(ins.end_date)}</p>
+                        </>
+                      ) : (
+                        <p className="font-semibold text-amber-600">Sem seguro</p>
+                      );
+                    })()}
                   </div>
                   {obraNameById(selectedEq.obra_id) && (
                     <div className="col-span-2 bg-secondary/50 rounded-lg p-3">

@@ -376,6 +376,20 @@ export default function EquipmentPage() {
                       <p className="font-bold text-green-600">✓ Liberado</p>
                     )}
                   </div>
+                  <div className="bg-secondary/50 rounded-lg p-3">
+                    <p className="text-xs text-muted-foreground">Seguro</p>
+                    {(() => {
+                      const ins = insuranceFor(selectedEq.id);
+                      return ins ? (
+                        <>
+                          <p className="font-semibold text-foreground">{ins.insurance_company}</p>
+                          <p className="text-xs text-muted-foreground">Válido até {fmtDate(ins.end_date)}</p>
+                        </>
+                      ) : (
+                        <p className="font-semibold text-amber-600">Sem seguro</p>
+                      );
+                    })()}
+                  </div>
                   {obraNameById(selectedEq.obra_id) && (
                     <div className="col-span-2 bg-secondary/50 rounded-lg p-3">
                       <p className="text-xs text-muted-foreground">Obra</p>

@@ -158,9 +158,13 @@ export default function EquipmentPage() {
     const title = activeTab === 'own' ? 'Equipamentos Próprios' : 'Equipamentos Terceiros';
     const rows = filteredEquipments.map(eq => {
       const blocked = blockedIds.has(eq.id);
+      const ins = insuranceFor(eq.id);
       const releaseBadge = blocked
         ? '<span style="color:#b91c1c;font-weight:700">NÃO LIBERADO</span>'
         : '<span style="color:#15803d;font-weight:700">LIBERADO</span>';
+      const insuranceCell = ins
+        ? `${ins.insurance_company}${ins.end_date ? ` (até ${fmtDate(ins.end_date)})` : ''}`
+        : '<span style="color:#b45309">Sem seguro</span>';
       return `
       <tr>
         <td>${eq.name}</td>
@@ -172,6 +176,7 @@ export default function EquipmentPage() {
         <td>${eq.chassis || '-'}</td>
         <td>${eq.cost_center || '-'}</td>
         <td>${obraNameById(eq.obra_id) || '-'}</td>
+        <td>${insuranceCell}</td>
         <td style="text-align:right">${eq.current_hour_meter}h</td>
         <td>${releaseBadge}</td>
       </tr>`;
@@ -192,7 +197,7 @@ export default function EquipmentPage() {
       <table>
         <thead><tr>
           <th>Nome</th><th>Tipo</th><th>Placa/Série</th><th>Marca</th><th>Modelo</th>
-          <th>Ano</th><th>Chassi</th><th>C. Custo</th><th>Obra</th><th>Horímetro</th><th>Liberação</th>
+          <th>Ano</th><th>Chassi</th><th>C. Custo</th><th>Obra</th><th>Seguro (Seguradora)</th><th>Horímetro</th><th>Liberação</th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>
@@ -251,6 +256,14 @@ export default function EquipmentPage() {
             {eq.chassis && <p className="text-xs text-muted-foreground">Chassi: {eq.chassis}</p>}
             {eq.year && <p className="text-xs text-muted-foreground">Ano: {eq.year}</p>}
             {obraNameById(eq.obra_id) && <p className="text-xs text-muted-foreground">Obra: {obraNameById(eq.obra_id)}</p>}
+            {(() => {
+              const ins = insuranceFor(eq.id);
+              return ins ? (
+                <p className="text-xs text-muted-foreground">Seguro: {ins.insurance_company} (até {fmtDate(ins.end_date)})</p>
+              ) : (
+                <p className="text-xs font-medium text-amber-600">Sem seguro cadastrado</p>
+              );
+            })()}
             <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
               <div>
                 <p className="text-xs text-muted-foreground">Horímetro</p>

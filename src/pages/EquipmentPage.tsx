@@ -57,6 +57,9 @@ export default function EquipmentPage() {
 
   const obraNameById = (id?: string) => (id ? obras.find(o => o.id === id)?.name : undefined);
 
+  const fmtDate = (d?: string | null) => (d ? d.split('-').reverse().join('/') : '');
+  const insuranceFor = (id: string) => insuranceRecords.find(r => r.equipment_ids.includes(id));
+
   const filteredEquipments = equipments
     .filter(eq => (eq.ownership || 'own') === activeTab)
     .filter(eq => !search || eq.name.toLowerCase().includes(search.toLowerCase()) || eq.plate?.toLowerCase().includes(search.toLowerCase()));

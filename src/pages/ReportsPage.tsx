@@ -484,13 +484,35 @@ export default function ReportsPage() {
       </div>
 
       {/* Saved automatic reports */}
-      {savedReports.length > 0 && (
+      {(savedReports.length > 0 || isAdmin || isGestor) && (
         <div className="glass-card rounded-xl p-4">
           <div className="flex items-center gap-2 mb-3">
             <Calendar className="w-5 h-5 text-primary" />
             <h2 className="font-bold">Relatórios Automáticos Salvos</h2>
             <span className="text-xs text-muted-foreground">(gerados toda segunda-feira às 06h)</span>
           </div>
+          {(isAdmin || isGestor) && (
+            <div className="border border-border rounded-lg p-3 mb-3 bg-primary/5">
+              <div className="flex items-center gap-2 mb-2">
+                <FolderOpen className="w-4 h-4 text-primary" />
+                <Label className="text-sm font-medium">Pasta de salvamento no OneDrive</Label>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Input
+                  value={onedriveFolder}
+                  onChange={(e) => setOnedriveFolder(e.target.value)}
+                  placeholder="Ex: Empresas/CSM/Relatórios"
+                  className="flex-1"
+                />
+                <Button size="sm" onClick={saveOnedriveFolder} disabled={savingFolder || !onedriveFolder.trim()} className="gap-1.5 shrink-0">
+                  <Save className="w-4 h-4" /> {savingFolder ? 'Salvando...' : 'Salvar pasta'}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Caminho de pastas dentro do seu OneDrive (use / para subpastas). Se alguma pasta não existir, ela será criada automaticamente.
+              </p>
+            </div>
+          )}
           <div className="space-y-2">
             {savedReports.map(r => (
               <div key={r.id} className="flex items-center justify-between gap-3 border border-border rounded-lg px-3 py-2">

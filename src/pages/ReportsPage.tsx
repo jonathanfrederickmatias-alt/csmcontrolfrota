@@ -43,7 +43,7 @@ export default function ReportsPage() {
   const [workOrders, setWorkOrders] = useState<DBWorkOrder[]>([]);
   const [maintenanceHistory, setMaintenanceHistory] = useState<DBMaintenanceHistory[]>([]);
   const [loading, setLoading] = useState(true);
-  const [savedReports, setSavedReports] = useState<{ id: string; report_type: string; title: string; file_url: string | null; period_start: string; period_end: string; created_at: string; summary: Record<string, number> }[]>([]);[]>([]);
+  const [savedReports, setSavedReports] = useState<{ id: string; report_type: string; title: string; file_url: string | null; period_start: string; period_end: string; created_at: string; summary: Record<string, number> }[]>([]);
 
   useEffect(() => {
     supabase.from('generated_reports').select('id, report_type, title, file_url, period_start, period_end, created_at, summary')

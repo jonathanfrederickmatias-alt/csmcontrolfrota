@@ -12,10 +12,12 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
 } from 'recharts';
-import { BarChart2, Droplets, Clock, Wrench, Calendar, FileSpreadsheet, FileText, Filter, ClipboardList, Clipboard, Info, Calculator } from 'lucide-react';
+import { BarChart2, Droplets, Clock, Wrench, Calendar, FileSpreadsheet, FileText, Filter, ClipboardList, Clipboard, Info, Calculator, FolderOpen, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { useUserRoles } from '@/hooks/useUserRoles';
 import * as XLSX from 'xlsx';
 import { exportGeneralReportsPDF } from '@/lib/pdf-export';
 
@@ -34,6 +36,7 @@ function eqLabel(eq: DBEquipment, maxLen = 30): string {
 }
 
 export default function ReportsPage() {
+  const { isAdmin, isGestor } = useUserRoles();
   const [period, setPeriod] = useState<Period>('30d');
   const [selectedEquipment, setSelectedEquipment] = useState<string>('all');
   const [equipments, setEquipments] = useState<DBEquipment[]>([]);
@@ -44,12 +47,29 @@ export default function ReportsPage() {
   const [maintenanceHistory, setMaintenanceHistory] = useState<DBMaintenanceHistory[]>([]);
   const [loading, setLoading] = useState(true);
   const [savedReports, setSavedReports] = useState<{ id: string; report_type: string; title: string; file_url: string | null; period_start: string; period_end: string; created_at: string; summary: Record<string, number> }[]>([]);
+  const [onedriveFolder, setOnedriveFolder] = useState('');
+  const [savingFolder, setSavingFolder] = useState(false);
 
   useEffect(() => {
     supabase.from('generated_reports').select('id, report_type, title, file_url, period_start, period_end, created_at, summary')
       .order('created_at', { ascending: false }).limit(30)
       .then(({ data }) => setSavedReports((data || []) as never));
+    supabase.from('report_settings').select('value').eq('key', 'onedrive_folder').maybeSingle()
+      .then(({ data }) => setOnedriveFolder(data?.value || ''));
   }, []);
+
+  const saveOnedriveFolder = async () => {
+    setSavingFolder(true);
+    const { error } = await supabase
+      .from('report_settings')
+      .upsert({ key: 'onedrive_folder', value: onedriveFolder.trim(), updated_at: new Date().toISOString() }, { onConflict: 'key' });
+    setSavingFolder(false);
+    if (error) {
+      alert('Erro ao salvar a pasta: ' + error.message);
+    } else {
+      alert('Pasta salva! Os próximos relatórios serão salvos nela.');
+    }
+  };
 
   const openSavedReport = async (fileUrl: string | null) => {
     if (!fileUrl) return;
@@ -464,13 +484,35 @@ export default function ReportsPage() {
       </div>
 
       {/* Saved automatic reports */}
-      {savedReports.length > 0 && (
+      {(savedReports.length > 0 || isAdmin || isGestor) && (
         <div className="glass-card rounded-xl p-4">
           <div className="flex items-center gap-2 mb-3">
             <Calendar className="w-5 h-5 text-primary" />
             <h2 className="font-bold">Relatórios Automáticos Salvos</h2>
             <span className="text-xs text-muted-foreground">(gerados toda segunda-feira às 06h)</span>
           </div>
+          {(isAdmin || isGestor) && (
+            <div className="border border-border rounded-lg p-3 mb-3 bg-primary/5">
+              <div className="flex items-center gap-2 mb-2">
+                <FolderOpen className="w-4 h-4 text-primary" />
+                <Label className="text-sm font-medium">Pasta de salvamento no OneDrive</Label>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Input
+                  value={onedriveFolder}
+                  onChange={(e) => setOnedriveFolder(e.target.value)}
+                  placeholder="Ex: Empresas/CSM/Relatórios"
+                  className="flex-1"
+                />
+                <Button size="sm" onClick={saveOnedriveFolder} disabled={savingFolder || !onedriveFolder.trim()} className="gap-1.5 shrink-0">
+                  <Save className="w-4 h-4" /> {savingFolder ? 'Salvando...' : 'Salvar pasta'}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Caminho de pastas dentro do seu OneDrive (use / para subpastas). Se alguma pasta não existir, ela será criada automaticamente.
+              </p>
+            </div>
+          )}
           <div className="space-y-2">
             {savedReports.map(r => (
               <div key={r.id} className="flex items-center justify-between gap-3 border border-border rounded-lg px-3 py-2">

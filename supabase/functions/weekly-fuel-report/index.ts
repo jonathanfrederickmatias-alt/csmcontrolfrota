@@ -112,6 +112,27 @@ serve(async (req) => {
     if (signErr) throw signErr;
     const fileUrl = signed.signedUrl;
 
+    // Copy to OneDrive folder "CSMCONTROLFROTA/Relatorios Abastecimento"
+    let onedriveStatus = 'skipped';
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    const ONEDRIVE_KEY = Deno.env.get('MICROSOFT_ONEDRIVE_API_KEY');
+    if (LOVABLE_API_KEY && ONEDRIVE_KEY) {
+      const odPath = encodeURIComponent(`CSMCONTROLFROTA/Relatorios Abastecimento/${fileName}`).replace(/%2F/g, '/');
+      const odRes = await fetch(`https://connector-gateway.lovable.dev/microsoft_onedrive/v1.0/me/drive/root:/${odPath}:/content`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          'X-Connection-Api-Key': ONEDRIVE_KEY,
+          'Content-Type': 'text/html',
+        },
+        body: html,
+      });
+      const odBody = await odRes.text();
+      onedriveStatus = odRes.ok ? 'ok' : `error ${odRes.status}`;
+      if (!odRes.ok) console.error(`OneDrive upload failed [${odRes.status}]: ${odBody}`);
+    }
+    console.log('OneDrive:', onedriveStatus);
+
     // Register in generated_reports (one row per tenant that had records, or default tenant)
     const tenantIds = [...new Set(records.map((r) => r.tenant_id).filter(Boolean))];
     if (tenantIds.length === 0) {

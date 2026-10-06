@@ -46,7 +46,7 @@ export default function ReportsPage() {
   const [savedReports, setSavedReports] = useState<{ id: string; report_type: string; title: string; file_url: string | null; period_start: string; period_end: string; created_at: string; summary: Record<string, number> }[]>([]);
 
   useEffect(() => {
-    supabase.from('generated_reports').select('id, title, file_url, period_start, period_end, created_at, summary')
+    supabase.from('generated_reports').select('id, report_type, title, file_url, period_start, period_end, created_at, summary')
       .order('created_at', { ascending: false }).limit(30)
       .then(({ data }) => setSavedReports((data || []) as never));
   }, []);

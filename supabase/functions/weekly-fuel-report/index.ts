@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { PDFDocument, StandardFonts, rgb } from "npm:pdf-lib@1.17.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -99,11 +100,61 @@ serve(async (req) => {
   <p style="color:#94a3b8;font-size:11px;margin-top:24px;">CSMCONTROLFROTA — relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</p>
 </body></html>`;
 
-    // Save HTML report to storage
-    const fileName = `abastecimentos-${startStr}_a_${endStr}.html`;
+    // Build PDF (A4 landscape)
+    const pdf = await PDFDocument.create();
+    const font = await pdf.embedFont(StandardFonts.Helvetica);
+    const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
+    const W = 842, H = 595, M = 36;
+    const safe = (s: any) => String(s ?? '—').replace(/[^\x20-\x7E\u00A0-\u00FF—–]/g, '');
+    const fit = (s: string, w: number) => {
+      let t = safe(s);
+      while (t.length > 1 && font.widthOfTextAtSize(t, 9) > w) t = t.slice(0, -1);
+      return t;
+    };
+    let page = pdf.addPage([W, H]);
+    let y = H - M;
+    const newPage = () => { page = pdf.addPage([W, H]); y = H - M; };
+    const text = (s: string, x: number, sz = 9, f = font, color = rgb(0.06, 0.09, 0.16)) =>
+      page.drawText(safe(s), { x, y, size: sz, font: f, color });
+    text('Relatório Semanal de Abastecimentos', M, 16, bold); y -= 18;
+    text(`Período: ${periodLabel} — CSMCONTROLFROTA`, M, 10, font, rgb(0.4, 0.45, 0.53)); y -= 22;
+    text(`Abastecimentos: ${records.length}    Total de litros: ${totalLiters.toLocaleString('pt-BR')} L    Equipamentos: ${byTarget.size}`, M, 11, bold); y -= 24;
+    const table = (title: string, cols: { h: string; w: number; right?: boolean }[], data: string[][]) => {
+      if (y < M + 60) newPage();
+      text(title, M, 12, bold); y -= 16;
+      const header = () => {
+        page.drawRectangle({ x: M, y: y - 4, width: W - 2 * M, height: 14, color: rgb(0.945, 0.96, 0.976) });
+        let x = M + 3;
+        for (const c of cols) { text(c.h, x, 9, bold); x += c.w; }
+        y -= 15;
+      };
+      header();
+      if (data.length === 0) { text('Nenhum registro no período', M + 3); y -= 13; }
+      for (const row of data) {
+        if (y < M + 14) { newPage(); header(); }
+        let x = M + 3;
+        row.forEach((cell, i) => {
+          const c = cols[i];
+          const t = fit(cell, c.w - 6);
+          const tx = c.right ? x + c.w - 6 - font.widthOfTextAtSize(t, 9) : x;
+          page.drawText(t, { x: tx, y, size: 9, font });
+          x += c.w;
+        });
+        y -= 13;
+      }
+      y -= 14;
+    };
+    table('Ranking de consumo', [{ h: '#', w: 40 }, { h: 'Equipamento', w: 470 }, { h: 'Litros', w: 120, right: true }, { h: 'Abastecimentos', w: 100 }],
+      ranking.slice(0, 15).map((r, i) => [`${i + 1}º`, r.name, `${r.liters.toLocaleString('pt-BR')} L`, String(r.count)]));
+    table('Todos os registros', [{ h: 'Data', w: 70 }, { h: 'Equipamento', w: 220 }, { h: 'Posto', w: 140 }, { h: 'Litros', w: 70, right: true }, { h: 'Combustível', w: 80 }, { h: 'Horím./Km', w: 70 }, { h: 'Operador', w: 120 }],
+      records.map((r) => [fmtDate(new Date(r.date + 'T12:00:00')), r.target ? `${r.target.name}${r.target.cost_center ? ` (${r.target.cost_center})` : ''}` : '—', r.combo?.name || '—', `${Number(r.liters).toLocaleString('pt-BR')} L`, r.fuel_type || '—', String(r.hour_meter ?? '—'), r.operator_name || '—']));
+    const pdfBytes = await pdf.save();
+
+    // Save PDF report to storage
+    const fileName = `abastecimentos-${startStr}_a_${endStr}.pdf`;
     const { error: upErr } = await supabase.storage
       .from('reports')
-      .upload(fileName, new Blob([html], { type: 'text/html' }), { contentType: 'text/html', upsert: true });
+      .upload(fileName, new Blob([pdfBytes], { type: 'application/pdf' }), { contentType: 'application/pdf', upsert: true });
     if (upErr) throw upErr;
     // Signed URL valid for 7 days (used in the email; the app regenerates on demand)
     const { data: signed, error: signErr } = await supabase.storage
@@ -163,9 +214,9 @@ serve(async (req) => {
           headers: {
             Authorization: `Bearer ${LOVABLE_API_KEY}`,
             'X-Connection-Api-Key': ONEDRIVE_KEY,
-            'Content-Type': 'text/html',
+            'Content-Type': 'application/pdf',
           },
-          body: html,
+          body: pdfBytes,
         });
         const odBody = await odRes.text();
         onedriveStatus = odRes.ok ? `ok (${odFolder})` : `error ${odRes.status}`;

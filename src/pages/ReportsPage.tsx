@@ -43,7 +43,7 @@ export default function ReportsPage() {
   const [workOrders, setWorkOrders] = useState<DBWorkOrder[]>([]);
   const [maintenanceHistory, setMaintenanceHistory] = useState<DBMaintenanceHistory[]>([]);
   const [loading, setLoading] = useState(true);
-  const [savedReports, setSavedReports] = useState<{ id: string; title: string; file_url: string | null; period_start: string; period_end: string; created_at: string; summary: { total_records?: number; total_liters?: number } }[]>([]);
+  const [savedReports, setSavedReports] = useState<{ id: string; report_type: string; title: string; file_url: string | null; period_start: string; period_end: string; created_at: string; summary: Record<string, number> }[]>([]);
 
   useEffect(() => {
     supabase.from('generated_reports').select('id, title, file_url, period_start, period_end, created_at, summary')
@@ -477,7 +477,9 @@ export default function ReportsPage() {
                 <div className="min-w-0">
                   <p className="font-medium text-sm truncate">{r.title}</p>
                   <p className="text-xs text-muted-foreground">
-                    {r.summary?.total_records ?? 0} registros · {(r.summary?.total_liters ?? 0).toLocaleString('pt-BR')} L
+                    {r.report_type === 'maintenance_weekly'
+                      ? `${r.summary?.work_orders_done ?? 0} OS concluídas · ${r.summary?.services_done ?? 0} serviços · ${(r.summary?.total_cost ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`
+                      : `${r.summary?.total_records ?? 0} registros · ${(r.summary?.total_liters ?? 0).toLocaleString('pt-BR')} L`}
                   </p>
                 </div>
                 <Button size="sm" variant="outline" onClick={() => openSavedReport(r.file_url)} className="gap-1.5 shrink-0">

@@ -112,24 +112,65 @@ serve(async (req) => {
     if (signErr) throw signErr;
     const fileUrl = signed.signedUrl;
 
-    // Copy to OneDrive folder "CSMCONTROLFROTA/Relatorios Abastecimento"
+    // Copy to OneDrive — folder is configurable via report_settings('onedrive_folder')
     let onedriveStatus = 'skipped';
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     const ONEDRIVE_KEY = Deno.env.get('MICROSOFT_ONEDRIVE_API_KEY');
     if (LOVABLE_API_KEY && ONEDRIVE_KEY) {
-      const odPath = encodeURIComponent(`CSMCONTROLFROTA/Relatorios Abastecimento/${fileName}`).replace(/%2F/g, '/');
-      const odRes = await fetch(`https://connector-gateway.lovable.dev/microsoft_onedrive/v1.0/me/drive/root:/${odPath}:/content`, {
-        method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          'X-Connection-Api-Key': ONEDRIVE_KEY,
-          'Content-Type': 'text/html',
-        },
-        body: html,
-      });
-      const odBody = await odRes.text();
-      onedriveStatus = odRes.ok ? 'ok' : `error ${odRes.status}`;
-      if (!odRes.ok) console.error(`OneDrive upload failed [${odRes.status}]: ${odBody}`);
+      let odFolder = 'CSMCONTROLFROTA/Relatorios Abastecimento';
+      const { data: setting } = await supabase
+        .from('report_settings')
+        .select('value')
+        .eq('key', 'onedrive_folder')
+        .maybeSingle();
+      if (setting?.value?.trim()) odFolder = setting.value.trim().replace(/^\/+|\/+$/g, '');
+
+      const GATEWAY = 'https://connector-gateway.lovable.dev/microsoft_onedrive/v1.0';
+      const encPath = (p: string) => p.split('/').filter(Boolean).map(encodeURIComponent).join('/');
+
+      // Ensure the folder chain exists (create any missing folder along the way)
+      const segments = odFolder.split('/').filter(Boolean);
+      for (let i = 1; i <= segments.length; i++) {
+        const partial = segments.slice(0, i).join('/');
+        const check = await fetch(`${GATEWAY}/me/drive/root:/${encPath(partial)}`, {
+          headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, 'X-Connection-Api-Key': ONEDRIVE_KEY },
+        });
+        if (check.ok) continue;
+        const parentPath = segments.slice(0, i - 1).join('/');
+        const createUrl = parentPath
+          ? `${GATEWAY}/me/drive/root:/${encPath(parentPath)}:/children`
+          : `${GATEWAY}/me/drive/root/children`;
+        const createRes = await fetch(createUrl, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            'X-Connection-Api-Key': ONEDRIVE_KEY,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ name: segments[i - 1], folder: {}, '@microsoft.graph.conflictBehavior': 'fail' }),
+        });
+        if (!createRes.ok) {
+          const createBody = await createRes.text();
+          console.error(`OneDrive folder create failed [${createRes.status}]: ${createBody}`);
+          onedriveStatus = `error ${createRes.status}`;
+          break;
+        }
+      }
+
+      if (onedriveStatus !== `error`) {
+        const odRes = await fetch(`${GATEWAY}/me/drive/root:/${encPath(`${odFolder}/${fileName}`)}:/content`, {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            'X-Connection-Api-Key': ONEDRIVE_KEY,
+            'Content-Type': 'text/html',
+          },
+          body: html,
+        });
+        const odBody = await odRes.text();
+        onedriveStatus = odRes.ok ? `ok (${odFolder})` : `error ${odRes.status}`;
+        if (!odRes.ok) console.error(`OneDrive upload failed [${odRes.status}]: ${odBody}`);
+      }
     }
     console.log('OneDrive:', onedriveStatus);
 

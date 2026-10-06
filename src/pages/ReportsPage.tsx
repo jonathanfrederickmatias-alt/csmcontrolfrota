@@ -36,6 +36,7 @@ function eqLabel(eq: DBEquipment, maxLen = 30): string {
 }
 
 export default function ReportsPage() {
+  const { isAdmin, isGestor } = useUserRoles();
   const [period, setPeriod] = useState<Period>('30d');
   const [selectedEquipment, setSelectedEquipment] = useState<string>('all');
   const [equipments, setEquipments] = useState<DBEquipment[]>([]);
@@ -46,12 +47,29 @@ export default function ReportsPage() {
   const [maintenanceHistory, setMaintenanceHistory] = useState<DBMaintenanceHistory[]>([]);
   const [loading, setLoading] = useState(true);
   const [savedReports, setSavedReports] = useState<{ id: string; report_type: string; title: string; file_url: string | null; period_start: string; period_end: string; created_at: string; summary: Record<string, number> }[]>([]);
+  const [onedriveFolder, setOnedriveFolder] = useState('');
+  const [savingFolder, setSavingFolder] = useState(false);
 
   useEffect(() => {
     supabase.from('generated_reports').select('id, report_type, title, file_url, period_start, period_end, created_at, summary')
       .order('created_at', { ascending: false }).limit(30)
       .then(({ data }) => setSavedReports((data || []) as never));
+    supabase.from('report_settings').select('value').eq('key', 'onedrive_folder').maybeSingle()
+      .then(({ data }) => setOnedriveFolder(data?.value || ''));
   }, []);
+
+  const saveOnedriveFolder = async () => {
+    setSavingFolder(true);
+    const { error } = await supabase
+      .from('report_settings')
+      .upsert({ key: 'onedrive_folder', value: onedriveFolder.trim(), updated_at: new Date().toISOString() }, { onConflict: 'key' });
+    setSavingFolder(false);
+    if (error) {
+      alert('Erro ao salvar a pasta: ' + error.message);
+    } else {
+      alert('Pasta salva! Os próximos relatórios serão salvos nela.');
+    }
+  };
 
   const openSavedReport = async (fileUrl: string | null) => {
     if (!fileUrl) return;

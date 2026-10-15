@@ -17,6 +17,7 @@ import MultiPhotoUpload from "@/components/MultiPhotoUpload";
 import * as XLSX from 'xlsx';
 import { exportMaintenancePlansPDF, exportMaintenanceRequestsPDF, exportMaintenanceHistoryPDF, exportWorkOrdersPDF, PlanHistoryRow } from '@/lib/pdf-export';
 import { calculateMaintenanceStatus } from '@/lib/maintenance-utils';
+import { loadEquipments } from '@/lib/offline';
 import { useUserRoles } from '@/hooks/useUserRoles';
 
 function eqLabel(eq: DBEquipment): string {

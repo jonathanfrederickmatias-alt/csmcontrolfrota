@@ -18,11 +18,19 @@ export function useUserRoles() {
       return;
     }
 
+    const cacheKey = `csm-roles-${user.id}`;
+    let cached: AppRole[] = [];
+    try { cached = JSON.parse(localStorage.getItem(cacheKey) || '[]'); } catch { /* ignore */ }
+    if (cached.length > 0) { setRoles(cached); setLoading(false); }
+    const save = (r: AppRole[]) => { try { localStorage.setItem(cacheKey, JSON.stringify(r)); } catch { /* ignore */ } };
+
     const fetchRoles = async () => {
+      if (!navigator.onLine && cached.length > 0) return;
       const { data, error } = await supabase.rpc('get_my_roles');
 
       if (!error && data && data.length > 0) {
         setRoles(data as AppRole[]);
+        save(data as AppRole[]);
         setLoading(false);
         return;
       }
@@ -33,9 +41,11 @@ export function useUserRoles() {
         .eq('user_id', user.id);
 
       if (!directError && directRoles) {
-        setRoles(directRoles.map((item) => item.role as AppRole));
+        const r = directRoles.map((item) => item.role as AppRole);
+        setRoles(r.length ? r : cached);
+        if (r.length) save(r);
       } else {
-        setRoles([]);
+        setRoles(cached);
       }
 
       setLoading(false);

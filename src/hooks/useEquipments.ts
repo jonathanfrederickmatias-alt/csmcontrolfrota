@@ -2,14 +2,15 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { DBEquipment } from '@/lib/supabase-types';
 import { getMyTenantId } from '@/lib/tenant';
+import { loadEquipments } from '@/lib/offline';
 
 export function useEquipments() {
   const [equipments, setEquipments] = useState<DBEquipment[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetch = useCallback(async () => {
-    const { data } = await supabase.from('equipments').select('*').order('created_at', { ascending: true });
-    if (data) setEquipments(data as DBEquipment[]);
+    const data = await loadEquipments<DBEquipment>().catch(() => [] as DBEquipment[]);
+    setEquipments([...data].sort((a, b) => (a.created_at || '').localeCompare(b.created_at || '')));
     setLoading(false);
   }, []);
 

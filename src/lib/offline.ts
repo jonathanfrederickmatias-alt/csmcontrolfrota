@@ -274,4 +274,10 @@ export function startAutoSync() {
   });
   setInterval(() => { void syncQueue(); }, 60_000);
   void syncQueue();
+  // Guarda a lista de equipamentos no aparelho assim que houver sessão + internet
+  const warm = () => { if (navigator.onLine) void loadEquipments().catch(() => {}); };
+  supabase.auth.onAuthStateChange((event) => {
+    if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') setTimeout(warm, 0);
+  });
+  window.addEventListener('online', warm);
 }

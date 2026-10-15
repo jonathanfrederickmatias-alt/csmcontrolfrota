@@ -776,20 +776,36 @@ export default function MaintenancePage() {
     if (!newOsForm.equipmentId || !newOsForm.description) return;
     setNewOsSaving(true);
     const { getMyTenantId } = await import('@/lib/tenant');
-    const tenant_id = await getMyTenantId();
-    // Create maintenance request first (required by work_orders FK)
-    const { data: reqData, error: reqErr } = await supabase.from('maintenance_requests').insert([{
-      tenant_id,
+    let tenant_id: string | undefined;
+    try { tenant_id = await getMyTenantId(); } catch { tenant_id = undefined; }
+    const reqPayload: Record<string, unknown> = {
+      ...(tenant_id ? { tenant_id } : {}),
       equipment_id: newOsForm.equipmentId,
       description: newOsForm.description,
       priority: newOsForm.priority,
       operator_name: newOsForm.operator_name || 'Sistema',
       hour_meter: newOsForm.hour_meter ? parseFloat(newOsForm.hour_meter) : null,
       status: 'open',
-    }]).select().single();
+    };
+
+    const queueOffline = async () => {
+      const { enqueue } = await import('@/lib/offline');
+      await enqueue({ kind: 'insert', table: 'maintenance_requests', payload: reqPayload }, `OS: ${newOsForm.description.slice(0, 40)}`);
+      toast({ title: 'Sem internet — OS salva no aparelho', description: 'Será enviada automaticamente quando a conexão voltar.' });
+      setNewOsOpen(false);
+      setNewOsForm({ equipmentId: '', description: '', priority: 'medium', operator_name: '', hour_meter: '' });
+      setNewOsSaving(false);
+    };
+
+    if (!navigator.onLine) { await queueOffline(); return; }
+
+    // Create maintenance request first (required by work_orders FK)
+    const { data: reqData, error: reqErr } = await supabase.from('maintenance_requests').insert([reqPayload as any]).select().single();
 
     if (reqErr || !reqData) {
-      toast({ title: 'Erro ao criar pedido vinculado', variant: 'destructive' });
+      const msg = String(reqErr?.message || '');
+      if (!navigator.onLine || /fetch|network|Failed/i.test(msg)) { await queueOffline(); return; }
+      toast({ title: 'Erro ao criar pedido vinculado', description: msg, variant: 'destructive' });
       setNewOsSaving(false);
       return;
     }

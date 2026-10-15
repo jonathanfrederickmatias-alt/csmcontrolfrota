@@ -158,15 +158,15 @@ export default function MaintenancePage() {
   }, [isAbastecedor]);
 
   const fetchAll = async () => {
-    const [eqRes, plRes, reqRes, histRes, osRes, obrasRes] = await Promise.all([
-      supabase.from('equipments').select('*').order('name'),
+    const [eqData, plRes, reqRes, histRes, osRes, obrasRes] = await Promise.all([
+      loadEquipments<DBEquipment>().catch(() => [] as DBEquipment[]),
       supabase.from('maintenance_plans').select('*').order('status'),
       supabase.from('maintenance_requests').select('*').order('created_at', { ascending: false }),
       supabase.from('maintenance_history').select('*').order('executed_at', { ascending: false }).limit(200),
       supabase.from('work_orders').select('*').order('created_at', { ascending: false }),
       supabase.from('obras').select('id,name').order('name'),
     ]);
-    setEquipments((eqRes.data || []) as DBEquipment[]);
+    setEquipments((eqData || []) as DBEquipment[]);
     setPlans((plRes.data || []) as DBMaintenancePlan[]);
     setRequests((reqRes.data || []) as unknown as DBMaintenanceRequest[]);
     setHistory((histRes.data || []) as DBMaintenanceHistory[]);

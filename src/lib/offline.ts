@@ -247,11 +247,17 @@ export function getCachedEquipments<T>(): T[] {
 /** Loads equipments from the backend, falling back to the local cache when offline. */
 export async function loadEquipments<T>(): Promise<T[]> {
   if (navigator.onLine) {
-    const { data, error } = await supabase.from('equipments').select('*').order('name');
-    if (!error && data) {
-      cacheEquipments(data);
-      return data as T[];
-    }
+    try {
+      const res = await Promise.race([
+        supabase.from('equipments').select('*').order('name'),
+        new Promise<null>(r => setTimeout(() => r(null), 8000)),
+      ]);
+      const data = res && !res.error ? res.data : null;
+      if (data && data.length) {
+        cacheEquipments(data);
+        return data as T[];
+      }
+    } catch { /* sem rede — usa cache */ }
   }
   return getCachedEquipments<T>();
 }
@@ -268,4 +274,10 @@ export function startAutoSync() {
   });
   setInterval(() => { void syncQueue(); }, 60_000);
   void syncQueue();
+  // Guarda a lista de equipamentos no aparelho assim que houver sessão + internet
+  const warm = () => { if (navigator.onLine) void loadEquipments().catch(() => {}); };
+  supabase.auth.onAuthStateChange((event) => {
+    if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') setTimeout(warm, 0);
+  });
+  window.addEventListener('online', warm);
 }

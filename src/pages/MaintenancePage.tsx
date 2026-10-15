@@ -17,7 +17,7 @@ import MultiPhotoUpload from "@/components/MultiPhotoUpload";
 import * as XLSX from 'xlsx';
 import { exportMaintenancePlansPDF, exportMaintenanceRequestsPDF, exportMaintenanceHistoryPDF, exportWorkOrdersPDF, PlanHistoryRow } from '@/lib/pdf-export';
 import { calculateMaintenanceStatus } from '@/lib/maintenance-utils';
-import { loadEquipments } from '@/lib/offline';
+import { loadEquipments, getCachedEquipments } from '@/lib/offline';
 import { useUserRoles } from '@/hooks/useUserRoles';
 
 function eqLabel(eq: DBEquipment): string {
@@ -158,15 +158,21 @@ export default function MaintenancePage() {
   }, [isAbastecedor]);
 
   const fetchAll = async () => {
-    const [eqData, plRes, reqRes, histRes, osRes, obrasRes] = await Promise.all([
-      loadEquipments<DBEquipment>().catch(() => [] as DBEquipment[]),
-      supabase.from('maintenance_plans').select('*').order('status'),
-      supabase.from('maintenance_requests').select('*').order('created_at', { ascending: false }),
-      supabase.from('maintenance_history').select('*').order('executed_at', { ascending: false }).limit(200),
-      supabase.from('work_orders').select('*').order('created_at', { ascending: false }),
-      supabase.from('obras').select('id,name').order('name'),
+    // Mostra imediatamente os equipamentos guardados no aparelho (funciona sem internet)
+    const cachedEq = getCachedEquipments<DBEquipment>();
+    if (cachedEq.length) setEquipments(cachedEq);
+    loadEquipments<DBEquipment>()
+      .then(list => { if (list.length) setEquipments(list); })
+      .catch(() => {});
+    if (!navigator.onLine) { setLoading(false); return; }
+    const safe = (p: any) => Promise.resolve(p).catch(() => ({ data: null }));
+    const [plRes, reqRes, histRes, osRes, obrasRes] = await Promise.all([
+      safe(supabase.from('maintenance_plans').select('*').order('status')),
+      safe(supabase.from('maintenance_requests').select('*').order('created_at', { ascending: false })),
+      safe(supabase.from('maintenance_history').select('*').order('executed_at', { ascending: false }).limit(200)),
+      safe(supabase.from('work_orders').select('*').order('created_at', { ascending: false })),
+      safe(supabase.from('obras').select('id,name').order('name')),
     ]);
-    setEquipments((eqData || []) as DBEquipment[]);
     setPlans((plRes.data || []) as DBMaintenancePlan[]);
     setRequests((reqRes.data || []) as unknown as DBMaintenanceRequest[]);
     setHistory((histRes.data || []) as DBMaintenanceHistory[]);

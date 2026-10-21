@@ -74,11 +74,16 @@ Deno.serve(async (req) => {
       if (createError) {
         console.error('createUser error:', createError);
         const msg = (createError.message || '').toLowerCase();
+        const code = String((createError as any).code || '').toLowerCase();
         let userMessage = 'Não foi possível criar o usuário.';
-        if (msg.includes('duplicate') || msg.includes('already') || msg.includes('registered')) {
+        if (msg.includes('duplicate') || msg.includes('already') || msg.includes('registered') || code === 'email_exists') {
           userMessage = 'Já existe um usuário com este e-mail.';
+        } else if (code === 'weak_password' || msg.includes('weak') || msg.includes('pwned') || msg.includes('known to be') || msg.includes('leaked')) {
+          userMessage = 'Senha muito comum ou já vazada na internet. Use uma senha mais forte, misturando letras, números e símbolos (ex.: Csm@Frota2026).';
+        } else if (msg.includes('at least') || msg.includes('6 characters') || msg.includes('short')) {
+          userMessage = 'Senha muito curta (mínimo 6 caracteres).';
         } else if (msg.includes('password')) {
-          userMessage = 'Senha inválida (mínimo 6 caracteres).';
+          userMessage = 'Senha não aceita. Use uma senha mais forte, misturando letras, números e símbolos.';
         } else if (msg.includes('email')) {
           userMessage = 'E-mail inválido.';
         }

@@ -78,6 +78,20 @@ export default function UsersPage() {
 
   useEffect(() => { fetchUsers(); }, []);
 
+  // On non-2xx responses supabase-js returns data=null and puts the body in error.context
+  const extractError = async (error: any, data: any, fallback: string) => {
+    if (data?.error) return data.error as string;
+    try {
+      const ctx = error?.context;
+      if (ctx && typeof ctx.json === 'function') {
+        const body = await ctx.clone().json();
+        if (body?.error) return body.error as string;
+      }
+    } catch { /* ignore */ }
+    if (!navigator.onLine) return 'Sem internet. Conecte-se e tente novamente.';
+    return fallback;
+  };
+
   const handleCreateUser = async () => {
     if (!email || !password || !displayName) {
       toast.error('Preencha todos os campos');
@@ -94,7 +108,7 @@ export default function UsersPage() {
     });
 
     if (error || data?.error) {
-      toast.error(data?.error || 'Erro ao criar usuário');
+      toast.error(await extractError(error, data, 'Erro ao criar usuário'));
     } else {
       toast.success('Usuário criado com sucesso!');
       setDialogOpen(false);
@@ -136,7 +150,7 @@ export default function UsersPage() {
     const { data, error } = await supabase.functions.invoke('manage-users', { body });
 
     if (error || data?.error) {
-      toast.error(data?.error || 'Erro ao atualizar usuário');
+      toast.error(await extractError(error, data, 'Erro ao atualizar usuário'));
     } else {
       toast.success('Usuário atualizado com sucesso!');
       setEditDialogOpen(false);
@@ -151,7 +165,7 @@ export default function UsersPage() {
     });
 
     if (error || data?.error) {
-      toast.error(data?.error || 'Erro ao excluir usuário');
+      toast.error(await extractError(error, data, 'Erro ao excluir usuário'));
     } else {
       toast.success(`Usuário ${name} excluído com sucesso`);
       fetchUsers();

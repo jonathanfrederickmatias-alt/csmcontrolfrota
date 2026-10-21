@@ -78,6 +78,20 @@ export default function UsersPage() {
 
   useEffect(() => { fetchUsers(); }, []);
 
+  // On non-2xx responses supabase-js returns data=null and puts the body in error.context
+  const extractError = async (error: any, data: any, fallback: string) => {
+    if (data?.error) return data.error as string;
+    try {
+      const ctx = error?.context;
+      if (ctx && typeof ctx.json === 'function') {
+        const body = await ctx.clone().json();
+        if (body?.error) return body.error as string;
+      }
+    } catch { /* ignore */ }
+    if (!navigator.onLine) return 'Sem internet. Conecte-se e tente novamente.';
+    return fallback;
+  };
+
   const handleCreateUser = async () => {
     if (!email || !password || !displayName) {
       toast.error('Preencha todos os campos');

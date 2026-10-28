@@ -29,6 +29,13 @@
       "when": 1791319775338,
       "tag": "0003_create_report_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793201108136,
+      "tag": "0004_fuel_hour_meter_confirmed",
+      "breakpoints": true
     }
   ]
 }

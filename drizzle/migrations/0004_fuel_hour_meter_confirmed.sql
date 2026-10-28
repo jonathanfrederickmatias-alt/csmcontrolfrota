@@ -1,0 +1,2 @@
+ALTER TABLE public.fuel_records ADD COLUMN IF NOT EXISTS hour_meter_confirmed boolean NOT NULL DEFAULT false;
+COMMENT ON COLUMN public.fuel_records.hour_meter_confirmed IS 'True when a manager confirmed a suspicious hour meter/odometer jump is correct';

@@ -2225,7 +2225,7 @@ export default function MaintenancePage() {
                   periodLabel = `Até ${new Date(pdfHistoryTo + 'T12:00:00').toLocaleDateString('pt-BR')}`;
                 }
 
-                await exportMaintenancePlansPDF(rows, filterName, undefined, historyByEquipment, periodLabel || undefined);
+                await exportMaintenancePlansPDF(rows, filterName, undefined, pdfIncludeHistory ? historyByEquipment : undefined, pdfIncludeHistory ? (periodLabel || undefined) : undefined);
                 setPdfHistoryDialog(false);
                 setPdfHistoryFrom('');
                 setPdfHistoryTo('');

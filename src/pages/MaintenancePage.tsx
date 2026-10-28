@@ -61,6 +61,13 @@ export default function MaintenancePage() {
   const [obraFilter, setObraFilter] = useState('all');
   const [history, setHistory] = useState<DBMaintenanceHistory[]>([]);
   const [workOrders, setWorkOrders] = useState<DBWorkOrder[]>([]);
+  // Links a history entry to its OS: by "OS #n" in the text, or by the trigger-created
+  // entry (same equipment, executed_at == OS completed_at)
+  const findLinkedOS = (h: { equipment_id?: string | null; executed_at: string }, osMatch?: RegExpMatchArray | null) => {
+    if (osMatch) return workOrders.find(o => o.os_number === Number(osMatch[1]));
+    const t = new Date(h.executed_at).getTime();
+    return workOrders.find(o => o.equipment_id === h.equipment_id && o.completed_at && Math.abs(new Date(o.completed_at).getTime() - t) < 5000);
+  };
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editPlan, setEditPlan] = useState<DBMaintenancePlan | null>(null);
@@ -559,7 +566,7 @@ export default function MaintenancePage() {
         const eq = equipments.find(e => e.id === h.equipment_id);
         const plan = plans.find(p => p.id === h.plan_id);
         const osMatch = h.description?.match(/OS #(\d+)/);
-        const linkedOS = osMatch ? workOrders.find(o => o.os_number === Number(osMatch[1])) : undefined;
+        const linkedOS = findLinkedOS(h, osMatch);
         const histStart = (h.photos_start?.length ? h.photos_start : (h.photo_url ? [h.photo_url] : [])) as string[];
         const histEnd = (h.photos_end?.length ? h.photos_end : []) as string[];
         const osStart = (linkedOS?.photos_start?.length ? linkedOS.photos_start : (linkedOS?.photo_start_url ? [linkedOS.photo_start_url] : [])) as string[];
@@ -695,7 +702,7 @@ export default function MaintenancePage() {
   const openEditHistory = (h: DBMaintenanceHistory) => {
     setEditHistory(h);
     const osMatch = h.description?.match(/OS #(\d+)/);
-    const linkedOS = osMatch ? workOrders.find(o => o.os_number === Number(osMatch[1])) : undefined;
+    const linkedOS = findLinkedOS(h, osMatch);
     setHistEditLinkedOS(linkedOS || null);
     const ps = (linkedOS?.photos_start && linkedOS.photos_start.length ? linkedOS.photos_start : (linkedOS?.photo_start_url ? [linkedOS.photo_start_url] : [])) as string[];
     const pe = (linkedOS?.photos_end && linkedOS.photos_end.length ? linkedOS.photos_end : (linkedOS?.photo_end_url ? [linkedOS.photo_end_url] : [])) as string[];
@@ -1438,9 +1445,9 @@ export default function MaintenancePage() {
                   const eq = equipments.find(e => e.id === h.equipment_id);
                   const plan = plans.find(p => p.id === h.plan_id);
                   const osMatch = h.description.match(/^OS #(\d+)/);
-                  const linkedOS = osMatch ? workOrders.find(o => o.os_number === Number(osMatch[1])) : undefined;
-                  const origin = osMatch ? `OS #${osMatch[1]}` : (plan ? 'Plano Preventivo' : 'Registro Manual');
-                  const originBg = osMatch ? 'bg-primary/15 text-primary' : (plan ? 'bg-warning/15 text-warning' : 'bg-secondary text-muted-foreground');
+                  const linkedOS = findLinkedOS(h, osMatch);
+                  const origin = linkedOS ? `OS #${linkedOS.os_number}` : (plan ? 'Plano Preventivo' : 'Registro Manual');
+                  const originBg = linkedOS ? 'bg-primary/15 text-primary' : (plan ? 'bg-warning/15 text-warning' : 'bg-secondary text-muted-foreground');
                   const sugLabor = Number(linkedOS?.labor_cost ?? h.labor_cost ?? 0);
                   const sugParts = Number(linkedOS?.parts_cost ?? h.parts_cost ?? 0);
                   return (
@@ -1455,6 +1462,13 @@ export default function MaintenancePage() {
                           <p className="font-semibold text-sm">{h.description}</p>
                           <p className="text-xs text-muted-foreground mt-0.5"><strong>{eq ? eqLabel(eq) : '—'}</strong></p>
                           {h.operator_name && <p className="text-xs text-muted-foreground">👤 Mecânico: {h.operator_name}</p>}
+                          {linkedOS && (linkedOS.cause_identified || linkedOS.description) && (
+                            <div className="mt-2 rounded-md border border-destructive/20 bg-destructive/5 px-2 py-1.5">
+                              <p className="text-[10px] font-bold text-destructive uppercase tracking-wide">Problema da OS</p>
+                              <p className="text-xs text-foreground whitespace-pre-line">{linkedOS.cause_identified || linkedOS.description}</p>
+                            </div>
+                          )}
+                          {linkedOS?.part_code && <p className="text-xs text-muted-foreground mt-1">🔧 Peças: <span className="font-mono">{linkedOS.part_code}</span></p>}
                           {(sugLabor > 0 || sugParts > 0) && (
                             <p className="text-xs text-muted-foreground mt-1">
                               Sugerido: MO {sugLabor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} · Peças {sugParts.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
@@ -1520,7 +1534,7 @@ export default function MaintenancePage() {
                   const eq = equipments.find(e => e.id === h.equipment_id);
                   const plan = plans.find(p => p.id === h.plan_id);
                   const osMatch = h.description.match(/^OS #(\d+)/);
-                  const linkedOS = osMatch ? workOrders.find(o => o.os_number === Number(osMatch[1])) : undefined;
+                  const linkedOS = findLinkedOS(h, osMatch);
                   return {
                     Data: new Date(h.executed_at).toLocaleDateString('pt-BR'),
                     Equipamento: eq?.name || '—',
@@ -1569,7 +1583,7 @@ export default function MaintenancePage() {
               <p className="text-2xl font-black">
                 {filteredCompleted.reduce((acc, h) => {
                   const osMatch = h.description.match(/^OS #(\d+)/);
-                  const linkedOS = osMatch ? workOrders.find(o => o.os_number === Number(osMatch[1])) : undefined;
+                  const linkedOS = findLinkedOS(h, osMatch);
                   const labor = linkedOS?.labor_cost ?? h.labor_cost ?? 0;
                   const parts = linkedOS?.parts_cost ?? h.parts_cost ?? 0;
                   return acc + Number(labor) + Number(parts);
@@ -1589,9 +1603,9 @@ export default function MaintenancePage() {
                 const eq = equipments.find(e => e.id === h.equipment_id);
                 const plan = plans.find(p => p.id === h.plan_id);
                 const osMatch = h.description.match(/^OS #(\d+)/);
-                const linkedOS = osMatch ? workOrders.find(o => o.os_number === Number(osMatch[1])) : undefined;
-                const origin = osMatch ? `OS #${osMatch[1]}` : (plan ? 'Plano Preventivo' : 'Registro Manual');
-                const originBg = osMatch ? 'bg-primary/15 text-primary' : (plan ? 'bg-warning/15 text-warning' : 'bg-secondary text-muted-foreground');
+                const linkedOS = findLinkedOS(h, osMatch);
+                const origin = linkedOS ? `OS #${linkedOS.os_number}` : (plan ? 'Plano Preventivo' : 'Registro Manual');
+                const originBg = linkedOS ? 'bg-primary/15 text-primary' : (plan ? 'bg-warning/15 text-warning' : 'bg-secondary text-muted-foreground');
                 const labor = Number(linkedOS?.labor_cost ?? h.labor_cost ?? 0);
                 const parts = Number(linkedOS?.parts_cost ?? h.parts_cost ?? 0);
                 const total = labor + parts;

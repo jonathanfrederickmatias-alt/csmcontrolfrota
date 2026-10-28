@@ -113,6 +113,7 @@ export default function MaintenancePage() {
   const [pdfHistoryDialog, setPdfHistoryDialog] = useState(false);
   const [pdfHistoryFrom, setPdfHistoryFrom] = useState('');
   const [pdfHistoryTo, setPdfHistoryTo] = useState('');
+  const [pdfIncludeHistory, setPdfIncludeHistory] = useState(true);
   const [pdfExporting, setPdfExporting] = useState(false);
   // PDF período (Realizados / Histórico)
   const [pdfPeriodTarget, setPdfPeriodTarget] = useState<'completed' | 'history' | null>(null);
@@ -1243,7 +1244,7 @@ export default function MaintenancePage() {
               }}>
                 <FileSpreadsheet className="w-4 h-4 text-success" /> Excel
               </Button>
-              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setPdfHistoryDialog(true)}>
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => { setPdfIncludeHistory(planStatusFilters.length === 0); setPdfHistoryDialog(true); }}>
                 <FileText className="w-4 h-4 text-primary" /> PDF
               </Button>
             {canEdit && (
@@ -2119,11 +2120,28 @@ export default function MaintenancePage() {
 
       <Dialog open={pdfHistoryDialog} onOpenChange={(v) => { setPdfHistoryDialog(v); if (!v) { setPdfHistoryFrom(''); setPdfHistoryTo(''); } }}>
         <DialogContent className="bg-card border-border max-w-sm">
-          <DialogHeader><DialogTitle>Exportar PDF com Histórico</DialogTitle></DialogHeader>
-          <p className="text-sm text-muted-foreground">Selecione o período do histórico de manutenção a incluir no PDF. Deixe em branco para incluir todo o histórico.</p>
+          <DialogHeader><DialogTitle>Exportar PDF dos Planos</DialogTitle></DialogHeader>
+          <div className="rounded-md bg-secondary/50 px-3 py-2 text-sm">
+            <p><span className="font-semibold">Planos no PDF:</span> {filteredPlans.length}</p>
+            <p className="text-muted-foreground">
+              Filtro: {planStatusFilters.length > 0
+                ? planStatusFilters.map(s => ({ ok: 'OK', approaching: 'Próxima', overdue: 'Atrasada' } as const)[s]).join(', ')
+                : 'Todos os status'}
+              {planFilter !== 'all' && ` • ${equipments.find(e => e.id === planFilter)?.name || ''}`}
+            </p>
+          </div>
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <input type="checkbox" className="h-4 w-4 accent-primary" checked={pdfIncludeHistory} onChange={e => setPdfIncludeHistory(e.target.checked)} />
+            Incluir histórico de serviços realizados
+          </label>
           <div className="space-y-3">
-            <div><Label>Data inicial</Label><Input type="date" value={pdfHistoryFrom} onChange={e => setPdfHistoryFrom(e.target.value)} /></div>
-            <div><Label>Data final</Label><Input type="date" value={pdfHistoryTo} onChange={e => setPdfHistoryTo(e.target.value)} /></div>
+            {pdfIncludeHistory && (
+              <>
+                <p className="text-sm text-muted-foreground">Período do histórico (deixe em branco para incluir tudo).</p>
+                <div><Label>Data inicial</Label><Input type="date" value={pdfHistoryFrom} onChange={e => setPdfHistoryFrom(e.target.value)} /></div>
+                <div><Label>Data final</Label><Input type="date" value={pdfHistoryTo} onChange={e => setPdfHistoryTo(e.target.value)} /></div>
+              </>
+            )}
             <Button className="w-full" disabled={pdfExporting} onClick={async () => {
               setPdfExporting(true);
               try {

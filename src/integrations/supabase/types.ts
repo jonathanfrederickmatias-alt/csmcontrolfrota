@@ -347,6 +347,7 @@ export type Database = {
           extra_items: Json
           fuel_type: string | null
           hour_meter: number | null
+          hour_meter_confirmed: boolean
           id: string
           liters: number
           operator_name: string
@@ -361,6 +362,7 @@ export type Database = {
           extra_items?: Json
           fuel_type?: string | null
           hour_meter?: number | null
+          hour_meter_confirmed?: boolean
           id?: string
           liters: number
           operator_name: string
@@ -375,6 +377,7 @@ export type Database = {
           extra_items?: Json
           fuel_type?: string | null
           hour_meter?: number | null
+          hour_meter_confirmed?: boolean
           id?: string
           liters?: number
           operator_name?: string

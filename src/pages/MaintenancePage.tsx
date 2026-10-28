@@ -1539,7 +1539,7 @@ export default function MaintenancePage() {
                     Data: new Date(h.executed_at).toLocaleDateString('pt-BR'),
                     Equipamento: eq?.name || '—',
                     Identificador: eq?.cost_center || eq?.plate || '—',
-                    Origem: osMatch ? `OS #${osMatch[1]}` : (plan ? 'Plano' : 'Manual'),
+                    Origem: linkedOS ? `OS #${linkedOS.os_number}` : (plan ? 'Plano' : 'Manual'),
                     'Tipo de manutenção': linkedOS?.maintenance_type || '—',
                     Serviço: h.description,
                     'Horímetro/Km': h.hour_meter,

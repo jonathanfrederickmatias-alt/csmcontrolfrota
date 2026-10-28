@@ -2189,12 +2189,15 @@ export default function MaintenancePage() {
                 }
                 const includedEquipments = new Set(rows.map(r => r.equipment));
 
-                // Fetch history with optional date filter
-                let query = supabase.from('maintenance_history').select('*').order('executed_at', { ascending: false });
-                if (pdfHistoryFrom) query = query.gte('executed_at', pdfHistoryFrom);
-                if (pdfHistoryTo) query = query.lte('executed_at', pdfHistoryTo + 'T23:59:59');
-                const { data: histData } = await query;
-                const allHist = (histData || []) as DBMaintenanceHistory[];
+                // Fetch history with optional date filter (only when requested)
+                let allHist: DBMaintenanceHistory[] = [];
+                if (pdfIncludeHistory) {
+                  let query = supabase.from('maintenance_history').select('*').order('executed_at', { ascending: false });
+                  if (pdfHistoryFrom) query = query.gte('executed_at', pdfHistoryFrom);
+                  if (pdfHistoryTo) query = query.lte('executed_at', pdfHistoryTo + 'T23:59:59');
+                  const { data: histData } = await query;
+                  allHist = (histData || []) as DBMaintenanceHistory[];
+                }
 
                 // Group by equipment name
                 const historyByEquipment: Record<string, PlanHistoryRow[]> = {};

@@ -1,11 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { findSuspiciousJumps } from "@/lib/hour-meter-check";
 import { supabase } from "@/integrations/supabase/client";
 import { DBEquipment, DBFuelRecord, FuelSupplyExtraItem } from "@/lib/supabase-types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Fuel, CheckCircle, Droplets, Loader2, Plus, Edit2, Trash2, Eye, Image, FileText, X, Download } from "lucide-react";
+import { Fuel, CheckCircle, Droplets, Loader2, Plus, Edit2, Trash2, Eye, Image, FileText, X, Download, AlertTriangle } from "lucide-react";
 import { jsPDF } from 'jspdf';
 import * as XLSX from 'xlsx';
 import { useNavigate } from "react-router-dom";
@@ -95,6 +96,46 @@ export default function FuelPage() {
   };
 
   useEffect(() => { fetchData(); }, []);
+
+  // Suspicious hour meter jumps (likely typos) — ask a manager to confirm
+  const [jumpDialogDismissed, setJumpDialogDismissed] = useState(false);
+  const [jumpFixValues, setJumpFixValues] = useState<Record<string, string>>({});
+  const [jumpBusy, setJumpBusy] = useState<string | null>(null);
+  const suspiciousJumps = useMemo(
+    () => (equipments.length ? findSuspiciousJumps(records as any[], equipments as any[]) : []),
+    [records, equipments]
+  );
+  const showJumpDialog = canEdit && !jumpDialogDismissed && suspiciousJumps.length > 0;
+
+  const confirmJump = async (id: string) => {
+    setJumpBusy(id);
+    const { error } = await supabase.from('fuel_records').update({ hour_meter_confirmed: true } as any).eq('id', id);
+    setJumpBusy(null);
+    if (error) { toast.error('Não foi possível confirmar: ' + error.message); return; }
+    toast.success('Horímetro confirmado');
+    fetchData();
+  };
+
+  const fixJump = async (rec: DBFuelRecord) => {
+    const newValue = Number(jumpFixValues[rec.id]);
+    if (!newValue || newValue <= 0) { toast.error('Informe o valor correto'); return; }
+    setJumpBusy(rec.id);
+    const oldValue = Number(rec.hour_meter);
+    const { error } = await supabase.from('fuel_records').update({ hour_meter: newValue } as any).eq('id', rec.id);
+    if (error) { setJumpBusy(null); toast.error('Não foi possível corrigir: ' + error.message); return; }
+    // The equipment meter only goes up automatically; lower it back if it came from the typo
+    const eq = equipments.find(e => e.id === rec.target_equipment_id);
+    if (eq && Number(eq.current_hour_meter) === oldValue) {
+      const others = records
+        .filter(r => r.target_equipment_id === eq.id && r.id !== rec.id && r.hour_meter)
+        .map(r => Number(r.hour_meter));
+      const newMax = Math.max(newValue, ...others);
+      await supabase.from('equipments').update({ current_hour_meter: newMax }).eq('id', eq.id);
+    }
+    setJumpBusy(null);
+    toast.success('Horímetro corrigido');
+    fetchData();
+  };
 
   const combos = equipments.filter(e => e.type === 'combo');
   const targets = equipments.filter(e => e.type !== 'combo');
@@ -593,6 +634,50 @@ export default function FuelPage() {
             </div>
             <Button onClick={handleSaveEdit} disabled={!editForm.liters || !editForm.operator_name} className="w-full">Salvar Alterações</Button>
           </div>
+        </DialogContent>
+      </Dialog>
+      {/* Suspicious hour meter jumps */}
+      <Dialog open={showJumpDialog} onOpenChange={v => { if (!v) setJumpDialogDismissed(true); }}>
+        <DialogContent className="bg-card border-border max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-warning" /> Confira estes horímetros
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Estes abastecimentos tiveram um pulo muito grande em relação ao registro anterior. Pode ter sido erro de digitação. Confirme se está certo ou informe o valor correto.
+          </p>
+          <div className="space-y-3">
+            {suspiciousJumps.map(j => {
+              const r = j.record as DBFuelRecord;
+              const eq = equipments.find(e => e.id === r.target_equipment_id);
+              const fmt = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString('pt-BR');
+              return (
+                <div key={r.id} className="rounded-lg border border-warning/30 bg-warning/5 p-3 space-y-2">
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <p className="font-bold">{eq?.name}{eq?.cost_center ? ` (${eq.cost_center})` : ''}</p>
+                    <p className="text-xs text-muted-foreground">Abastecimento de {fmt(r.date)} · {r.operator_name}</p>
+                  </div>
+                  <p className="text-sm">
+                    Anterior: <span className="font-mono font-semibold">{j.previousValue.toLocaleString('pt-BR')}{j.unit}</span> em {fmt(j.previousDate)} →
+                    {' '}informado: <span className="font-mono font-bold text-destructive">{Number(r.hour_meter).toLocaleString('pt-BR')}{j.unit}</span>
+                    <span className="text-muted-foreground"> (+{j.jump.toLocaleString('pt-BR')}{j.unit} em {j.days} dia{j.days > 1 ? 's' : ''})</span>
+                  </p>
+                  <div className="flex flex-wrap gap-2 items-center">
+                    <Input
+                      type="number" inputMode="decimal" placeholder="Valor correto"
+                      className="w-40 h-9"
+                      value={jumpFixValues[r.id] || ''}
+                      onChange={e => setJumpFixValues(v => ({ ...v, [r.id]: e.target.value }))}
+                    />
+                    <Button size="sm" disabled={jumpBusy === r.id || !jumpFixValues[r.id]} onClick={() => fixJump(r)}>Corrigir</Button>
+                    <Button size="sm" variant="outline" disabled={jumpBusy === r.id} onClick={() => confirmJump(r.id)}>Está certo</Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <Button variant="ghost" onClick={() => setJumpDialogDismissed(true)}>Ver depois</Button>
         </DialogContent>
       </Dialog>
     </div>

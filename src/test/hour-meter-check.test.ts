@@ -40,4 +40,11 @@ describe('findSuspiciousJumps', () => {
     ], eqs, today);
     expect(r.map(x => x.record.id)).toEqual(['b']);
   });
+
+  it('does not flag readings that continue from a jump (earlier low reading was the typo)', () => {
+    const r = findSuspiciousJumps([
+      rec('a', 't', '2026-09-01', 43556), rec('b', 't', '2026-09-10', 415143), rec('c', 't', '2026-09-15', 415726),
+    ], eqs, today);
+    expect(r).toHaveLength(0);
+  });
 });

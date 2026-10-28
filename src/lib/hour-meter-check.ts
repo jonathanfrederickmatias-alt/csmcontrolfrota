@@ -32,6 +32,7 @@ export interface SuspiciousJump<R extends CheckRecord = CheckRecord> {
 }
 
 const dayMs = 86400000;
+const daysBetween = (a: string, b: string) => Math.max(1, Math.round((toDay(b) - toDay(a)) / dayMs));
 const toDay = (d: string) => new Date(d.slice(0, 10) + 'T12:00:00Z').getTime();
 
 export function findSuspiciousJumps<R extends CheckRecord>(
@@ -60,12 +61,21 @@ export function findSuspiciousJumps<R extends CheckRecord>(
     list.sort((a, b) => a.date.localeCompare(b.date) || a.created_at.localeCompare(b.created_at));
 
     let prev: R | null = null;
-    for (const r of list) {
+    for (let i = 0; i < list.length; i++) {
+      const r = list[i];
       if (!prev) { prev = r; continue; }
       const jump = Number(r.hour_meter) - Number(prev.hour_meter);
-      const days = Math.max(1, Math.round((toDay(r.date) - toDay(prev.date)) / dayMs));
+      const days = daysBetween(prev.date, r.date);
       const limit = perDay * days;
       if (jump > limit && !r.hour_meter_confirmed) {
+        // If the following reading continues from this one, this value is real
+        // (the earlier low reading was the mistake) — adopt it as the new reference.
+        const next = list[i + 1];
+        const nextJump = next ? Number(next.hour_meter) - Number(r.hour_meter) : -1;
+        if (next && nextJump >= 0 && nextJump <= perDay * daysBetween(r.date, next.date)) {
+          prev = r;
+          continue;
+        }
         if (toDay(r.date) >= cutoff) {
           result.push({
             record: r,

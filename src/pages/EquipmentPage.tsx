@@ -23,6 +23,8 @@ export default function EquipmentPage() {
   const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [obraFilter, setObraFilter] = useState('all');
+  const [typeFilter, setTypeFilter] = useState('all');
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -62,6 +64,8 @@ export default function EquipmentPage() {
 
   const filteredEquipments = equipments
     .filter(eq => (eq.ownership || 'own') === activeTab)
+    .filter(eq => obraFilter === 'all' || (obraFilter === 'none' ? !eq.obra_id : eq.obra_id === obraFilter))
+    .filter(eq => typeFilter === 'all' || eq.type === typeFilter)
     .filter(eq => !search || eq.name.toLowerCase().includes(search.toLowerCase()) || eq.plate?.toLowerCase().includes(search.toLowerCase()));
 
   const openNew = () => {
@@ -468,6 +472,18 @@ export default function EquipmentPage() {
               onChange={e => setSearch(e.target.value)}
               className="max-w-xs"
             />
+            <select value={obraFilter} onChange={e => setObraFilter(e.target.value)} className="h-10 rounded-md border border-input bg-background px-3 text-sm">
+              <option value="all">Todas as obras</option>
+              <option value="none">Sem obra</option>
+              {obras.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+            </select>
+            <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} className="h-10 rounded-md border border-input bg-background px-3 text-sm">
+              <option value="all">Todos os tipos</option>
+              <option value="machine">Máquina</option>
+              <option value="truck">Caminhão</option>
+              <option value="combo">Comboio</option>
+            </select>
+
           </div>
           <TabsContent value="own">
             {renderEquipmentGrid(filteredEquipments)}

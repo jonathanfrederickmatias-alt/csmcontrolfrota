@@ -191,8 +191,34 @@ export default function FuelPage() {
   const hasFuel = comboId && targetId && liters && Number(liters) > 0 && hourMeter && Number(hourMeter) > 0 && photoUrl;
   const canSave = operatorName && (hasFuel || hasExtraItems);
 
+  // Export period dialog
+  const todayStr = () => new Date().toLocaleDateString('en-CA');
+  const monthStartStr = () => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1).toLocaleDateString('en-CA'); };
+  const [exportFormat, setExportFormat] = useState<'pdf' | 'excel' | null>(null);
+  const [exportStart, setExportStart] = useState(monthStartStr());
+  const [exportEnd, setExportEnd] = useState(todayStr());
+  const setPreset = (preset: 'this_month' | 'last_month' | 'last_7' | 'all') => {
+    const d = new Date();
+    if (preset === 'this_month') { setExportStart(monthStartStr()); setExportEnd(todayStr()); }
+    if (preset === 'last_month') {
+      setExportStart(new Date(d.getFullYear(), d.getMonth() - 1, 1).toLocaleDateString('en-CA'));
+      setExportEnd(new Date(d.getFullYear(), d.getMonth(), 0).toLocaleDateString('en-CA'));
+    }
+    if (preset === 'last_7') { const s = new Date(d); s.setDate(s.getDate() - 6); setExportStart(s.toLocaleDateString('en-CA')); setExportEnd(todayStr()); }
+    if (preset === 'all') { setExportStart(''); setExportEnd(''); }
+  };
+  const exportCount = records.filter(r => (!exportStart || r.date >= exportStart) && (!exportEnd || r.date <= exportEnd)).length;
+  const fmtBR = (iso: string) => new Date(iso + 'T12:00:00').toLocaleDateString('pt-BR');
+  const periodLabel = () => exportStart && exportEnd ? `${fmtBR(exportStart)} a ${fmtBR(exportEnd)}`
+    : exportStart ? `a partir de ${fmtBR(exportStart)}` : exportEnd ? `até ${fmtBR(exportEnd)}` : 'Todo o período';
+  const periodFileSuffix = () => exportStart || exportEnd ? `${exportStart || 'inicio'}_a_${exportEnd || 'hoje'}` : 'todos';
+
   const getExportData = () => {
-    return records.map(r => {
+    return records
+      .filter(r => (!exportStart || r.date >= exportStart) && (!exportEnd || r.date <= exportEnd))
+      .slice()
+      .sort((a, b) => a.date.localeCompare(b.date) || a.created_at.localeCompare(b.created_at))
+      .map(r => {
       const combo = equipments.find(e => e.id === r.combo_equipment_id);
       const target = equipments.find(e => e.id === r.target_equipment_id);
       const extras = ((r as any).extra_items || []) as FuelSupplyExtraItem[];
@@ -212,7 +238,7 @@ export default function FuelPage() {
 
   const handleExportExcel = () => {
     const data = getExportData();
-    if (data.length === 0) return toast.error('Nenhum registro para exportar.');
+    if (data.length === 0) return toast.error('Nenhum registro no período escolhido.');
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Abastecimentos');
@@ -221,13 +247,14 @@ export default function FuelPage() {
       wch: Math.max(key.length, ...data.map(r => String((r as any)[key] || '').length)) + 2
     }));
     ws['!cols'] = colWidths;
-    XLSX.writeFile(wb, `abastecimentos_${new Date().toISOString().split('T')[0]}.xlsx`);
+    XLSX.writeFile(wb, `abastecimentos_${periodFileSuffix()}.xlsx`);
+    setExportFormat(null);
     toast.success('Excel exportado!');
   };
 
   const handleExportPDF = async () => {
     const data = getExportData();
-    if (data.length === 0) return toast.error('Nenhum registro para exportar.');
+    if (data.length === 0) return toast.error('Nenhum registro no período escolhido.');
 
     const pdf = new jsPDF('l', 'mm', 'a4');
     const pageWidth = 297;
@@ -240,9 +267,10 @@ export default function FuelPage() {
     pdf.setTextColor(255, 255, 255);
     pdf.setFontSize(14);
     pdf.setFont('helvetica', 'bold');
-    pdf.text('Histórico de Abastecimentos', margin, 13);
+    pdf.text('Histórico de Abastecimentos', margin, 11);
     pdf.setFontSize(8);
     pdf.setFont('helvetica', 'normal');
+    pdf.text(`Período: ${periodLabel()}`, margin, 16.5);
     const now = new Date();
     pdf.text(`Emitido em: ${now.toLocaleDateString('pt-BR')} ${now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`, pageWidth - margin, 13, { align: 'right' });
 
@@ -290,7 +318,11 @@ export default function FuelPage() {
       values.forEach((v, i) => {
         let text = v || '—';
         // Clip text to fit column
-        while (text.length > 1 && pdf.getTextWidth(text) > colW[i] - 4) text = text.slice(0, -1) + '…';
+        if (pdf.getTextWidth(text) > colW[i] - 4) {
+          let cut = text;
+          while (cut.length > 1 && pdf.getTextWidth(cut + '...') > colW[i] - 4) cut = cut.slice(0, -1);
+          text = cut + '...';
+        }
         pdf.text(text, colX[i] + 2, y + 4.5);
       });
       y += 6.5;
@@ -307,7 +339,8 @@ export default function FuelPage() {
       pdf.text(`Total: ${data.length} registros — ${data.reduce((s, r) => s + Number(r.Litros), 0).toLocaleString('pt-BR')}L`, margin, ph - 5);
     }
 
-    pdf.save(`abastecimentos_${new Date().toISOString().split('T')[0]}.pdf`);
+    pdf.save(`abastecimentos_${periodFileSuffix()}.pdf`);
+    setExportFormat(null);
     toast.success('PDF exportado!');
   };
 
@@ -422,15 +455,37 @@ export default function FuelPage() {
         </div>
       )}
 
+      <Dialog open={!!exportFormat} onOpenChange={v => { if (!v) setExportFormat(null); }}>
+        <DialogContent className="bg-card border-border">
+          <DialogHeader><DialogTitle>Exportar {exportFormat === 'pdf' ? 'PDF' : 'Excel'} — escolha o período</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => setPreset('this_month')}>Este mês</Button>
+              <Button type="button" variant="outline" size="sm" onClick={() => setPreset('last_month')}>Mês passado</Button>
+              <Button type="button" variant="outline" size="sm" onClick={() => setPreset('last_7')}>Últimos 7 dias</Button>
+              <Button type="button" variant="outline" size="sm" onClick={() => setPreset('all')}>Tudo</Button>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label htmlFor="export-start">De</Label><Input id="export-start" type="date" value={exportStart} onChange={e => setExportStart(e.target.value)} /></div>
+              <div><Label htmlFor="export-end">Até</Label><Input id="export-end" type="date" value={exportEnd} onChange={e => setExportEnd(e.target.value)} /></div>
+            </div>
+            <p className="text-sm text-muted-foreground">{periodLabel()} — <span className="font-semibold text-foreground">{exportCount} registros</span></p>
+            <Button className="w-full gap-2" disabled={exportCount === 0} onClick={() => exportFormat === 'pdf' ? handleExportPDF() : handleExportExcel()}>
+              <Download className="w-4 h-4" /> Baixar {exportFormat === 'pdf' ? 'PDF' : 'Excel'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <div className="glass-card rounded-xl p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold">Histórico de Abastecimentos</h2>
           {records.length > 0 && (
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="gap-1.5" onClick={handleExportPDF}>
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setExportFormat('pdf')}>
                 <Download className="w-3.5 h-3.5" /> PDF
               </Button>
-              <Button variant="outline" size="sm" className="gap-1.5" onClick={handleExportExcel}>
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setExportFormat('excel')}>
                 <Download className="w-3.5 h-3.5" /> Excel
               </Button>
             </div>

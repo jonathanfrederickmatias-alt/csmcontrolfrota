@@ -318,7 +318,11 @@ export default function FuelPage() {
       values.forEach((v, i) => {
         let text = v || '—';
         // Clip text to fit column
-        while (text.length > 1 && pdf.getTextWidth(text) > colW[i] - 4) text = text.slice(0, -1) + '…';
+        if (pdf.getTextWidth(text) > colW[i] - 4) {
+          let cut = text;
+          while (cut.length > 1 && pdf.getTextWidth(cut + '...') > colW[i] - 4) cut = cut.slice(0, -1);
+          text = cut + '...';
+        }
         pdf.text(text, colX[i] + 2, y + 4.5);
       });
       y += 6.5;

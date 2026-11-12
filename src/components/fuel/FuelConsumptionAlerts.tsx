@@ -80,6 +80,20 @@ export default function FuelConsumptionAlerts({ records, equipments, canEdit, on
     toast.success("Ocorrência ignorada");
   };
 
+  const ignoreAll = async () => {
+    if (!confirm(`Marcar todas as ${alerts.length} ocorrências como "Está certo, ignorar"?`)) return;
+    setBusy("__all");
+    const { data: u } = await supabase.auth.getUser();
+    const { data: prof } = u.user ? await supabase.from("profiles").select("display_name").eq("user_id", u.user.id).maybeSingle() : { data: null };
+    const name = (prof as any)?.display_name || u.user?.email || null;
+    const rows = alerts.map(a => ({ alert_key: a.key, record_id: a.recordIds[0], dismissed_by_name: name }));
+    const { error } = await supabase.from("fuel_alert_dismissals").insert(rows as any);
+    setBusy(null);
+    if (error) { toast.error("Não foi possível ignorar: " + error.message); return; }
+    setDismissed(prev => new Set([...(prev || []), ...rows.map(r => r.alert_key)]));
+    toast.success(`${rows.length} ocorrências ignoradas`);
+  };
+
   const stationName = (id?: string | null) => (id && eqMap.get(id)?.name) || "—";
 
   return (
@@ -110,6 +124,9 @@ export default function FuelConsumptionAlerts({ records, equipments, canEdit, on
           <p className="text-sm text-muted-foreground">
             Últimos 90 dias. O sistema só sugere — nada é alterado sem você confirmar.
           </p>
+          <Button variant="outline" size="sm" className="self-start" disabled={busy === "__all"} onClick={ignoreAll}>
+            {busy === "__all" && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}Está certo, ignorar todos ({alerts.length})
+          </Button>
           <div className="space-y-5">
             {grouped.map(([eqId, list]) => {
               const eq = eqMap.get(eqId);

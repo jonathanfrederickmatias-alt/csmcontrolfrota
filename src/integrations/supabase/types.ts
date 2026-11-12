@@ -255,6 +255,44 @@ export type Database = {
           },
         ]
       }
+      fuel_alert_dismissals: {
+        Row: {
+          alert_key: string
+          dismissed_at: string
+          dismissed_by: string | null
+          dismissed_by_name: string | null
+          id: string
+          record_id: string | null
+          tenant_id: string
+        }
+        Insert: {
+          alert_key: string
+          dismissed_at?: string
+          dismissed_by?: string | null
+          dismissed_by_name?: string | null
+          id?: string
+          record_id?: string | null
+          tenant_id?: string
+        }
+        Update: {
+          alert_key?: string
+          dismissed_at?: string
+          dismissed_by?: string | null
+          dismissed_by_name?: string | null
+          id?: string
+          record_id?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fuel_alert_dismissals_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fuel_pins: {
         Row: {
           created_at: string

@@ -60,7 +60,8 @@ export function longestNonDecreasing(values: number[]): Set<number> {
   const prev = new Array(n).fill(-1);
   for (let i = 0; i < n; i++) {
     for (let j = 0; j < i; j++) {
-      if (values[j] <= values[i] && len[j] + 1 >= len[i]) { len[i] = len[j] + 1; prev[i] = j; }
+      if (values[j] > values[i]) continue;
+      if (len[j] + 1 > len[i] || (len[j] + 1 === len[i] && prev[i] >= 0 && values[j] >= values[prev[i]])) { len[i] = len[j] + 1; prev[i] = j; }
     }
   }
   // On ties keep the chain that ends highest (low typos are more common than high ones).
@@ -196,22 +197,32 @@ export function findConsumptionAlerts(
     }
 
     if (eq.type !== 'truck') { out.push(...analyzeSeries(eq, 'h', merged)); continue; }
-    // Trucks: comboio = hours, station = km; reassign station readings closer in magnitude to the hour series.
-    const hours = merged.filter(p => p.comboio), km = merged.filter(p => !p.comboio);
-    const mhRaw = median(hours.map(p => p.reading)), mkRaw = median(km.map(p => p.reading));
-    if (hours.length >= 3 && km.length >= 3 && mhRaw && mkRaw && Math.max(mhRaw, mkRaw) / Math.min(mhRaw, mkRaw) > 3) {
-      const mh = Math.log(mhRaw), mk = Math.log(mkRaw);
-      const hSeries: Point[] = [], kSeries: Point[] = [];
-      for (const p of merged) {
-        const lr = Math.log(p.reading);
-        (Math.abs(lr - mh) < Math.abs(lr - mk) ? hSeries : kSeries).push(p);
-      }
-      out.push(...analyzeSeries(eq, 'h', hSeries), ...analyzeSeries(eq, 'km', kSeries));
-    } else {
-      out.push(...analyzeSeries(eq, hours.length > km.length ? 'h' : 'km', merged));
+    // Trucks may mix hour meter (comboio) and odometer (station) readings: split by order of magnitude.
+    const [hSeries, kSeries] = splitByMagnitude(merged);
+    if (hSeries.length && kSeries.length) out.push(...analyzeSeries(eq, 'h', hSeries), ...analyzeSeries(eq, 'km', kSeries));
+    else {
+      const comboioCount = merged.filter(p => p.comboio).length;
+      out.push(...analyzeSeries(eq, comboioCount > merged.length / 2 ? 'h' : 'km', merged));
     }
   }
   return out.filter(a => toDay(a.date) >= cutoff).sort((a, b) => b.date.localeCompare(a.date));
+}
+
+/** Two clusters on log(reading), seeded by source (comboio = hours). Returns [] for one when not clearly separated. */
+export function splitByMagnitude<P extends { reading: number; comboio: boolean }>(pts: P[]): [P[], P[]] {
+  const h0 = pts.filter(p => p.comboio), k0 = pts.filter(p => !p.comboio);
+  if (h0.length < 2 || k0.length < 2) return [[], pts];
+  let ch = Math.log(median(h0.map(p => p.reading))!), ck = Math.log(median(k0.map(p => p.reading))!);
+  if (ch > ck) [ch, ck] = [ck, ch];
+  let lo: P[] = [], hi: P[] = [];
+  for (let it = 0; it < 10; it++) {
+    lo = []; hi = [];
+    for (const p of pts) { const l = Math.log(p.reading); (Math.abs(l - ch) <= Math.abs(l - ck) ? lo : hi).push(p); }
+    if (!lo.length || !hi.length) break;
+    ch = Math.log(median(lo.map(p => p.reading))!); ck = Math.log(median(hi.map(p => p.reading))!);
+  }
+  if (lo.length < 2 || hi.length < 2 || ck - ch < Math.log(3)) return [[], pts];
+  return [lo, hi];
 }
 
 export const CAUSE_LABEL: Record<AlertCause, string> = {

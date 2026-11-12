@@ -63,8 +63,9 @@ export function longestNonDecreasing(values: number[]): Set<number> {
       if (values[j] <= values[i] && len[j] + 1 >= len[i]) { len[i] = len[j] + 1; prev[i] = j; }
     }
   }
+  // On ties keep the chain that ends highest (low typos are more common than high ones).
   let best = -1;
-  for (let i = 0; i < n; i++) if (best < 0 || len[i] >= len[best]) best = i;
+  for (let i = 0; i < n; i++) if (best < 0 || len[i] > len[best] || (len[i] === len[best] && values[i] >= values[best])) best = i;
   const keep = new Set<number>();
   for (let i = best; i >= 0; i = prev[i]) keep.add(i);
   return keep;
@@ -197,8 +198,9 @@ export function findConsumptionAlerts(
     if (eq.type !== 'truck') { out.push(...analyzeSeries(eq, 'h', merged)); continue; }
     // Trucks: comboio = hours, station = km; reassign station readings closer in magnitude to the hour series.
     const hours = merged.filter(p => p.comboio), km = merged.filter(p => !p.comboio);
-    if (hours.length && km.length) {
-      const mh = Math.log(median(hours.map(p => p.reading))!), mk = Math.log(median(km.map(p => p.reading))!);
+    const mhRaw = median(hours.map(p => p.reading)), mkRaw = median(km.map(p => p.reading));
+    if (hours.length >= 3 && km.length >= 3 && mhRaw && mkRaw && Math.max(mhRaw, mkRaw) / Math.min(mhRaw, mkRaw) > 3) {
+      const mh = Math.log(mhRaw), mk = Math.log(mkRaw);
       const hSeries: Point[] = [], kSeries: Point[] = [];
       for (const p of merged) {
         const lr = Math.log(p.reading);
@@ -206,7 +208,7 @@ export function findConsumptionAlerts(
       }
       out.push(...analyzeSeries(eq, 'h', hSeries), ...analyzeSeries(eq, 'km', kSeries));
     } else {
-      out.push(...analyzeSeries(eq, hours.length ? 'h' : 'km', merged));
+      out.push(...analyzeSeries(eq, hours.length > km.length ? 'h' : 'km', merged));
     }
   }
   return out.filter(a => toDay(a.date) >= cutoff).sort((a, b) => b.date.localeCompare(a.date));

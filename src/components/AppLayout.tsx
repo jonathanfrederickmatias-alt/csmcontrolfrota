@@ -5,6 +5,7 @@ import csmLogo from "@/assets/csm-logo.png";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
+import { useFuelAlertCount } from "@/hooks/useFuelAlertCount";
 
 const allNavItems = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, roles: ['admin', 'gestor'] },
@@ -32,6 +33,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { roles, loading: rolesLoading } = useUserRoles();
   const { signOut } = useAuth();
+  const fuelAlertCount = useFuelAlertCount(!rolesLoading && (roles.includes('admin' as any) || roles.includes('gestor' as any)));
 
   // Filter nav items based on user roles; if no roles yet, show nothing (loading)
   const navItems = rolesLoading
@@ -71,6 +73,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               >
                 <item.icon className="w-5 h-5" />
                 {item.label}
+                {item.to === '/abastecimento' && fuelAlertCount > 0 && (
+                  <span className="ml-auto rounded-full bg-warning px-2 py-0.5 text-[10px] font-bold text-warning-foreground">{fuelAlertCount}</span>
+                )}
               </Link>
             );
           })}

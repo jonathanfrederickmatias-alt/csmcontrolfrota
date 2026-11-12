@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { findSuspiciousJumps } from "@/lib/hour-meter-check";
+import FuelConsumptionAlerts from "@/components/fuel/FuelConsumptionAlerts";
 import { supabase } from "@/integrations/supabase/client";
 import { DBEquipment, DBFuelRecord, FuelSupplyExtraItem } from "@/lib/supabase-types";
 import { Button } from "@/components/ui/button";
@@ -105,7 +106,8 @@ export default function FuelPage() {
     () => (equipments.length ? findSuspiciousJumps(records as any[], equipments as any[]) : []),
     [records, equipments]
   );
-  const showJumpDialog = canEdit && !jumpDialogDismissed && suspiciousJumps.length > 0;
+  // Replaced by the consumption alert panel at the top of the page
+  const showJumpDialog = false && canEdit && !jumpDialogDismissed && suspiciousJumps.length > 0;
 
   const confirmJump = async (id: string) => {
     setJumpBusy(id);
@@ -355,6 +357,8 @@ export default function FuelPage() {
           <Plus className="w-4 h-4" /> Reabastecer Comboio
         </Button>
       </div>
+
+      <FuelConsumptionAlerts records={records as any[]} equipments={equipments as any[]} canEdit={canEdit} onChanged={fetchData} />
 
       {/* Saldo dos comboios */}
       {combos.length > 0 && (

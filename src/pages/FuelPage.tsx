@@ -143,7 +143,24 @@ export default function FuelPage() {
   const targets = equipments.filter(e => e.type !== 'combo');
   const selectedCombo = equipments.find(e => e.id === comboId);
 
+  const validateFuelEntry = (opName: string, eqId: string | null | undefined, hm: string, ignoreId?: string): boolean => {
+    if (/^\s*\d/.test(opName)) { toast.error('O campo Operador deve ter só o nome. Coloque o km/horímetro no campo próprio.'); return false; }
+    const eq = equipments.find(e => e.id === eqId);
+    const warnings: string[] = [];
+    if (!hm || Number(hm) <= 0) warnings.push('A leitura de horímetro/km está em branco.');
+    else {
+      const val = Number(hm);
+      if (eq && eq.type === 'truck' && !Number.isInteger(val)) warnings.push(`A leitura ${hm} tem casas decimais, mas o veículo usa km (número inteiro).`);
+      const prev = records.filter(r => r.target_equipment_id === eqId && r.id !== ignoreId && r.hour_meter).map(r => Number(r.hour_meter));
+      const last = prev.length ? Math.max(...prev) : 0;
+      if (last && val < last) warnings.push(`A leitura ${val} é menor que a última registrada (${last}).`);
+    }
+    if (warnings.length) return window.confirm(warnings.join('\n') + '\n\nDeseja salvar mesmo assim?');
+    return true;
+  };
+
   const handleSave = async () => {
+    if (!validateFuelEntry(operatorName, targetId, hourMeter)) return;
     setSaving(true);
     const record: any = {
       date: date || new Date().toISOString().split('T')[0],
@@ -157,7 +174,8 @@ export default function FuelPage() {
     if (liters && Number(liters) > 0) record.liters = Number(liters);
     else record.liters = 0;
     if (hourMeter && Number(hourMeter) > 0) record.hour_meter = Number(hourMeter);
-    await supabase.from('fuel_records').insert([record]);
+    const { error: insErr } = await supabase.from('fuel_records').insert([record]);
+    if (insErr) { setSaving(false); toast.error(insErr.message); return; }
     setSaving(false);
     setSaved(true);
     fetchData();
@@ -175,6 +193,7 @@ export default function FuelPage() {
 
   const handleSaveEdit = async () => {
     if (!editRecord) return;
+    if (!validateFuelEntry(editForm.operator_name, editRecord.target_equipment_id, editForm.hour_meter, editRecord.id)) return;
     await supabase.from('fuel_records').update({
       combo_equipment_id: editForm.combo_equipment_id || null,
       liters: Number(editForm.liters),

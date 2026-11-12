@@ -43,6 +43,13 @@
       "when": 1794495748710,
       "tag": "0005_fuel_alert_dismissals",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794504160373,
+      "tag": "0006_fuel_operator_name_check",
+      "breakpoints": true
     }
   ]
 }

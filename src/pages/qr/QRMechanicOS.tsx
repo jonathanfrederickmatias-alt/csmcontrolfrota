@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { qrClient } from "@/lib/qr-client";
 import { DBEquipment } from "@/lib/supabase-types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,6 +59,7 @@ const priorityLabels: Record<string, string> = {
 export default function QRMechanicOS() {
   const [searchParams] = useSearchParams();
   const osId = searchParams.get('id') || '';
+  const qr = useMemo(() => qrClient({ osId }), [osId]);
   const [os, setOs] = useState<WorkOrder | null>(null);
   const [equipment, setEquipment] = useState<DBEquipment | null>(null);
   const [loading, setLoading] = useState(true);
@@ -80,7 +82,7 @@ export default function QRMechanicOS() {
 
   const fetchOS = async () => {
     if (!osId) return;
-    const { data } = await supabase.from('work_orders').select('*').eq('id', osId).single();
+    const { data } = await qr.from('work_orders').select('*').eq('id', osId).single();
     if (data) {
       const wo = data as unknown as WorkOrder;
       setOs(wo);
@@ -103,7 +105,7 @@ export default function QRMechanicOS() {
       setParts(dbParts);
 
       // Fetch linked maintenance request items
-      const { data: reqData } = await supabase
+      const { data: reqData } = await qr
         .from('maintenance_requests')
         .select('items')
         .eq('id', wo.maintenance_request_id)
@@ -144,7 +146,7 @@ export default function QRMechanicOS() {
   const saveItemsStatus = async () => {
     if (!os) return;
     // Save item completion status back to the maintenance_request items
-    await supabase.from('maintenance_requests').update({
+    await qr.from('maintenance_requests').update({
       items: requestItems as unknown as any,
     }).eq('id', os.maintenance_request_id);
   };
@@ -154,7 +156,7 @@ export default function QRMechanicOS() {
   const handleStartService = async () => {
     if (!os || !mechanicName || photosStart.length === 0 || !openingMeter) return;
     setSaving(true);
-    await supabase.from('work_orders').update({
+    await qr.from('work_orders').update({
       status: 'in_progress',
       mechanic_name: mechanicName,
       photos_start: photosStart as unknown as any,
@@ -175,7 +177,7 @@ export default function QRMechanicOS() {
   const handleCompleteService = async () => {
     if (!os || photosStart.length === 0 || photosEnd.length === 0 || !serviceExecuted.trim() || !executionMeter) return;
     setSaving(true);
-    await supabase.from('work_orders').update({
+    await qr.from('work_orders').update({
       status: 'done',
       photos_end: photosEnd as unknown as any,
       photo_end_url: photosEnd[0] || null,
@@ -190,7 +192,7 @@ export default function QRMechanicOS() {
     }).eq('id', os.id);
     // Mark all items as done on completion
     const allDoneItems = requestItems.map(i => ({ ...i, done: true }));
-    await supabase.from('maintenance_requests').update({
+    await qr.from('maintenance_requests').update({
       items: allDoneItems as unknown as any,
     }).eq('id', os.maintenance_request_id);
     setSaving(false);

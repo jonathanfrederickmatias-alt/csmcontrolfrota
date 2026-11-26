@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { qrClient } from "@/lib/qr-client";
 import { DBEquipment } from "@/lib/supabase-types";
 import PublicLayout from "@/components/PublicLayout";
 import { Loader2, Lock, ArrowLeft, History, Wrench, Clock, User, DollarSign, FileText, Package, Image as ImageIcon, Plus, Trash2 } from "lucide-react";
@@ -90,8 +91,8 @@ export default function QRRegistroManutencao() {
     if (!equipmentId) return;
     const [{ data: eq }, { data: hist }, { data: wos }] = await Promise.all([
       supabase.from("equipments").select("*").eq("id", equipmentId).maybeSingle(),
-      supabase.from("maintenance_history").select("*").eq("equipment_id", equipmentId).order("executed_at", { ascending: false }),
-      supabase.from("work_orders").select("*").eq("equipment_id", equipmentId).eq("status", "done").order("completed_at", { ascending: false }),
+      qrClient({ equipmentId }).from("maintenance_history").select("*").eq("equipment_id", equipmentId).order("executed_at", { ascending: false }),
+      qrClient({ equipmentId }).from("work_orders").select("*").eq("equipment_id", equipmentId).eq("status", "done").order("completed_at", { ascending: false }),
     ]);
     setEquipment(eq as DBEquipment | null);
     setHistory((hist || []) as MaintenanceHistoryRow[]);

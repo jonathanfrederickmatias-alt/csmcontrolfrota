@@ -71,6 +71,13 @@
       "when": 1795727627871,
       "tag": "0009_tighten_qr_and_storage_policies",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1795727711424,
+      "tag": "0010_scope_qr_policies_by_header",
+      "breakpoints": true
     }
   ]
 }

@@ -1394,6 +1394,7 @@ export type Database = {
           status: string
         }[]
       }
+      qr_header: { Args: { _name: string }; Returns: string }
       recalc_equipment_release_status: {
         Args: { _equipment_id: string }
         Returns: undefined

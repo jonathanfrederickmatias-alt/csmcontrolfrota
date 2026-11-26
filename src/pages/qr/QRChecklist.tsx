@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { qrClient } from "@/lib/qr-client";
 import { DBEquipment, ChecklistItemDB } from "@/lib/supabase-types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -67,7 +68,8 @@ export default function QRChecklist() {
   useEffect(() => {
     if (!selectedEquipment) { setOpenRequests([]); setPersistActions({}); return; }
     (async () => {
-      const { data: reqs } = await supabase.from('maintenance_requests')
+      const qr = qrClient({ equipmentId: selectedEquipment });
+      const { data: reqs } = await qr.from('maintenance_requests')
         .select('id, description, created_at, status')
         .eq('equipment_id', selectedEquipment)
         .neq('status', 'done')
@@ -76,7 +78,7 @@ export default function QRChecklist() {
       if (requests.length === 0) { setOpenRequests([]); setPersistActions({}); return; }
       // Fetch OS numbers linked to these requests (best effort — anon has SELECT on work_orders)
       const ids = requests.map(r => r.id);
-      const { data: wos } = await supabase.from('work_orders')
+      const { data: wos } = await qr.from('work_orders')
         .select('maintenance_request_id, os_number, status')
         .in('maintenance_request_id', ids);
       const osMap: Record<string, number | null> = {};
@@ -149,10 +151,11 @@ export default function QRChecklist() {
         const req = openRequests.find(r => r.id === reqId);
         const logLine = `\n[Verificação ${nowStr} por ${operatorName}${Number(hourMeter) ? ` — ${hourMeter}h` : ''}] Problema persiste${note.trim() ? `: ${note.trim()}` : '.'}`;
         // Fetch current notes then append (avoid RPC — simple read/update)
-        const { data: current } = await supabase.from('maintenance_requests')
+        const qr = qrClient({ equipmentId: selectedEquipment });
+        const { data: current } = await qr.from('maintenance_requests')
           .select('notes').eq('id', reqId).maybeSingle();
         const newNotes = ((current?.notes as string) || (req?.description ? '' : '')) + logLine;
-        await supabase.from('maintenance_requests')
+        await qr.from('maintenance_requests')
           .update({ notes: newNotes, updated_at: new Date().toISOString() })
           .eq('id', reqId);
       }

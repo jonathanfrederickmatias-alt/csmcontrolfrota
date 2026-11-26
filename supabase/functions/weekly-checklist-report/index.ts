@@ -18,61 +18,123 @@ function itemAnswer(i: any): string {
 
 const SIDES: [string, string][] = [['frente', 'Frente'], ['tras', 'Trás'], ['esquerdo', 'Lado esquerdo'], ['direito', 'Lado direito']];
 
+const LOGO_URL = `${Deno.env.get('SUPABASE_URL')}/storage/v1/object/public/photos/branding/logo-csm-pdf.jpg`;
+let logoBytes: Uint8Array | null = null;
+const NAVY = rgb(0.11, 0.2, 0.36), LIGHT = rgb(0.94, 0.95, 0.97), BORDER = rgb(0.8, 0.83, 0.87);
+const GREEN = rgb(0.16, 0.6, 0.27), RED = rgb(0.85, 0.15, 0.15), GRAY = rgb(0.55, 0.58, 0.62), WHITE = rgb(1, 1, 1), INK = rgb(0.08, 0.1, 0.16);
+
 async function buildChecklistPdf(eqLabel: string, r: any, embedPhotos: boolean) {
   const pdf = await PDFDocument.create();
   const font = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
-  const W = 595, H = 842, M = 36;
+  const W = 595, H = 842, M = 30, CW = W - 2 * M;
   const safe = (s: any) => String(s ?? '—').replace(/[^\x20-\x7E\u00A0-\u00FF]/g, '');
-  const wrap = (s: string, w: number, sz: number) => {
+  const wrap = (s: string, w: number, sz: number, f = font) => {
     const words = safe(s).split(' '); const lines: string[] = []; let cur = '';
-    for (const wd of words) { const t = cur ? cur + ' ' + wd : wd; if (font.widthOfTextAtSize(t, sz) > w && cur) { lines.push(cur); cur = wd; } else cur = t; }
-    if (cur) lines.push(cur); return lines.length ? lines : ['—'];
+    for (const wd of words) { const t = cur ? cur + ' ' + wd : wd; if (f.widthOfTextAtSize(t, sz) > w && cur) { lines.push(cur); cur = wd; } else cur = t; }
+    if (cur) lines.push(cur); return lines.length ? lines : [''];
   };
   let page = pdf.addPage([W, H]); let y = H - M;
-  const ensure = (h: number) => { if (y - h < M) { page = pdf.addPage([W, H]); y = H - M; } };
-  const text = (s: string, x: number, sz = 9, f = font, color = rgb(0.06, 0.09, 0.16)) => page.drawText(safe(s), { x, y, size: sz, font: f, color });
+  const T = (s: string, x: number, yy: number, sz = 9, f = font, color = INK) => page.drawText(safe(s), { x, y: yy, size: sz, font: f, color });
+
+  // Header: logo + navy title box
+  try {
+    if (!logoBytes) { const lr = await fetch(LOGO_URL); if (lr.ok) logoBytes = new Uint8Array(await lr.arrayBuffer()); }
+    if (logoBytes) { const lg = await pdf.embedJpg(logoBytes); const lh = 62, lw = lg.width * lh / lg.height; page.drawImage(lg, { x: M, y: y - lh, width: lw, height: lh }); }
+  } catch (e) { console.error('logo', String(e)); }
+  const bx = M + 240, bw = W - M - bx, bh = 62;
+  page.drawRectangle({ x: bx, y: y - bh, width: bw, height: bh, color: NAVY });
+  page.drawLine({ start: { x: bx - 14, y: y - 4 }, end: { x: bx - 14, y: y - bh + 4 }, thickness: 1, color: BORDER });
+  const title = 'CHECKLIST'; T(title, bx + (bw - bold.widthOfTextAtSize(title, 22)) / 2, y - 28, 22, bold, WHITE);
+  let sub = safe(eqLabel).toUpperCase(); let ssz = 13; while (bold.widthOfTextAtSize(sub, ssz) > bw - 16 && ssz > 7) ssz -= 0.5;
+  T(sub, bx + (bw - bold.widthOfTextAtSize(sub, ssz)) / 2, y - 48, ssz, bold, WHITE);
+  y -= bh + 14;
+
+  // Info panel
   const items = Array.isArray(r.items) ? r.items : [];
   const nc = items.filter((i: any) => i?.checked === false && !i?.na).length;
-  text('Checklist - ' + eqLabel, M, 15, bold); y -= 18;
-  text(`Data: ${fmt(r.date)}   Tipo: ${r.type || '—'}   Horím./Km: ${r.hour_meter ?? '—'}`, M, 10); y -= 14;
-  text(`Operador: ${r.operator_name || '—'}   Situação: ${nc ? nc + ' item(ns) NC' : 'Tudo conforme'}`, M, 10, bold, nc ? rgb(0.8, 0.1, 0.1) : rgb(0.1, 0.5, 0.2)); y -= 20;
-  for (const i of items) {
+  page.drawRectangle({ x: M, y: y - 52, width: CW, height: 52, color: LIGHT, borderColor: BORDER, borderWidth: 0.6 });
+  const third = CW / 3;
+  const info = (label: string, val: string, x: number, yy: number, color = INK) => { T(label, x, yy, 10, bold); T(val, x + bold.widthOfTextAtSize(label, 10) + 4, yy, 10, font, color); };
+  info('Data:', fmt(r.date), M + 10, y - 18);
+  info('Tipo:', r.type || '—', M + third + 10, y - 18);
+  info('Horím./Km:', String(r.hour_meter ?? '—'), M + 2 * third + 10, y - 18);
+  page.drawLine({ start: { x: M + 6, y: y - 27 }, end: { x: M + CW - 6, y: y - 27 }, thickness: 0.5, color: BORDER });
+  info('Operador:', r.operator_name || '—', M + 10, y - 43);
+  info('Situação:', nc ? `${nc} item(ns) NC` : 'Tudo conforme', M + CW / 2 + 10, y - 43, nc ? RED : GREEN);
+  y -= 66;
+
+  // Items table
+  const cols = [{ h: 'Item', w: 40 }, { h: 'Descrição', w: 300 }, { h: 'Status', w: 60 }, { h: 'Observações', w: CW - 400 }];
+  const header = () => {
+    page.drawRectangle({ x: M, y: y - 18, width: CW, height: 18, color: NAVY });
+    let x = M; for (const c of cols) { T(c.h, x + (c.h === 'Descrição' || c.h === 'Observações' ? 6 : (c.w - bold.widthOfTextAtSize(c.h, 9)) / 2), y - 12.5, 9, bold, WHITE); x += c.w; }
+    y -= 18;
+  };
+  const statusIcon = (ans: string, cx: number, cy: number) => {
+    const color = ans === 'C' ? GREEN : ans === 'NC' ? RED : GRAY;
+    page.drawCircle({ x: cx, y: cy, size: 6.5, color });
+    if (ans === 'C') { page.drawLine({ start: { x: cx - 3, y: cy }, end: { x: cx - 0.8, y: cy - 2.5 }, thickness: 1.5, color: WHITE }); page.drawLine({ start: { x: cx - 0.8, y: cy - 2.5 }, end: { x: cx + 3.2, y: cy + 2.6 }, thickness: 1.5, color: WHITE }); }
+    else if (ans === 'NC') { page.drawLine({ start: { x: cx - 2.6, y: cy - 2.6 }, end: { x: cx + 2.6, y: cy + 2.6 }, thickness: 1.5, color: WHITE }); page.drawLine({ start: { x: cx - 2.6, y: cy + 2.6 }, end: { x: cx + 2.6, y: cy - 2.6 }, thickness: 1.5, color: WHITE }); }
+    else { const t = ans === 'N/A' ? 'N/A' : '—'; T(t, cx - bold.widthOfTextAtSize(t, 5) / 2, cy - 1.8, 5, bold, WHITE); }
+  };
+  header();
+  items.forEach((i: any, idx: number) => {
     const ans = itemAnswer(i);
-    const lines = wrap(`${i?.group ? i.group + ' - ' : ''}${i?.label || '—'}${i?.observation ? ' (Obs: ' + i.observation + ')' : ''}`, W - 2 * M - 50, 9);
-    ensure(lines.length * 11 + 2);
-    page.drawText(ans, { x: M + 4, y, size: 9, font: bold, color: ans === 'NC' ? rgb(0.8, 0.1, 0.1) : ans === 'C' ? rgb(0.1, 0.55, 0.2) : rgb(0.4, 0.45, 0.53) });
-    for (const l of lines) { page.drawText(l, { x: M + 40, y, size: 9, font }); y -= 11; }
+    const desc = wrap(`${i?.group ? i.group + ' - ' : ''}${i?.label || '—'}`, cols[1].w - 12, 9);
+    const obs = i?.observation ? wrap(i.observation, cols[3].w - 10, 8) : [''];
+    const rh = Math.max(18, Math.max(desc.length * 11, obs.length * 10) + 7);
+    if (y - rh < M) { page = pdf.addPage([W, H]); y = H - M; header(); }
+    page.drawRectangle({ x: M, y: y - rh, width: CW, height: rh, borderColor: BORDER, borderWidth: 0.5, color: idx % 2 ? LIGHT : WHITE });
+    let x = M; for (const c of cols.slice(0, -1)) { x += c.w; page.drawLine({ start: { x, y }, end: { x, y: y - rh }, thickness: 0.5, color: BORDER }); }
+    const num = String(idx + 1).padStart(2, '0');
+    T(num, M + (40 - font.widthOfTextAtSize(num, 9)) / 2, y - 12.5, 9);
+    desc.forEach((l, k) => T(l, M + 46, y - 12.5 - k * 11, 9));
+    statusIcon(ans, M + 340 + 30, y - rh / 2);
+    obs.forEach((l, k) => T(l, M + 406, y - 12 - k * 10, 8, font, RED));
+    y -= rh;
+  });
+  y -= 10;
+  if (r.observations) {
+    const lines = wrap(r.observations, CW - 20, 9);
+    const h = lines.length * 11 + 22;
+    if (y - h < M) { page = pdf.addPage([W, H]); y = H - M; }
+    page.drawRectangle({ x: M, y: y - h, width: CW, height: h, color: LIGHT, borderColor: BORDER, borderWidth: 0.5 });
+    T('Observações gerais', M + 10, y - 14, 10, bold);
+    lines.forEach((l, k) => T(l, M + 10, y - 28 - k * 11, 9));
+    y -= h + 10;
   }
-  y -= 6;
-  if (r.observations) { for (const l of wrap('Observações: ' + r.observations, W - 2 * M, 9)) { ensure(11); text(l, M, 9); y -= 11; } }
+
+  // Photos
   const photos: [string, string][] = SIDES.map(([k, l]) => [l, r.photos?.[k]] as [string, string]).filter(([, u]) => !!u);
   if (r.photo_url && !photos.some(([, u]) => u === r.photo_url)) photos.push(['Foto extra', r.photo_url]);
   if (photos.length) {
-    y -= 10; ensure(20); text('Fotos', M, 12, bold); y -= 16;
-    const cw = (W - 2 * M - 12) / 2, ch = 200;
+    if (y - 60 < M) { page = pdf.addPage([W, H]); y = H - M; }
+    page.drawRectangle({ x: M, y: y - 20, width: CW, height: 20, color: NAVY });
+    T('Fotos', M + 10, y - 14, 11, bold, WHITE); y -= 28;
+    const cw = (CW - 12) / 2, ch = 190;
     for (let idx = 0; idx < photos.length; idx++) {
-      const [label, url] = photos[idx];
-      const col = idx % 2;
-      if (col === 0) ensure(ch + 20);
+      const [label, url] = photos[idx]; const col = idx % 2;
+      if (col === 0 && y - ch - 16 < M) { page = pdf.addPage([W, H]); y = H - M; }
       const x = M + col * (cw + 12);
-      page.drawText(safe(label), { x, y, size: 9, font: bold });
+      T(label, x, y - 9, 9, bold);
+      page.drawRectangle({ x, y: y - 14 - ch, width: cw, height: ch, borderColor: BORDER, borderWidth: 0.6 });
       let drawn = false;
       if (embedPhotos) {
         try {
           const res = await fetch(url);
           if (res.ok) {
             const buf = new Uint8Array(await res.arrayBuffer());
-            const isPng = buf[0] === 0x89 && buf[1] === 0x50;
-            const img = isPng ? await pdf.embedPng(buf) : await pdf.embedJpg(buf);
-            const sc = Math.min(cw / img.width, (ch - 14) / img.height);
-            page.drawImage(img, { x, y: y - 12 - img.height * sc, width: img.width * sc, height: img.height * sc });
+            const img = buf[0] === 0x89 && buf[1] === 0x50 ? await pdf.embedPng(buf) : await pdf.embedJpg(buf);
+            const sc = Math.min((cw - 8) / img.width, (ch - 8) / img.height);
+            const iw = img.width * sc, ih = img.height * sc;
+            page.drawImage(img, { x: x + (cw - iw) / 2, y: y - 14 - ch + (ch - ih) / 2, width: iw, height: ih });
             drawn = true;
           }
         } catch (e) { console.error('foto', url, String(e)); }
       }
-      if (!drawn) page.drawText(safe(url).slice(0, 90), { x, y: y - 12, size: 6, font, color: rgb(0.1, 0.3, 0.8) });
-      if (col === 1 || idx === photos.length - 1) y -= (drawn || embedPhotos ? ch : 22) + 8;
+      if (!drawn) wrap(url, cw - 10, 6).slice(0, 4).forEach((l, k) => T(l, x + 5, y - 30 - k * 8, 6, font, rgb(0.1, 0.3, 0.8)));
+      if (col === 1 || idx === photos.length - 1) y -= ch + 24;
     }
   }
   return await pdf.save();
@@ -140,7 +202,7 @@ Deno.serve(async (req) => {
     }
 
     // One PDF per checklist, inside a subfolder per asset
-    const embedPhotos = body?.embed_photos !== false && !backfill;
+    const embedPhotos = body?.embed_photos === true || (body?.embed_photos !== false && !backfill);
     const gs = Number(body?.offset) || 0;
     const gc = Number(body?.limit) || 100000;
     const batch = records.slice(gs, gs + gc);
@@ -160,6 +222,11 @@ Deno.serve(async (req) => {
       madeFolders.add(path);
     };
     const uploaded: string[] = []; const failed: string[] = [];
+    if (body?.preview_id) {
+      const { data: one } = await supabase.from('checklists').select('*, eq:equipment_id(name, cost_center, plate)').eq('id', body.preview_id).single();
+      const bytes = await buildChecklistPdf(one.eq ? `${one.eq.name}${one.eq.cost_center ? ` (${one.eq.cost_center})` : ''}` : 'Sem equipamento', one, true);
+      return new Response(bytes, { headers: { ...corsHeaders, 'Content-Type': 'application/pdf' } });
+    }
     for (const r of batch) {
       const eq = r.eq;
       const label = eq ? `${eq.name}${eq.cost_center ? ` (${eq.cost_center})` : ''}` : 'Sem equipamento';

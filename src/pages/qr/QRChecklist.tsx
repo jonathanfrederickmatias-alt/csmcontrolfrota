@@ -10,6 +10,7 @@ import PublicLayout from "@/components/PublicLayout";
 import { loadEquipments, submitRecord } from "@/lib/offline";
 import { useSearchParams } from "react-router-dom";
 import PhotoUpload from "@/components/PhotoUpload";
+import ChecklistVehiclePhotos, { vehiclePhotosComplete, type VehiclePhotos } from "@/components/ChecklistVehiclePhotos";
 import { toast } from "sonner";
 import { useChecklistTemplate } from "@/hooks/useChecklistTemplate";
 
@@ -26,6 +27,7 @@ export default function QRChecklist() {
   const [items, setItems] = useState<ChecklistItemDB[]>([]);
   const [newItemLabel, setNewItemLabel] = useState('');
   const [photoUrl, setPhotoUrl] = useState('');
+  const [vehiclePhotos, setVehiclePhotos] = useState<VehiclePhotos>({});
   const [generalObservations, setGeneralObservations] = useState('');
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -133,7 +135,8 @@ export default function QRChecklist() {
       items,
       status,
       type: checklistType,
-      photo_url: photoUrl || null,
+      photo_url: photoUrl || vehiclePhotos.frente || null,
+      photos: vehiclePhotos,
       observations: generalObservations || null,
     }, `Checklist — ${operatorName}`);
     if (queued) toast.success('Sem internet: checklist salvo no aparelho e será enviado quando houver conexão.');
@@ -233,7 +236,7 @@ export default function QRChecklist() {
   const hourMeterTooLow = lastHourMeter !== null && hourMeter !== '' && Number(hourMeter) < lastHourMeter;
   const allAnswered = items.length > 0 && items.every(i => i.checked === true || i.checked === false || i.na === true);
   const hasNC = items.some(i => i.checked === false && !i.na);
-  const canSave = selectedEquipment && operatorName && hourMeter && allAnswered && !hourMeterTooLow;
+  const canSave = selectedEquipment && operatorName && hourMeter && allAnswered && !hourMeterTooLow && vehiclePhotosComplete(vehiclePhotos);
 
   if (maintenanceSaved) {
     return (
@@ -453,9 +456,14 @@ export default function QRChecklist() {
           />
         </div>
 
+        {/* Required vehicle photos */}
+        <div className="glass-card rounded-xl p-5">
+          <ChecklistVehiclePhotos value={vehiclePhotos} onChange={setVehiclePhotos} />
+        </div>
+
         {/* Optional photo */}
         <div className="glass-card rounded-xl p-5">
-          <PhotoUpload label="Foto (opcional)" onUploaded={setPhotoUrl} value={photoUrl} />
+          <PhotoUpload label="Foto extra (opcional)" onUploaded={setPhotoUrl} value={photoUrl} />
         </div>
 
         {hasNC && !photoUrl && (

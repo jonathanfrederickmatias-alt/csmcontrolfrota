@@ -16,7 +16,9 @@ function itemAnswer(i: any): string {
   return '—';
 }
 
-async function buildAssetPdf(eqLabel: string, periodLabel: string, list: any[]) {
+const SIDES: [string, string][] = [['frente', 'Frente'], ['tras', 'Trás'], ['esquerdo', 'Lado esquerdo'], ['direito', 'Lado direito']];
+
+async function buildChecklistPdf(eqLabel: string, r: any, embedPhotos: boolean) {
   const pdf = await PDFDocument.create();
   const font = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
@@ -30,24 +32,48 @@ async function buildAssetPdf(eqLabel: string, periodLabel: string, list: any[]) 
   let page = pdf.addPage([W, H]); let y = H - M;
   const ensure = (h: number) => { if (y - h < M) { page = pdf.addPage([W, H]); y = H - M; } };
   const text = (s: string, x: number, sz = 9, f = font, color = rgb(0.06, 0.09, 0.16)) => page.drawText(safe(s), { x, y, size: sz, font: f, color });
-  text('Checklists - ' + eqLabel, M, 15, bold); y -= 17;
-  text(`Período: ${periodLabel} - ${list.length} checklist(s) - CSMCONTROLFROTA`, M, 10, font, rgb(0.4, 0.45, 0.53)); y -= 22;
-  for (const r of list) {
-    const items = Array.isArray(r.items) ? r.items : [];
-    const nc = items.filter((i: any) => i?.checked === false && !i?.na).length;
-    ensure(50);
-    page.drawRectangle({ x: M, y: y - 5, width: W - 2 * M, height: 18, color: nc ? rgb(1, 0.93, 0.93) : rgb(0.93, 0.97, 0.94) });
-    text(`${fmt(r.date)}  |  ${r.type || 'checklist'}  |  Horím./Km: ${r.hour_meter ?? '—'}  |  Operador: ${r.operator_name || '—'}  |  ${nc ? nc + ' NC' : 'Tudo conforme'}`, M + 4, 9, bold); y -= 20;
-    for (const i of items) {
-      const ans = itemAnswer(i);
-      const lines = wrap(`${i?.group ? i.group + ' - ' : ''}${i?.label || '—'}${i?.observation ? ' (Obs: ' + i.observation + ')' : ''}`, W - 2 * M - 50, 8);
-      ensure(lines.length * 10 + 2);
-      page.drawText(ans, { x: M + 4, y, size: 8, font: bold, color: ans === 'NC' ? rgb(0.8, 0.1, 0.1) : ans === 'C' ? rgb(0.1, 0.55, 0.2) : rgb(0.4, 0.45, 0.53) });
-      for (const l of lines) { page.drawText(l, { x: M + 40, y, size: 8, font }); y -= 10; }
+  const items = Array.isArray(r.items) ? r.items : [];
+  const nc = items.filter((i: any) => i?.checked === false && !i?.na).length;
+  text('Checklist - ' + eqLabel, M, 15, bold); y -= 18;
+  text(`Data: ${fmt(r.date)}   Tipo: ${r.type || '—'}   Horím./Km: ${r.hour_meter ?? '—'}`, M, 10); y -= 14;
+  text(`Operador: ${r.operator_name || '—'}   Situação: ${nc ? nc + ' item(ns) NC' : 'Tudo conforme'}`, M, 10, bold, nc ? rgb(0.8, 0.1, 0.1) : rgb(0.1, 0.5, 0.2)); y -= 20;
+  for (const i of items) {
+    const ans = itemAnswer(i);
+    const lines = wrap(`${i?.group ? i.group + ' - ' : ''}${i?.label || '—'}${i?.observation ? ' (Obs: ' + i.observation + ')' : ''}`, W - 2 * M - 50, 9);
+    ensure(lines.length * 11 + 2);
+    page.drawText(ans, { x: M + 4, y, size: 9, font: bold, color: ans === 'NC' ? rgb(0.8, 0.1, 0.1) : ans === 'C' ? rgb(0.1, 0.55, 0.2) : rgb(0.4, 0.45, 0.53) });
+    for (const l of lines) { page.drawText(l, { x: M + 40, y, size: 9, font }); y -= 11; }
+  }
+  y -= 6;
+  if (r.observations) { for (const l of wrap('Observações: ' + r.observations, W - 2 * M, 9)) { ensure(11); text(l, M, 9); y -= 11; } }
+  const photos: [string, string][] = SIDES.map(([k, l]) => [l, r.photos?.[k]] as [string, string]).filter(([, u]) => !!u);
+  if (r.photo_url && !photos.some(([, u]) => u === r.photo_url)) photos.push(['Foto extra', r.photo_url]);
+  if (photos.length) {
+    y -= 10; ensure(20); text('Fotos', M, 12, bold); y -= 16;
+    const cw = (W - 2 * M - 12) / 2, ch = 200;
+    for (let idx = 0; idx < photos.length; idx++) {
+      const [label, url] = photos[idx];
+      const col = idx % 2;
+      if (col === 0) ensure(ch + 20);
+      const x = M + col * (cw + 12);
+      page.drawText(safe(label), { x, y, size: 9, font: bold });
+      let drawn = false;
+      if (embedPhotos) {
+        try {
+          const res = await fetch(url);
+          if (res.ok) {
+            const buf = new Uint8Array(await res.arrayBuffer());
+            const isPng = buf[0] === 0x89 && buf[1] === 0x50;
+            const img = isPng ? await pdf.embedPng(buf) : await pdf.embedJpg(buf);
+            const sc = Math.min(cw / img.width, (ch - 14) / img.height);
+            page.drawImage(img, { x, y: y - 12 - img.height * sc, width: img.width * sc, height: img.height * sc });
+            drawn = true;
+          }
+        } catch (e) { console.error('foto', url, String(e)); }
+      }
+      if (!drawn) page.drawText(safe(url).slice(0, 90), { x, y: y - 12, size: 6, font, color: rgb(0.1, 0.3, 0.8) });
+      if (col === 1 || idx === photos.length - 1) y -= (drawn || embedPhotos ? ch : 22) + 8;
     }
-    if (r.observations) { for (const l of wrap('Observações: ' + r.observations, W - 2 * M - 8, 8)) { ensure(10); text(l, M + 4, 8); y -= 10; } }
-    if (r.photo_url) { ensure(10); text('Foto: ' + r.photo_url, M + 4, 7, font, rgb(0.1, 0.3, 0.8)); y -= 10; }
-    y -= 10;
   }
   return await pdf.save();
 }
@@ -67,6 +93,16 @@ Deno.serve(async (req) => {
 
     const { data: setting } = await supabase.from('report_settings').select('value').eq('key', 'onedrive_checklist_folder').maybeSingle();
     const folder = (setting?.value?.trim() || DEFAULT_FOLDER).replace(/^\/+|\/+$/g, '');
+
+    if (body?.cleanup_root_pdfs === true) {
+      // Removes the old per-asset PDFs left directly in the main folder (per-checklist files live in subfolders)
+      const lr = await fetch(`${GATEWAY}/me/drive/root:/${encPath(folder)}:/children?$top=999&$select=id,name,file`, { headers: auth });
+      const lj = await lr.json();
+      const files = (lj.value || []).filter((f: any) => f.file && / - checklists .*\.pdf$/.test(f.name));
+      let removed = 0;
+      for (const f of files) { const d = await fetch(`${GATEWAY}/me/drive/items/${f.id}`, { method: 'DELETE', headers: auth }); await d.text(); if (d.ok) removed++; }
+      return new Response(JSON.stringify({ removed }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
 
     const todaySP = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
     const t = new Date(todaySP + 'T12:00:00Z');
@@ -103,26 +139,42 @@ Deno.serve(async (req) => {
       if (!res.ok && res.status !== 409) throw new Error(`Falha ao criar pasta [${res.status}]: ${b}`);
     }
 
-    // Group per asset and upload one PDF each
-    const groups = new Map<string, any[]>();
-    for (const r of records) { const k = r.equipment_id || 'sem'; if (!groups.has(k)) groups.set(k, []); groups.get(k)!.push(r); }
-    const firstDate = records[0]?.date?.slice(0, 10) || startStr;
-    const periodLabel = backfill && !isDate(body?.start) ? `${fmt(firstDate)} a ${fmt(endStr)}` : `${fmt(startStr)} a ${fmt(endStr)}`;
+    // One PDF per checklist, inside a subfolder per asset
+    const embedPhotos = body?.embed_photos !== false && !backfill;
+    const gs = Number(body?.offset) || 0;
+    const gc = Number(body?.limit) || 100000;
+    const batch = records.slice(gs, gs + gc);
+    const madeFolders = new Set<string>();
+    const ensureFolder = async (path: string) => {
+      if (madeFolders.has(path)) return;
+      const chk = await fetch(`${GATEWAY}/me/drive/root:/${encPath(path)}`, { headers: auth }); await chk.text();
+      if (!chk.ok) {
+        const parent = path.split('/').slice(0, -1).join('/');
+        const res = await fetch(`${GATEWAY}/me/drive/root:/${encPath(parent)}:/children`, {
+          method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: path.split('/').pop(), folder: {}, '@microsoft.graph.conflictBehavior': 'fail' }),
+        });
+        const b = await res.text();
+        if (!res.ok && res.status !== 409) throw new Error(`Falha ao criar pasta [${res.status}]: ${b}`);
+      }
+      madeFolders.add(path);
+    };
     const uploaded: string[] = []; const failed: string[] = [];
-    const gs = Number(body?.group_start) || 0;
-    const gc = Number(body?.group_count) || 9999;
-    const ordered = [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0])).slice(gs, gs + gc).map((e) => e[1]);
-    for (const list of ordered) {
-      const eq = list[0].eq;
+    for (const r of batch) {
+      const eq = r.eq;
       const label = eq ? `${eq.name}${eq.cost_center ? ` (${eq.cost_center})` : ''}` : 'Sem equipamento';
-      const bytes = await buildAssetPdf(label, periodLabel, list);
-      const name = fileSafe(`${label} - checklists ${periodLabel.replaceAll('/', '-')}`) + '.pdf';
-      const res = await fetch(`${GATEWAY}/me/drive/root:/${encPath(`${folder}/${name}`)}:/content`, {
+      const sub = `${folder}/${fileSafe(label)}`;
+      await ensureFolder(sub);
+      const time = new Date(r.created_at).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' }).replace(':', 'h');
+      const name = fileSafe(`${r.date.slice(0, 10)} ${time} - ${label} - ${r.type || 'checklist'} - ${String(r.id).slice(0, 6)}`) + '.pdf';
+      const bytes = await buildChecklistPdf(label, r, embedPhotos);
+      const res = await fetch(`${GATEWAY}/me/drive/root:/${encPath(`${sub}/${name}`)}:/content`, {
         method: 'PUT', headers: { ...auth, 'Content-Type': 'application/pdf' }, body: bytes,
       });
       const b = await res.text();
       if (res.ok) uploaded.push(name); else { failed.push(name); console.error(`Upload falhou [${res.status}]: ${b}`); }
     }
+    const periodLabel = `${fmt(startStr)} a ${fmt(endStr)}`;
 
     // Delete old checklists from the system (OneDrive copies are kept). Only if every upload of this run worked.
     let deleted = 0;
@@ -132,7 +184,7 @@ Deno.serve(async (req) => {
       deleted = count || 0;
     }
 
-    return new Response(JSON.stringify({ success: failed.length === 0, folder, period: periodLabel, checklists: records.length, total_assets: groups.size, files: uploaded.length, failed, deleted_older_than: cutoffStr, deleted }),
+    return new Response(JSON.stringify({ success: failed.length === 0, folder, period: periodLabel, checklists: records.length,  files: uploaded.length, failed, deleted_older_than: cutoffStr, deleted }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (err) {
     console.error(err);

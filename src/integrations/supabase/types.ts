@@ -63,6 +63,7 @@ export type Database = {
           observations: string | null
           operator_name: string
           photo_url: string | null
+          photos: Json
           status: string
           tenant_id: string
           type: string
@@ -77,6 +78,7 @@ export type Database = {
           observations?: string | null
           operator_name: string
           photo_url?: string | null
+          photos?: Json
           status?: string
           tenant_id: string
           type?: string
@@ -91,6 +93,7 @@ export type Database = {
           observations?: string | null
           operator_name?: string
           photo_url?: string | null
+          photos?: Json
           status?: string
           tenant_id?: string
           type?: string

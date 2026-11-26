@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { ClipboardCheck, CheckCircle, Loader2, AlertTriangle, ShieldCheck, ShieldX, Plus, Trash2 } from "lucide-react";
 import PhotoUpload from "@/components/PhotoUpload";
+import ChecklistVehiclePhotos, { vehiclePhotosComplete, type VehiclePhotos } from "@/components/ChecklistVehiclePhotos";
 import { toast } from "sonner";
 import { loadEquipments, submitRecord } from "@/lib/offline";
 import OfflineBanner from "@/components/OfflineBanner";
@@ -24,6 +25,7 @@ export default function ChecklistPage() {
   const [items, setItems] = useState<ChecklistItemDB[]>([]);
   const [newItemLabel, setNewItemLabel] = useState('');
   const [photoUrl, setPhotoUrl] = useState('');
+  const [vehiclePhotos, setVehiclePhotos] = useState<VehiclePhotos>({});
   const [generalObservations, setGeneralObservations] = useState('');
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -71,6 +73,7 @@ export default function ChecklistPage() {
     setItems([]);
     setNewItemLabel('');
     setPhotoUrl('');
+    setVehiclePhotos({});
     setGeneralObservations('');
     setShowMaintenanceForm(false);
     setMaintenanceDesc('');
@@ -96,7 +99,8 @@ export default function ChecklistPage() {
       items,
       status,
       type: checklistType,
-      photo_url: photoUrl || null,
+      photo_url: photoUrl || vehiclePhotos.frente || null,
+      photos: vehiclePhotos,
       observations: generalObservations || null,
     }, `Checklist — ${operatorName}`);
     if (queued) toast.success('Sem internet: checklist salvo no aparelho e será enviado automaticamente.');
@@ -154,7 +158,7 @@ export default function ChecklistPage() {
 
   const allAnswered = items.length > 0 && items.every(i => i.checked === true || i.checked === false || i.na === true);
   const hasNC = items.some(i => i.checked === false && !i.na);
-  const canSave = selectedEquipment && operatorName && hourMeter && allAnswered;
+  const canSave = selectedEquipment && operatorName && hourMeter && allAnswered && vehiclePhotosComplete(vehiclePhotos);
 
   return (
     <div>
@@ -334,9 +338,14 @@ export default function ChecklistPage() {
             />
           </div>
 
+          {/* Required vehicle photos */}
+          <div className="glass-card rounded-xl p-5">
+            <ChecklistVehiclePhotos value={vehiclePhotos} onChange={setVehiclePhotos} />
+          </div>
+
           {/* Optional photo */}
           <div className="glass-card rounded-xl p-6">
-            <PhotoUpload label="Foto (opcional)" onUploaded={setPhotoUrl} value={photoUrl} />
+            <PhotoUpload label="Foto extra (opcional)" onUploaded={setPhotoUrl} value={photoUrl} />
           </div>
 
           {/* Photo required when NC exists */}

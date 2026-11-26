@@ -64,6 +64,13 @@
       "when": 1795727160460,
       "tag": "0008_abastecedor_fuel_alert_dismissals",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1795727627871,
+      "tag": "0009_tighten_qr_and_storage_policies",
+      "breakpoints": true
     }
   ]
 }

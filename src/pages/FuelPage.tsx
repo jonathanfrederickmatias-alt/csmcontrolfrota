@@ -19,8 +19,11 @@ import { useUserRoles } from '@/hooks/useUserRoles';
 
 export default function FuelPage() {
   const navigate = useNavigate();
-  const { isAdmin, isGestor } = useUserRoles();
+  const { isAdmin, isGestor, isAbastecedor } = useUserRoles();
   const canEdit = isAdmin || isGestor;
+  const canSeeAlerts = canEdit || isAbastecedor;
+  const [openAlerts, setOpenAlerts] = useState(-1);
+  const mustCloseAlerts = isAbastecedor && !canEdit && openAlerts !== 0;
   const [equipments, setEquipments] = useState<DBEquipment[]>([]);
   const [records, setRecords] = useState<DBFuelRecord[]>([]);
   const [comboId, setComboId] = useState('');
@@ -160,6 +163,7 @@ export default function FuelPage() {
   };
 
   const handleSave = async () => {
+    if (mustCloseAlerts) { toast.error('Feche as ocorrências de consumo antes de lançar outro abastecimento.'); return; }
     if (!validateFuelEntry(operatorName, targetId, hourMeter)) return;
     setSaving(true);
     const record: any = {
@@ -377,7 +381,7 @@ export default function FuelPage() {
         </Button>
       </div>
 
-      <FuelConsumptionAlerts records={records as any[]} equipments={equipments as any[]} canEdit={canEdit} onChanged={fetchData} />
+      <FuelConsumptionAlerts records={records as any[]} equipments={equipments as any[]} canEdit={canSeeAlerts} onChanged={fetchData} onCountChange={setOpenAlerts} allowIgnoreAll={canEdit} />
 
       {/* Saldo dos comboios */}
       {combos.length > 0 && (
@@ -472,7 +476,12 @@ export default function FuelPage() {
               <Plus className="w-3 h-3" /> Adicionar item
             </Button>
           </div>
-          <Button onClick={handleSave} disabled={!canSave || saving} className="w-full mt-4 h-12 text-base font-bold">
+          {mustCloseAlerts && openAlerts > 0 && (
+            <p className="mt-4 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm font-medium">
+              Feche as {openAlerts} ocorrência{openAlerts > 1 ? "s" : ""} do aviso amarelo acima antes de lançar outro abastecimento.
+            </p>
+          )}
+          <Button onClick={handleSave} disabled={!canSave || saving || mustCloseAlerts} className="w-full mt-4 h-12 text-base font-bold">
             {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Registrar Abastecimento
           </Button>
         </div>

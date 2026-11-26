@@ -26,8 +26,8 @@ export function visibleAlerts(records: AlertRecord[], equipments: AlertEquipment
 const fmt = (n?: number | null, d = 0) => n == null ? "—" : n.toLocaleString("pt-BR", { maximumFractionDigits: d });
 const fdate = (d?: string) => d ? new Date(d.slice(0, 10) + "T12:00:00").toLocaleDateString("pt-BR") : "—";
 
-export default function FuelConsumptionAlerts({ records, equipments, canEdit, onChanged }: {
-  records: AlertRecord[]; equipments: Eq[]; canEdit: boolean; onChanged: () => void;
+export default function FuelConsumptionAlerts({ records, equipments, canEdit, onChanged, onCountChange, allowIgnoreAll = true }: {
+  records: AlertRecord[]; equipments: Eq[]; canEdit: boolean; onChanged: () => void; onCountChange?: (n: number) => void; allowIgnoreAll?: boolean;
 }) {
   const [dismissed, setDismissed] = useState<Set<string> | null>(null);
   const [open, setOpen] = useState(false);
@@ -41,6 +41,7 @@ export default function FuelConsumptionAlerts({ records, equipments, canEdit, on
     [records, equipments, dismissed]
   );
   useEffect(() => { window.dispatchEvent(new CustomEvent(FUEL_ALERTS_EVENT, { detail: alerts.length })); }, [alerts.length]);
+  useEffect(() => { onCountChange?.(dismissed ? alerts.length : -1); }, [alerts.length, dismissed, onCountChange]);
 
   const eqMap = useMemo(() => new Map(equipments.map(e => [e.id, e])), [equipments]);
   const grouped = useMemo(() => {
@@ -124,9 +125,9 @@ export default function FuelConsumptionAlerts({ records, equipments, canEdit, on
           <p className="text-sm text-muted-foreground">
             Últimos 90 dias. O sistema só sugere — nada é alterado sem você confirmar.
           </p>
-          <Button variant="outline" size="sm" className="self-start" disabled={busy === "__all"} onClick={ignoreAll}>
+          {allowIgnoreAll && <Button variant="outline" size="sm" className="self-start" disabled={busy === "__all"} onClick={ignoreAll}>
             {busy === "__all" && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}Está certo, ignorar todos ({alerts.length})
-          </Button>
+          </Button>}
           <div className="space-y-5">
             {grouped.map(([eqId, list]) => {
               const eq = eqMap.get(eqId);
